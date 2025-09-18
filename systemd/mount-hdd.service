@@ -1,0 +1,12 @@
+[Unit]
+Description=Auto-mount external HDD
+DefaultDependencies=no
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '/home/pi/pi-photo-hub/scripts/mount-hdd.sh'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
