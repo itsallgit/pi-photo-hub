@@ -3,13 +3,13 @@ Description=Picapport Photo Server
 After=network.target
 
 [Service]
-Type=simple
 User=pi
+Group=pi
 WorkingDirectory=/home/pi/pi-photo-hub/picapport
-# Run headless (GUI disabled)
-ExecStart=/opt/java/bin/java -Dpicapport.gui.enabled=false -jar /home/pi/pi-photo-hub/picapport/picapport.jar
-Restart=always
+ExecStart=/opt/java/bin/java -Dpicapport.home=/home/pi/.picapport -Dpicapport.gui.enabled=false -jar picapport.jar
+Restart=on-failure
 RestartSec=5
+Environment=DISPLAY=:0
 
 [Install]
 WantedBy=multi-user.target

@@ -120,6 +120,14 @@ banner "Fixing Folder Ownership"
 sudo chown -R pi:pi /home/pi/pi-photo-hub
 
 # -----------------------------
+# Ensure Picapport home & logs folder exist
+# -----------------------------
+banner "Fixing Picapport Folders"
+PICAPP_HOME="/home/pi/.picapport"
+sudo mkdir -p "$PICAPP_HOME/logfiles" "$PICAPP_HOME/users" "$PICAPP_HOME/plugins" "$PICAPP_HOME/thesaurus" "$PICAPP_HOME/designs"
+sudo chown -R pi:pi "$PICAPP_HOME"
+
+# -----------------------------
 # Picapport service
 # -----------------------------
 banner "Setting up Picapport Service"
@@ -128,12 +136,26 @@ sudo systemctl daemon-reload
 sudo systemctl enable picapport.service
 
 # -----------------------------
+# Chromium autostart (GUI)
+# -----------------------------
+banner "Setting up Chromium Autostart for Picapport"
+AUTOSTART_DIR="/home/pi/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
+cat <<EOF > "$AUTOSTART_DIR/picapport-chromium.desktop"
+[Desktop Entry]
+Type=Application
+Name=Picapport
+Exec=chromium-browser --app=http://localhost:80 --kiosk
+X-GNOME-Autostart-enabled=true
+EOF
+chown -R pi:pi "$AUTOSTART_DIR"
+
+# -----------------------------
 # Photo API service
 # -----------------------------
 banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
 run_with_spinner "npm install" "Installing API dependencies"
-# create logs folder for Node.js service
 mkdir -p logs
 chown -R pi:pi logs
 popd
