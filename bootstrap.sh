@@ -135,6 +135,7 @@ pushd "$(dirname "$0")/api"
 run_with_spinner "npm install" "Installing API dependencies"
 # create logs folder for Node.js service
 mkdir -p logs
+chown -R pi:pi logs
 popd
 sudo cp "$(dirname "$0")/systemd/photo-api.service.template" /etc/systemd/system/photo-api.service
 sudo systemctl daemon-reload

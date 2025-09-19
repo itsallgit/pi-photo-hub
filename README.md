@@ -89,6 +89,15 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       sudo ~/pi-photo-hub-update-and-bootstrap.sh --latest
       ```
 
+1. Check Services are running after Pi Reboot
+
+   * Check Service Status:
+      * `sudo systemctl status photo-api`
+      * `sudo systemctl status picapport`
+   * Check Service Logs:
+      * `journalctl -u photo-api.service -n 100 --no-pager`
+      * `journalctl -u picapport.service -n 100 --no-pager`
+
 ## Logs
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`

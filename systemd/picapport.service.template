@@ -6,7 +6,8 @@ After=network.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/pi-photo-hub/picapport
-ExecStart=/opt/java/bin/java -jar /home/pi/pi-photo-hub/picapport/picapport.jar
+# Run headless (GUI disabled)
+ExecStart=/opt/java/bin/java -Dpicapport.gui.enabled=false -jar /home/pi/pi-photo-hub/picapport/picapport.jar
 Restart=always
 RestartSec=5
 
