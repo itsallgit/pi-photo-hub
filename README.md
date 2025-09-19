@@ -48,7 +48,6 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       * Ctrl + X then Enter
       * *Note that this helper script is used to retrigger the bootstrap when making changes to the repo*
       ```bash
-      #!/bin/bash
       set -e  # Exit on first error
 
       MOUNTPOINT="/mnt/photos"
@@ -78,6 +77,12 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       if [ -d "/home/pi/pi-photo-hub" ]; then
          echo "[INFO] Removing old pi-photo-hub directory..."
          rm -rf /home/pi/pi-photo-hub
+      fi
+
+      # Remove old Picapport config/home
+      if [ -d "/home/pi/.picapport" ]; then
+         echo "[INFO] Removing old Picapport home folder..."
+         rm -rf /home/pi/.picapport
       fi
 
       # Clone fresh repo

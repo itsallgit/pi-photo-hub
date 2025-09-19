@@ -127,13 +127,10 @@ PICAPP_HOME="/home/pi/.picapport"
 sudo mkdir -p "$PICAPP_HOME/logfiles" "$PICAPP_HOME/users" "$PICAPP_HOME/plugins" "$PICAPP_HOME/thesaurus" "$PICAPP_HOME/designs"
 sudo chown -R pi:pi "$PICAPP_HOME"
 
-# Copy external picapport.properties if missing
-PROPS_SRC="$(dirname "$0")/config/picapport.properties"
-PROPS_DEST="$PICAPP_HOME/picapport.properties"
-if [ ! -f "$PROPS_DEST" ]; then
-  sudo cp "$PROPS_SRC" "$PROPS_DEST"
-  sudo chown pi:pi "$PROPS_DEST"
-fi
+# Copy picapport.properties, always overwrite
+sudo cp "$PROPS_SRC" "$PROPS_DEST"
+sudo chown pi:pi "$PROPS_DEST"
+echo "[INFO] picapport.properties updated from repo"
 
 # -----------------------------
 # Mount HDD service
