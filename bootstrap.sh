@@ -140,6 +140,8 @@ fi
 # -----------------------------
 banner "Setting up HDD Automount"
 sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
+# Ensure mount script is executable
+sudo chmod +x "$(dirname "$0")/scripts/mount-hdd.sh"
 sudo systemctl daemon-reload
 sudo systemctl enable mount-hdd.service
 
