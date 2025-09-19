@@ -1,0 +1,23 @@
+[Unit]
+Description=Picapport Chromium Slideshow
+After=graphical.target picapport.service
+Wants=picapport.service
+
+[Service]
+Type=simple
+User=pi
+Environment=DISPLAY=:0
+ExecStart=/bin/bash -c '\
+    URL_FILE="/home/pi/pi-photo-hub/api/slideshow_url.txt"; \
+    DEFAULT_URL="http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=30&query=noimagesfound"; \
+    if [ -f "$URL_FILE" ]; then \
+        URL=$(cat "$URL_FILE"); \
+    else \
+        URL=$DEFAULT_URL; \
+    fi; \
+    chromium-browser --app="$URL" --kiosk \
+'
+Restart=always
+
+[Install]
+WantedBy=graphical.target

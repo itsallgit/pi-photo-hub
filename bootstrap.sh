@@ -122,10 +122,26 @@ sudo chown -R pi:pi /home/pi/pi-photo-hub
 # -----------------------------
 # Ensure Picapport home & logs folder exist
 # -----------------------------
-banner "Fixing Picapport Folders"
+banner "Setting up Picapport folders"
 PICAPP_HOME="/home/pi/.picapport"
 sudo mkdir -p "$PICAPP_HOME/logfiles" "$PICAPP_HOME/users" "$PICAPP_HOME/plugins" "$PICAPP_HOME/thesaurus" "$PICAPP_HOME/designs"
 sudo chown -R pi:pi "$PICAPP_HOME"
+
+# Copy external picapport.properties if missing
+PROPS_SRC="$(dirname "$0")/config/picapport.properties"
+PROPS_DEST="$PICAPP_HOME/picapport.properties"
+if [ ! -f "$PROPS_DEST" ]; then
+  sudo cp "$PROPS_SRC" "$PROPS_DEST"
+  sudo chown pi:pi "$PROPS_DEST"
+fi
+
+# -----------------------------
+# Mount HDD service
+# -----------------------------
+banner "Setting up HDD Automount"
+sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable mount-hdd.service
 
 # -----------------------------
 # Picapport service
@@ -136,19 +152,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable picapport.service
 
 # -----------------------------
-# Chromium autostart (GUI)
+# Chromium GUI service for Picapport slideshow
 # -----------------------------
-banner "Setting up Chromium Autostart for Picapport"
-AUTOSTART_DIR="/home/pi/.config/autostart"
-mkdir -p "$AUTOSTART_DIR"
-cat <<EOF > "$AUTOSTART_DIR/picapport-chromium.desktop"
-[Desktop Entry]
-Type=Application
-Name=Picapport
-Exec=chromium-browser --app=http://localhost:80 --kiosk
-X-GNOME-Autostart-enabled=true
-EOF
-chown -R pi:pi "$AUTOSTART_DIR"
+banner "Setting up Chromium GUI service for Picapport Slideshow"
+sudo cp "$(dirname "$0")/systemd/picapport-chromium.service.template" /etc/systemd/system/picapport-chromium.service
+sudo systemctl daemon-reload
+sudo systemctl enable picapport-chromium.service
 
 # -----------------------------
 # Photo API service
@@ -162,13 +171,6 @@ popd
 sudo cp "$(dirname "$0")/systemd/photo-api.service.template" /etc/systemd/system/photo-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable photo-api.service
-
-# -----------------------------
-# HDD Automount
-# -----------------------------
-banner "Setting up HDD Automount"
-sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
-sudo systemctl enable mount-hdd.service
 
 # -----------------------------
 # Done

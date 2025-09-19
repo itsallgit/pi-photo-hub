@@ -1,14 +1,20 @@
 [Unit]
 Description=Picapport Photo Server
-After=network.target
+After=network.target mount-hdd.service
+Requires=mount-hdd.service
 
 [Service]
 User=pi
-Group=pi
 WorkingDirectory=/home/pi/pi-photo-hub/picapport
-ExecStart=/opt/java/bin/java -Dpicapport.home=/home/pi/.picapport -Dpicapport.gui.enabled=false -jar picapport.jar
-Restart=on-failure
+
+# Run Picapport headless but accessible via web GUI
+ExecStart=/opt/java/bin/java -Dpicapport.home=/home/pi/.picapport -jar /home/pi/pi-photo-hub/picapport/picapport.jar
+
+# Restart automatically if it crashes
+Restart=always
 RestartSec=5
+
+# Make sure the display exists for Chromium
 Environment=DISPLAY=:0
 
 [Install]
