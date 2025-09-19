@@ -8,15 +8,16 @@ LOGFILE="/var/log/pi-photo-hub/bootstrap.log"
 mkdir -p $(dirname "$LOGFILE")
 exec > >(tee -a "$LOGFILE") 2>&1
 
-# Steps tracker
-TOTAL_STEPS=7
+# -----------------------------
+# Helpers
+# -----------------------------
 CURRENT_STEP=0
 
 banner() {
   CURRENT_STEP=$((CURRENT_STEP+1))
   echo ""
   echo "============================================================"
-  echo ">>> STEP $CURRENT_STEP of $TOTAL_STEPS"
+  echo ">>> STEP $CURRENT_STEP"
   echo ">>> $1"
   echo "============================================================"
   echo ""
@@ -52,7 +53,9 @@ run_with_spinner() {
 
 banner "Pi Photo Hub Bootstrap Starting - $(date)"
 
+# -----------------------------
 # Parse arguments
+# -----------------------------
 USE_LATEST=false
 for arg in "$@"; do
   if [ "$arg" == "--latest" ]; then
@@ -67,33 +70,37 @@ echo "[INFO] USE_LATEST=$USE_LATEST"
 echo "[INFO] JAVA_VERSION=$JAVA_VERSION"
 echo "[INFO] NODE_VERSION=$NODE_VERSION"
 
+# -----------------------------
+# STEP: System update
+# -----------------------------
 banner "Updating System"
 export DEBIAN_FRONTEND=noninteractive
 run_with_spinner "sudo apt update -y && sudo apt full-upgrade -y" "Updating packages"
 
+# -----------------------------
+# STEP: Essentials
+# -----------------------------
 banner "Installing Essentials"
 run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing essentials"
 
+# -----------------------------
+# STEP: Java
+# -----------------------------
 banner "Installing Java"
 if [ "$USE_LATEST" = true ]; then
-  log "Installing latest Java (OpenJDK 17 from apt)" "INFO"
-  sudo apt install -y openjdk-17-jre
+  run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
 else
-  log "Installing pinned Java version $JAVA_VERSION" "INFO"
-
   JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
-
-  log "Downloading Java $JAVA_VERSION..." "INFO"
-  curl -L -o /tmp/openjdk.tar.gz "$JAVA_URL"
-
-  log "Extracting Java..." "INFO"
+  run_with_spinner "curl -L -o /tmp/openjdk.tar.gz \"$JAVA_URL\"" "Downloading Java $JAVA_VERSION"
   sudo mkdir -p /opt/java
-  sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1
-
+  run_with_spinner "sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1" "Extracting Java"
   echo "export PATH=/opt/java/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
   source /etc/profile.d/jdk.sh
 fi
 
+# -----------------------------
+# STEP: Node.js
+# -----------------------------
 banner "Installing Node.js"
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
@@ -104,10 +111,16 @@ else
   source /etc/profile.d/node.sh
 fi
 
+# -----------------------------
+# STEP: Picapport service
+# -----------------------------
 banner "Setting up Picapport Service"
 sudo cp "$(dirname "$0")/systemd/picapport.service" /etc/systemd/system/
 run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable picapport.service" "Configuring Picapport service"
 
+# -----------------------------
+# STEP: API service
+# -----------------------------
 banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
 run_with_spinner "npm install" "Installing API dependencies"
@@ -115,10 +128,16 @@ popd
 sudo cp "$(dirname "$0")/systemd/photo-api.service" /etc/systemd/system/
 run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable photo-api.service" "Configuring API service"
 
+# -----------------------------
+# STEP: HDD automount
+# -----------------------------
 banner "Setting up HDD Automount"
 sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
 run_with_spinner "sudo systemctl enable mount-hdd.service" "Enabling HDD automount"
 
+# -----------------------------
+# Done
+# -----------------------------
 banner "Bootstrap Complete"
 echo "[INFO] All components installed successfully!"
 echo "[INFO] Log file available at: $LOGFILE"
