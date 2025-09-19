@@ -1,6 +1,6 @@
 [Unit]
 Description=Auto-mount external HDD for Picapport
-After=network.target local-fs.target
+After=local-fs.target
 Requires=local-fs.target
 
 [Service]
