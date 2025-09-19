@@ -1,0 +1,13 @@
+[Unit]
+Description=Picapport Photo Server
+After=network.target
+
+[Service]
+ExecStart=__JAVA_BIN__ -jar /home/pi/picapport/picapport.jar
+WorkingDirectory=/home/pi/picapport
+Restart=always
+User=pi
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

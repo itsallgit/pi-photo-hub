@@ -37,32 +37,57 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       * `sudo raspi-config`
       * Display Options > Screen Blanking > Disable
 
-1. Load files onto Pi
+1. Trigger Fresh Bootstrap
 
    * Access the Pi via VSCode SSH Remote Session
+   * Create a helper script
+      * `cd ~`
+      * `nano pi-photo-hub-update-and-bootstrap.sh`
+      * Paste code below
+      * Ctrl + O then Enter
+      * Ctrl + X then Enter
 
       ```bash
-      cd ~
-      git clone https://github.com/itsallgit/pi-photo-hub.git
-      cd pi-photo-hub
+      #!/bin/bash
+      # update-and-bootstrap.sh - Refresh repo and run bootstrap in one go
+
+      set -e  # Exit on first error
+
+      echo "============================================================"
+      echo ">>> Updating pi-photo-hub and running bootstrap"
+      echo "============================================================"
+
+      # Ensure we're in home directory
+      cd /home/pi
+
+      # Remove old repo
+      if [ -d "/home/pi/pi-photo-hub" ]; then
+      echo "[INFO] Removing old pi-photo-hub directory..."
+      rm -rf /home/pi/pi-photo-hub
+      fi
+
+      # Clone fresh
+      echo "[INFO] Cloning repo..."
+      git clone https://github.com/itsallgit/pi-photo-hub.git /home/pi/pi-photo-hub
+
+      # Make bootstrap executable
+      echo "[INFO] Making bootstrap.sh executable..."
+      chmod +x /home/pi/pi-photo-hub/bootstrap.sh
+
+      # Run bootstrap
+      echo "[INFO] Running bootstrap.sh..."
+      sudo /home/pi/pi-photo-hub/bootstrap.sh
       ```
 
-1. Execute Bootstrap Script
+   * Run help script
+      * `chmod +x ~/pi-photo-hub-update-and-bootstrap.sh`
+      * `sudo ~/pi-photo-hub-update-and-bootstrap.sh`
 
-   ```bash
-   cd ~/pi-photo-hub
-   chmod +x bootstrap.sh
-   sudo ./bootstrap.sh
-   ```
-   By default pinned versions of Java and Node will be installed.  
-   To use the latest versions from apt instead:
-   ```bash
-   sudo ./bootstrap.sh --latest
-   ```
-   You can monitor progress with:
-   ```bash
-   tail -f /var/log/pi-photo-hub-bootstrap.log
-   ```
+      By default pinned versions of Java and Node will be installed.  
+      To use the latest versions from apt instead:
+      ```bash
+      sudo ~/pi-photo-hub-update-and-bootstrap.sh --latest
+      ```
 
 ## Logs
 

@@ -3,9 +3,18 @@
 
 set -e  # exit immediately if a command fails
 
-# Log file
-LOGFILE="/var/log/pi-photo-hub/bootstrap.log"
-mkdir -p $(dirname "$LOGFILE")
+# -----------------------------
+# Logging
+# -----------------------------
+LOGDIR="/var/log/pi-photo-hub"
+LOGFILE="$LOGDIR/bootstrap.log"
+
+# Ensure log directory exists and is writable
+sudo mkdir -p "$LOGDIR"
+sudo touch "$LOGFILE"
+sudo chmod 666 "$LOGFILE"
+
+# Redirect stdout/stderr to log file *and* console
 exec > >(tee -a "$LOGFILE") 2>&1
 
 # -----------------------------
@@ -29,7 +38,7 @@ run_with_spinner() {
   local msg="$2"
 
   echo -n "[INFO] $msg... "
-  bash -c "$cmd" &> >(tee -a "$LOGFILE") &
+  bash -c "$cmd" &>>"$LOGFILE" &
   local pid=$!
 
   local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -89,14 +98,15 @@ run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing e
 banner "Installing Java"
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
+  JAVA_BIN=$(command -v java)
 else
   JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
   run_with_spinner "curl -L -o /tmp/openjdk.tar.gz \"$JAVA_URL\"" "Downloading Java $JAVA_VERSION"
   sudo mkdir -p /opt/java
   run_with_spinner "sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1" "Extracting Java"
-  echo "export PATH=/opt/java/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
-  source /etc/profile.d/jdk.sh
+  JAVA_BIN="/opt/java/bin/java"
 fi
+echo "[INFO] Java binary at $JAVA_BIN"
 
 # -----------------------------
 # STEP: Node.js
@@ -104,18 +114,19 @@ fi
 banner "Installing Node.js"
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
+  NODE_BIN=$(command -v node)
 else
   run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js $NODE_VERSION"
   run_with_spinner "sudo mkdir -p /opt/node && sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
-  echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
-  source /etc/profile.d/node.sh
+  NODE_BIN="/opt/node/bin/node"
 fi
+echo "[INFO] Node binary at $NODE_BIN"
 
 # -----------------------------
 # STEP: Picapport service
 # -----------------------------
 banner "Setting up Picapport Service"
-sudo cp "$(dirname "$0")/systemd/picapport.service" /etc/systemd/system/
+sudo sed "s|__JAVA_BIN__|$JAVA_BIN|g" "$(dirname "$0")/systemd/picapport.service.template" | sudo tee /etc/systemd/system/picapport.service > /dev/null
 run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable picapport.service" "Configuring Picapport service"
 
 # -----------------------------
@@ -125,7 +136,7 @@ banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
 run_with_spinner "npm install" "Installing API dependencies"
 popd
-sudo cp "$(dirname "$0")/systemd/photo-api.service" /etc/systemd/system/
+sudo sed "s|__NODE_BIN__|$NODE_BIN|g" "$(dirname "$0")/systemd/photo-api.service.template" | sudo tee /etc/systemd/system/photo-api.service > /dev/null
 run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable photo-api.service" "Configuring API service"
 
 # -----------------------------

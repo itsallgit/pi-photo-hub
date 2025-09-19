@@ -3,11 +3,11 @@ Description=Photo API Server
 After=network.target
 
 [Service]
+ExecStart=__NODE_BIN__ /home/pi/pi-photo-hub/api/server.js
 WorkingDirectory=/home/pi/pi-photo-hub/api
-ExecStart=/usr/bin/node /home/pi/pi-photo-hub/api/server.js
 Restart=always
 User=pi
-Environment=PATH=/opt/node/bin:/usr/bin:/bin
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=multi-user.target
