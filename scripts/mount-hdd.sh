@@ -4,30 +4,33 @@
 set -e
 
 MOUNTPOINT="/mnt/photos"
+mkdir -p "$MOUNTPOINT"
 
-# Create mount point if it doesn't exist
-sudo mkdir -p "$MOUNTPOINT"
-
-# Find the first mounted device under /media/pi/* (ignoring SD card root partitions)
+# Find the first external partition that is mounted under /media/pi
 HDD_DEV=$(lsblk -ln -o NAME,MOUNTPOINT,TYPE | grep "part" | grep "/media/pi" | awk '{print $1}' | head -n1)
 
 if [ -z "$HDD_DEV" ]; then
-    echo "[WARN] No external HDD found under /media/pi"
+    echo "[ERROR] No external HDD found under /media/pi. Waiting 10s and retrying..."
+    sleep 10
+    HDD_DEV=$(lsblk -ln -o NAME,MOUNTPOINT,TYPE | grep "part" | grep "/media/pi" | awk '{print $1}' | head -n1)
+fi
+
+if [ -z "$HDD_DEV" ]; then
+    echo "[ERROR] Still no external HDD found. Exiting."
     exit 1
 fi
 
-# Device full path
 HDD_PATH="/dev/$HDD_DEV"
 
-# Unmount if already mounted elsewhere
-CURRENT_MOUNT=$(lsblk -ln -o NAME,MOUNTPOINT | grep "$HDD_DEV" | awk '{print $2}')
-if [ -n "$CURRENT_MOUNT" ] && [ "$CURRENT_MOUNT" != "$MOUNTPOINT" ]; then
-    echo "[INFO] Unmounting $CURRENT_MOUNT..."
-    sudo umount "$CURRENT_MOUNT"
-fi
+# Unmount any existing mounts of this device
+for m in $(lsblk -ln -o NAME,MOUNTPOINT | grep "^$HDD_DEV" | awk '{print $2}'); do
+    if [ -n "$m" ] && [ "$m" != "$MOUNTPOINT" ]; then
+        echo "[INFO] Unmounting $m..."
+        umount "$m"
+    fi
+done
 
-# Mount the HDD to /mnt/photos
-echo "[INFO] Mounting $HDD_PATH to $MOUNTPOINT..."
-sudo mount -o uid=pi,gid=pi "$HDD_PATH" "$MOUNTPOINT"
+# Mount the HDD to /mnt/photos (root owns, pi UID/GID)
+mount -o uid=pi,gid=pi "$HDD_PATH" "$MOUNTPOINT"
 
 echo "[INFO] Mounted $HDD_PATH to $MOUNTPOINT successfully"
