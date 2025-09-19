@@ -1,27 +1,27 @@
 #!/bin/bash
-# mount-hdd.sh - Mount first external HDD to /mnt/photos
+# mount-hdd.sh - Mount first external HDD to /mnt/photos using UUID
 
 set -e
 
 MOUNTPOINT="/mnt/photos"
 mkdir -p "$MOUNTPOINT"
 
-# Find first external partition (ignore SD card)
-HDD_DEV=$(lsblk -dn -o NAME,TYPE | grep 'part' | grep -v '^mmcblk0' | head -n1)
-if [ -z "$HDD_DEV" ]; then
-    echo "[ERROR] No external HDD found. Exiting."
+# Find first external partition (ignore SD card) with a filesystem
+HDD_UUID=$(lsblk -nr -o NAME,UUID,FSTYPE | awk '$1 !~ /^mmcblk0/ && $2 != "" && $3 != "" {print $2; exit}')
+
+if [ -z "$HDD_UUID" ]; then
+    echo "[ERROR] No external HDD with filesystem found. Exiting."
     exit 1
 fi
 
-HDD_PATH="/dev/$HDD_DEV"
+HDD_PATH="/dev/disk/by-uuid/$HDD_UUID"
 
 # Unmount if already mounted
-for m in $(lsblk -ln -o NAME,MOUNTPOINT | grep "^$HDD_DEV" | awk '{print $2}'); do
-    if [ -n "$m" ] && [ "$m" != "$MOUNTPOINT" ]; then
-        echo "[INFO] Unmounting $m..."
-        umount "$m"
-    fi
-done
+CURRENT_MOUNT=$(lsblk -ln -o NAME,MOUNTPOINT | awk -v dev="${HDD_UUID}" '$1 ~ dev {print $2}')
+if [ -n "$CURRENT_MOUNT" ] && [ "$CURRENT_MOUNT" != "$MOUNTPOINT" ]; then
+    echo "[INFO] Unmounting $CURRENT_MOUNT..."
+    umount "$CURRENT_MOUNT"
+fi
 
 # Mount
 mount -o uid=pi,gid=pi "$HDD_PATH" "$MOUNTPOINT"
