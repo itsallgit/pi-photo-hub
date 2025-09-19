@@ -37,7 +37,13 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       * `sudo raspi-config`
       * Display Options > Screen Blanking > Disable
 
-1. Copy this folder to `/home/pi/pi-photo-hub`.
+1. Load files onto Pi
+
+   * Access the Pi via VSCode SSH Remote Session
+   * `cd ~`
+   * `git clone https://github.com/itsallgit/pi-photo-hub.git`
+   * `cd pi-photo-hub`
+
 1. Place your `picapport.jar` into `pi-photo-hub/picapport/`.
 1. Run:
    ```bash
