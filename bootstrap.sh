@@ -76,11 +76,21 @@ run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing e
 
 banner "Installing Java"
 if [ "$USE_LATEST" = true ]; then
-  run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
+  log "Installing latest Java (OpenJDK 17 from apt)" "INFO"
+  sudo apt install -y openjdk-17-jre
 else
-  run_with_spinner "curl -L -o /tmp/openjdk.tar.gz https://download.java.net/java/GA/jdk${JAVA_VERSION}/binaries/openjdk-${JAVA_VERSION}_linux-aarch64_bin.tar.gz" "Downloading Java $JAVA_VERSION"
-  run_with_spinner "sudo mkdir -p /opt/java && sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java" "Extracting Java"
-  echo "export PATH=/opt/java/jdk-${JAVA_VERSION}/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
+  log "Installing pinned Java version $JAVA_VERSION" "INFO"
+
+  JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
+
+  log "Downloading Java $JAVA_VERSION..." "INFO"
+  curl -L -o /tmp/openjdk.tar.gz "$JAVA_URL"
+
+  log "Extracting Java..." "INFO"
+  sudo mkdir -p /opt/java
+  sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1
+
+  echo "export PATH=/opt/java/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
   source /etc/profile.d/jdk.sh
 fi
 
