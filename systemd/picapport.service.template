@@ -3,11 +3,12 @@ Description=Picapport Photo Server
 After=network.target
 
 [Service]
-ExecStart=__JAVA_BIN__ -jar /home/pi/picapport/picapport.jar
-WorkingDirectory=/home/pi/picapport
-Restart=always
+Type=simple
 User=pi
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/home/pi/pi-photo-hub/picapport
+ExecStart=/opt/java/bin/java -jar /home/pi/pi-photo-hub/picapport/picapport.jar
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

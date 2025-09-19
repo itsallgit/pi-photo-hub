@@ -4,24 +4,18 @@
 set -e  # exit immediately if a command fails
 
 # -----------------------------
-# Logging
+# Log file
 # -----------------------------
-LOGDIR="/var/log/pi-photo-hub"
-LOGFILE="$LOGDIR/bootstrap.log"
-
-# Ensure log directory exists and is writable
-sudo mkdir -p "$LOGDIR"
+LOGFILE="/var/log/pi-photo-hub/bootstrap.log"
+sudo mkdir -p $(dirname "$LOGFILE")
 sudo touch "$LOGFILE"
-sudo chmod 666 "$LOGFILE"
-
-# Redirect stdout/stderr to log file *and* console
+sudo chown $USER:$USER "$LOGFILE"
 exec > >(tee -a "$LOGFILE") 2>&1
 
 # -----------------------------
 # Helpers
 # -----------------------------
 CURRENT_STEP=0
-
 banner() {
   CURRENT_STEP=$((CURRENT_STEP+1))
   echo ""
@@ -32,13 +26,12 @@ banner() {
   echo ""
 }
 
-# Spinner function
 run_with_spinner() {
   local cmd="$1"
   local msg="$2"
 
   echo -n "[INFO] $msg... "
-  bash -c "$cmd" &>>"$LOGFILE" &
+  bash -c "$cmd" &> >(tee -a "$LOGFILE") &
   local pid=$!
 
   local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -74,91 +67,85 @@ done
 
 # Load configs
 source "$(dirname "$0")/config/versions.conf"
-
 echo "[INFO] USE_LATEST=$USE_LATEST"
 echo "[INFO] JAVA_VERSION=$JAVA_VERSION"
 echo "[INFO] NODE_VERSION=$NODE_VERSION"
 
 # -----------------------------
-# STEP: System update
+# Update system
 # -----------------------------
 banner "Updating System"
 export DEBIAN_FRONTEND=noninteractive
 run_with_spinner "sudo apt update -y && sudo apt full-upgrade -y" "Updating packages"
 
 # -----------------------------
-# STEP: Essentials
+# Install essentials
 # -----------------------------
 banner "Installing Essentials"
 run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing essentials"
 
 # -----------------------------
-# STEP: Java
+# Java
 # -----------------------------
 banner "Installing Java"
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
-  JAVA_BIN=$(command -v java)
 else
   JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
   run_with_spinner "curl -L -o /tmp/openjdk.tar.gz \"$JAVA_URL\"" "Downloading Java $JAVA_VERSION"
   sudo mkdir -p /opt/java
   run_with_spinner "sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1" "Extracting Java"
-  JAVA_BIN="/opt/java/bin/java"
 fi
-echo "[INFO] Java binary at $JAVA_BIN"
+echo "export PATH=/opt/java/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
+source /etc/profile.d/jdk.sh
 
 # -----------------------------
-# STEP: Node.js
+# Node.js
 # -----------------------------
 banner "Installing Node.js"
-NODE_BIN=""
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
-  NODE_BIN=$(command -v node || true)
 else
   run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js $NODE_VERSION"
-  run_with_spinner "sudo mkdir -p /opt/node && sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
-  NODE_BIN="/opt/node/bin/node"
-  echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
-  export PATH="/opt/node/bin:$PATH"
+  sudo mkdir -p /opt/node
+  run_with_spinner "sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
 fi
-
-echo "[INFO] Using Node binary at: $NODE_BIN"
+echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
+source /etc/profile.d/node.sh
 
 # -----------------------------
-# STEP: Picapport service
+# Fix ownership
+# -----------------------------
+banner "Fixing Folder Ownership"
+sudo chown -R pi:pi /home/pi/pi-photo-hub
+
+# -----------------------------
+# Picapport service
 # -----------------------------
 banner "Setting up Picapport Service"
-sudo sed "s|__JAVA_BIN__|$JAVA_BIN|g" "$(dirname "$0")/systemd/picapport.service.template" | sudo tee /etc/systemd/system/picapport.service > /dev/null
-run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable picapport.service" "Configuring Picapport service"
+sudo cp "$(dirname "$0")/systemd/picapport.service.template" /etc/systemd/system/picapport.service
+sudo systemctl daemon-reload
+sudo systemctl enable picapport.service
 
 # -----------------------------
-# STEP: API service
+# Photo API service
 # -----------------------------
 banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
-
-# Force npm to use correct binary path
-if [ -x "/opt/node/bin/npm" ]; then
-  run_with_spinner "/opt/node/bin/npm install" "Installing API dependencies"
-else
-  run_with_spinner "npm install" "Installing API dependencies"
-fi
-
+run_with_spinner "npm install" "Installing API dependencies"
+# create logs folder for Node.js service
+mkdir -p logs
 popd
-
 sudo cp "$(dirname "$0")/systemd/photo-api.service.template" /etc/systemd/system/photo-api.service
-# Inject correct Node path into systemd unit
-sudo sed -i "s|__NODE_BIN__|$NODE_BIN|g" /etc/systemd/system/photo-api.service
-run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable photo-api.service" "Configuring API service"
+sudo systemctl daemon-reload
+sudo systemctl enable photo-api.service
 
 # -----------------------------
-# STEP: HDD automount
+# HDD Automount
 # -----------------------------
 banner "Setting up HDD Automount"
 sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
-run_with_spinner "sudo systemctl enable mount-hdd.service" "Enabling HDD automount"
+sudo systemctl enable mount-hdd.service
 
 # -----------------------------
 # Done
