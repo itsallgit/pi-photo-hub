@@ -79,7 +79,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       sudo /home/pi/pi-photo-hub/bootstrap.sh
       ```
 
-   * Run help script
+   * Run helper script
       * `chmod +x ~/pi-photo-hub-update-and-bootstrap.sh`
       * `sudo ~/pi-photo-hub-update-and-bootstrap.sh`
 

@@ -112,15 +112,19 @@ echo "[INFO] Java binary at $JAVA_BIN"
 # STEP: Node.js
 # -----------------------------
 banner "Installing Node.js"
+NODE_BIN=""
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
-  NODE_BIN=$(command -v node)
+  NODE_BIN=$(command -v node || true)
 else
   run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js $NODE_VERSION"
   run_with_spinner "sudo mkdir -p /opt/node && sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
   NODE_BIN="/opt/node/bin/node"
+  echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
+  export PATH="/opt/node/bin:$PATH"
 fi
-echo "[INFO] Node binary at $NODE_BIN"
+
+echo "[INFO] Using Node binary at: $NODE_BIN"
 
 # -----------------------------
 # STEP: Picapport service
@@ -134,9 +138,19 @@ run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable picappor
 # -----------------------------
 banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
-run_with_spinner "npm install" "Installing API dependencies"
+
+# Force npm to use correct binary path
+if [ -x "/opt/node/bin/npm" ]; then
+  run_with_spinner "/opt/node/bin/npm install" "Installing API dependencies"
+else
+  run_with_spinner "npm install" "Installing API dependencies"
+fi
+
 popd
-sudo sed "s|__NODE_BIN__|$NODE_BIN|g" "$(dirname "$0")/systemd/photo-api.service.template" | sudo tee /etc/systemd/system/photo-api.service > /dev/null
+
+sudo cp "$(dirname "$0")/systemd/photo-api.service.template" /etc/systemd/system/photo-api.service
+# Inject correct Node path into systemd unit
+sudo sed -i "s|__NODE_BIN__|$NODE_BIN|g" /etc/systemd/system/photo-api.service
 run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable photo-api.service" "Configuring API service"
 
 # -----------------------------
