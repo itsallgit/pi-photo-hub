@@ -46,28 +46,42 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       * Paste code below
       * Ctrl + O then Enter
       * Ctrl + X then Enter
-
+      * *Note that this helper script is used to retrigger the bootstrap when making changes to the repo*
       ```bash
       #!/bin/bash
-      # update-and-bootstrap.sh - Refresh repo and run bootstrap in one go
-
       set -e  # Exit on first error
 
+      MOUNTPOINT="/mnt/photos"
+
       echo "============================================================"
-      echo ">>> Updating pi-photo-hub and running bootstrap"
+      echo ">>> Stopping services, unmounting old mounts, and updating pi-photo-hub"
       echo "============================================================"
 
-      # Ensure we're in home directory
-      cd /home/pi
+      # Stop services
+      echo "[INFO] Stopping Picapport and related services..."
+      sudo systemctl stop picapport.service || true
+      sudo systemctl stop chromium.service || true
+      sudo systemctl stop mount-hdd.service || true
+
+      # Unmount any existing mount at $MOUNTPOINT
+      if mountpoint -q "$MOUNTPOINT"; then
+         echo "[INFO] Unmounting existing mount at $MOUNTPOINT..."
+         sudo umount "$MOUNTPOINT" || {
+            echo "[WARN] Normal unmount failed, attempting lazy unmount..."
+            sudo umount -l "$MOUNTPOINT"
+         }
+      else
+         echo "[INFO] No existing mount found at $MOUNTPOINT"
+      fi
 
       # Remove old repo
       if [ -d "/home/pi/pi-photo-hub" ]; then
-      echo "[INFO] Removing old pi-photo-hub directory..."
-      rm -rf /home/pi/pi-photo-hub
+         echo "[INFO] Removing old pi-photo-hub directory..."
+         rm -rf /home/pi/pi-photo-hub
       fi
 
-      # Clone fresh
-      echo "[INFO] Cloning repo..."
+      # Clone fresh repo
+      echo "[INFO] Cloning pi-photo-hub repository..."
       git clone https://github.com/itsallgit/pi-photo-hub.git /home/pi/pi-photo-hub
 
       # Make bootstrap executable
@@ -76,7 +90,12 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 
       # Run bootstrap
       echo "[INFO] Running bootstrap.sh..."
-      sudo /home/pi/pi-photo-hub/bootstrap.sh
+      cd /home/pi/pi-photo-hub
+      sudo ./bootstrap.sh
+
+      echo "============================================================"
+      echo ">>> Done. You may now reboot or start services manually."
+      echo "============================================================"
       ```
 
    * Run helper script
@@ -92,9 +111,11 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 1. Check Services are running after Pi Reboot
 
    * Check Service Status:
+      * `sudo systemctl status mount-hdd`
       * `sudo systemctl status photo-api`
       * `sudo systemctl status picapport`
    * Check Service Logs:
+      * `journalctl -u mount-hdd.service -n 100 --no-pager`
       * `journalctl -u photo-api.service -n 100 --no-pager`
       * `journalctl -u picapport.service -n 100 --no-pager`
 

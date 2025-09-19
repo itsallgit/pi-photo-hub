@@ -1,25 +1,33 @@
 #!/bin/bash
-# mount-hdd.sh - auto-mount first external HDD dynamically
+# mount-hdd.sh - Dynamically mount first external HDD to /mnt/photos
 
-LOGFILE="/var/log/pi-photo-hub/mount-hdd.log"
-mkdir -p "$(dirname "$LOGFILE")"
-exec >> "$LOGFILE" 2>&1
+set -e
 
-echo "[INFO] Mount HDD script running at $(date)"
-
-# Find the first external HDD (ignore SD card) with a media mount
-UUID=$(lsblk -o NAME,TYPE,MOUNTPOINT,UUID | grep 'part' | grep -v mmcblk0 | grep '^.* /media/pi' | awk '{print $4}' | head -n 1)
 MOUNTPOINT="/mnt/photos"
 
-if [ -n "$UUID" ]; then
-  echo "[INFO] Found external HDD with UUID $UUID"
-  sudo mkdir -p "$MOUNTPOINT"
-  if ! mountpoint -q "$MOUNTPOINT"; then
-    echo "[INFO] Mounting HDD to $MOUNTPOINT"
-    sudo mount -U "$UUID" "$MOUNTPOINT"
-  else
-    echo "[INFO] HDD already mounted"
-  fi
-else
-  echo "[ERROR] No external HDD found to mount"
+# Create mount point if it doesn't exist
+sudo mkdir -p "$MOUNTPOINT"
+
+# Find the first mounted device under /media/pi/* (ignoring SD card root partitions)
+HDD_DEV=$(lsblk -ln -o NAME,MOUNTPOINT,TYPE | grep "part" | grep "/media/pi" | awk '{print $1}' | head -n1)
+
+if [ -z "$HDD_DEV" ]; then
+    echo "[WARN] No external HDD found under /media/pi"
+    exit 1
 fi
+
+# Device full path
+HDD_PATH="/dev/$HDD_DEV"
+
+# Unmount if already mounted elsewhere
+CURRENT_MOUNT=$(lsblk -ln -o NAME,MOUNTPOINT | grep "$HDD_DEV" | awk '{print $2}')
+if [ -n "$CURRENT_MOUNT" ] && [ "$CURRENT_MOUNT" != "$MOUNTPOINT" ]; then
+    echo "[INFO] Unmounting $CURRENT_MOUNT..."
+    sudo umount "$CURRENT_MOUNT"
+fi
+
+# Mount the HDD to /mnt/photos
+echo "[INFO] Mounting $HDD_PATH to $MOUNTPOINT..."
+sudo mount -o uid=pi,gid=pi "$HDD_PATH" "$MOUNTPOINT"
+
+echo "[INFO] Mounted $HDD_PATH to $MOUNTPOINT successfully"

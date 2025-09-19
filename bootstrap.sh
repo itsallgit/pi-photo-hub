@@ -144,6 +144,7 @@ sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
 sudo chmod +x "$(dirname "$0")/scripts/mount-hdd.sh"
 sudo systemctl daemon-reload
 sudo systemctl enable mount-hdd.service
+sudo systemctl start mount-hdd.service
 
 # -----------------------------
 # Picapport service
