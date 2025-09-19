@@ -40,21 +40,28 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 1. Load files onto Pi
 
    * Access the Pi via VSCode SSH Remote Session
-   * `cd ~`
-   * `git clone https://github.com/itsallgit/pi-photo-hub.git`
-   * `cd pi-photo-hub`
 
-1. Place your `picapport.jar` into `pi-photo-hub/picapport/`.
-1. Run:
+      ```bash
+      cd ~
+      git clone https://github.com/itsallgit/pi-photo-hub.git
+      cd pi-photo-hub
+      ```
+
+1. Execute Bootstrap Script
+
    ```bash
    cd ~/pi-photo-hub
    chmod +x bootstrap.sh
-   ./bootstrap.sh
+   sudo ./bootstrap.sh
    ```
    By default pinned versions of Java and Node will be installed.  
    To use the latest versions from apt instead:
    ```bash
-   ./bootstrap.sh --latest
+   sudo ./bootstrap.sh --latest
+   ```
+   You can monitor progress with:
+   ```bash
+   tail -f /var/log/pi-photo-hub-bootstrap.log
    ```
 
 ## Logs

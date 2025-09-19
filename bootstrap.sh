@@ -1,11 +1,56 @@
 #!/bin/bash
 # bootstrap.sh - Main setup script for pi-photo-hub
 
+set -e  # exit immediately if a command fails
+
+# Log file
 LOGFILE="/var/log/pi-photo-hub/bootstrap.log"
 mkdir -p $(dirname "$LOGFILE")
 exec > >(tee -a "$LOGFILE") 2>&1
 
-echo "[INFO] Starting bootstrap process at $(date)"
+# Steps tracker
+TOTAL_STEPS=7
+CURRENT_STEP=0
+
+banner() {
+  CURRENT_STEP=$((CURRENT_STEP+1))
+  echo ""
+  echo "============================================================"
+  echo ">>> STEP $CURRENT_STEP of $TOTAL_STEPS"
+  echo ">>> $1"
+  echo "============================================================"
+  echo ""
+}
+
+# Spinner function
+run_with_spinner() {
+  local cmd="$1"
+  local msg="$2"
+
+  echo -n "[INFO] $msg... "
+  bash -c "$cmd" &> >(tee -a "$LOGFILE") &
+  local pid=$!
+
+  local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  local i=0
+  while kill -0 $pid 2>/dev/null; do
+    i=$(( (i+1) %10 ))
+    printf "\b${spin:$i:1}"
+    sleep 0.1
+  done
+
+  wait $pid
+  local exit_code=$?
+
+  if [ $exit_code -eq 0 ]; then
+    printf "\b[OK]\n"
+  else
+    printf "\b[FAIL]\n"
+    exit $exit_code
+  fi
+}
+
+banner "Pi Photo Hub Bootstrap Starting - $(date)"
 
 # Parse arguments
 USE_LATEST=false
@@ -22,55 +67,52 @@ echo "[INFO] USE_LATEST=$USE_LATEST"
 echo "[INFO] JAVA_VERSION=$JAVA_VERSION"
 echo "[INFO] NODE_VERSION=$NODE_VERSION"
 
-# Update system
-sudo apt update && sudo apt full-upgrade -y
+banner "Updating System"
+export DEBIAN_FRONTEND=noninteractive
+run_with_spinner "sudo apt update -y && sudo apt full-upgrade -y" "Updating packages"
 
-# Install essentials
-sudo apt install -y curl unzip chromium-browser
+banner "Installing Essentials"
+run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing essentials"
 
-# Install Java
+banner "Installing Java"
 if [ "$USE_LATEST" = true ]; then
-  echo "[INFO] Installing latest Java (OpenJDK 17 from apt)"
-  sudo apt install -y openjdk-17-jre
+  run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
 else
-  echo "[INFO] Installing pinned Java version $JAVA_VERSION"
-  curl -L -o /tmp/openjdk.tar.gz "https://download.java.net/java/GA/jdk${JAVA_VERSION}/binaries/openjdk-${JAVA_VERSION}_linux-aarch64_bin.tar.gz"
-  sudo mkdir -p /opt/java
-  sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java
-  echo "export PATH=/opt/java/jdk-${JAVA_VERSION}/bin:$PATH" | sudo tee /etc/profile.d/jdk.sh
+  run_with_spinner "curl -L -o /tmp/openjdk.tar.gz https://download.java.net/java/GA/jdk${JAVA_VERSION}/binaries/openjdk-${JAVA_VERSION}_linux-aarch64_bin.tar.gz" "Downloading Java $JAVA_VERSION"
+  run_with_spinner "sudo mkdir -p /opt/java && sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java" "Extracting Java"
+  echo "export PATH=/opt/java/jdk-${JAVA_VERSION}/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
   source /etc/profile.d/jdk.sh
 fi
 
-# Install Node.js
+banner "Installing Node.js"
 if [ "$USE_LATEST" = true ]; then
-  echo "[INFO] Installing latest Node.js (from apt)"
-  sudo apt install -y nodejs npm
+  run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
 else
-  echo "[INFO] Installing pinned Node.js version $NODE_VERSION"
-  curl -L -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz"
-  sudo mkdir -p /opt/node
-  sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1
-  echo "export PATH=/opt/node/bin:$PATH" | sudo tee /etc/profile.d/node.sh
+  run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js $NODE_VERSION"
+  run_with_spinner "sudo mkdir -p /opt/node && sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
+  echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
   source /etc/profile.d/node.sh
 fi
 
-# Setup Picapport systemd service
+banner "Setting up Picapport Service"
 sudo cp "$(dirname "$0")/systemd/picapport.service" /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable picapport.service
+run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable picapport.service" "Configuring Picapport service"
 
-# Setup API service
+banner "Setting up Photo API Service"
 pushd "$(dirname "$0")/api"
-npm install
+run_with_spinner "npm install" "Installing API dependencies"
 popd
 sudo cp "$(dirname "$0")/systemd/photo-api.service" /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable photo-api.service
+run_with_spinner "sudo systemctl daemon-reload && sudo systemctl enable photo-api.service" "Configuring API service"
 
-# Setup HDD automount
+banner "Setting up HDD Automount"
 sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
-sudo systemctl enable mount-hdd.service
+run_with_spinner "sudo systemctl enable mount-hdd.service" "Enabling HDD automount"
 
-# Reboot after setup
-echo "[INFO] Bootstrap complete. Rebooting now..."
+banner "Bootstrap Complete"
+echo "[INFO] All components installed successfully!"
+echo "[INFO] Log file available at: $LOGFILE"
+
+banner "GOODBYE - Pi will reboot in 5 seconds"
+sleep 5
 sudo reboot
