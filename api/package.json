@@ -1,0 +1,14 @@
+{
+  "name": "photo-api",
+  "version": "1.0.0",
+  "description": "Node Express API for Pi Photo Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  }
+}
