@@ -48,22 +48,52 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       * Ctrl + X then Enter
       * *Note that this helper script is used to retrigger the bootstrap when making changes to the repo*
       ```bash
+      #!/bin/bash
       set -e  # Exit on first error
 
       MOUNTPOINT="/mnt/photos"
 
       echo "============================================================"
-      echo ">>> Stopping services, unmounting old mounts, and updating pi-photo-hub"
+      echo ">>> Full cleanup before fresh bootstrap"
       echo "============================================================"
 
-      # Stop services
-      echo "[INFO] Stopping Picapport and related services..."
-      sudo service picapport stop || true
+      # -----------------------------
+      # Stop & disable services
+      # -----------------------------
+      echo "[INFO] Stopping services..."
+      sudo systemctl stop picapport.service || true
       sudo systemctl stop picapport-wrapper.service || true
       sudo systemctl stop picapport-chromium.service || true
       sudo systemctl stop mount-hdd.service || true
 
-      # Unmount any existing mount at $MOUNTPOINT
+      echo "[INFO] Disabling services..."
+      sudo systemctl disable picapport.service || true
+      sudo systemctl disable picapport-wrapper.service || true
+      sudo systemctl disable picapport-chromium.service || true
+      sudo systemctl disable mount-hdd.service || true
+
+      # -----------------------------
+      # Remove old unit files
+      # -----------------------------
+      echo "[INFO] Removing systemd unit files..."
+      sudo rm -f /etc/systemd/system/picapport.service
+      sudo rm -f /etc/systemd/system/picapport-wrapper.service
+      sudo rm -f /etc/systemd/system/picapport-chromium.service
+      sudo rm -f /etc/systemd/system/mount-hdd.service
+
+      # Also clean up any legacy SysV init script
+      if [ -f "/etc/init.d/picapport" ]; then
+         echo "[INFO] Removing legacy init.d script..."
+         sudo rm -f /etc/init.d/picapport
+      fi
+
+      # Reload systemd so removals take effect
+      sudo systemctl daemon-reload
+      sudo systemctl reset-failed || true
+
+      # -----------------------------
+      # Unmount any existing mount
+      # -----------------------------
       if mountpoint -q "$MOUNTPOINT"; then
          echo "[INFO] Unmounting existing mount at $MOUNTPOINT..."
          sudo umount "$MOUNTPOINT" || {
@@ -74,33 +104,33 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
          echo "[INFO] No existing mount found at $MOUNTPOINT"
       fi
 
-      # Remove old repo
+      # -----------------------------
+      # Remove old folders
+      # -----------------------------
       if [ -d "/home/pi/pi-photo-hub" ]; then
          echo "[INFO] Removing old pi-photo-hub directory..."
          rm -rf /home/pi/pi-photo-hub
       fi
 
-      # Remove old Picapport config/home
       if [ -d "/home/pi/.picapport" ]; then
          echo "[INFO] Removing old Picapport home folder in /home/pi/..."
          rm -rf /home/pi/.picapport
       fi
 
-      # Remove old Picapport config/home
       if [ -d "/opt/picapport/.picapport" ]; then
          echo "[INFO] Removing old Picapport home folder in /opt/..."
-         rm -rf /opt/picapport/.picapport
+         sudo rm -rf /opt/picapport/.picapport
       fi
 
-      # Clone fresh repo
+      # -----------------------------
+      # Clone fresh repo & run bootstrap
+      # -----------------------------
       echo "[INFO] Cloning pi-photo-hub repository..."
       git clone https://github.com/itsallgit/pi-photo-hub.git /home/pi/pi-photo-hub
 
-      # Make bootstrap executable
       echo "[INFO] Making bootstrap.sh executable..."
       chmod +x /home/pi/pi-photo-hub/bootstrap.sh
 
-      # Run bootstrap
       echo "[INFO] Running bootstrap.sh..."
       cd /home/pi/pi-photo-hub
       sudo ./bootstrap.sh
@@ -125,18 +155,20 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
    * Check Service Status:
       * `sudo systemctl status mount-hdd`
       * `sudo systemctl status photo-api`
-      * `sudo systemctl status picapport`
+      * `sudo systemctl status picapport-chromium`
+      * `sudo systemctl status picapport-wrapper`
    * Check Service Logs:
       * `journalctl -u mount-hdd.service -n 100 --no-pager`
       * `journalctl -u photo-api.service -n 100 --no-pager`
-      * `journalctl -u picapport.service -n 100 --no-pager`
+      * `journalctl -u picapport-wrapper.service -n 100 --no-pager`
+      * `journalctl -u picapport-chromium.service -n 100 --no-pager`
 
 ## Logs
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
 - HDD mount logs: `/var/log/pi-photo-hub/mount-hdd.log`
 - API logs: `~/pi-photo-hub/api/logs/`
-- Picapport logs: `~/.picapport/logfiles/`
+- Picapport logs: `/opt/picapport/.picapport/logfiles/`
 
 ## After Install
 

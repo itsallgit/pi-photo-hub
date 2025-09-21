@@ -265,13 +265,6 @@ fi
 banner "Bootstrap Complete"
 echo "[INFO] All components installed (or were present)."
 echo "[INFO] Log file is at $LOGFILE"
-echo ""
-echo "You may now verify services:"
-echo "  sudo /etc/init.d/picapport status"
-echo "  sudo systemctl status mount-hdd.service"
-echo "  sudo systemctl status photo-api.service"
-echo "  sudo systemctl status picapport-chromium.service"
-echo ""
-echo "If everything looks good, rebooting in 8 seconds..."
-sleep 8
+echo "Rebooting in 5 seconds..."
+sleep 5
 sudo reboot
