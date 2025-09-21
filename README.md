@@ -59,6 +59,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       # Stop services
       echo "[INFO] Stopping Picapport and related services..."
       sudo service picapport stop || true
+      sudo systemctl stop picapport-wrapper.service || true
       sudo systemctl stop picapport-chromium.service || true
       sudo systemctl stop mount-hdd.service || true
 
@@ -88,7 +89,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
       # Remove old Picapport config/home
       if [ -d "/opt/picapport/.picapport" ]; then
          echo "[INFO] Removing old Picapport home folder in /opt/..."
-         rm -rf /home/pi/.picapport
+         rm -rf /opt/picapport/.picapport
       fi
 
       # Clone fresh repo

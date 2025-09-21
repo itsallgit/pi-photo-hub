@@ -1,0 +1,19 @@
+[Unit]
+Description=PicApport (systemd wrapper for init.d)
+After=network-online.target mount-hdd.service
+Wants=network-online.target
+Requires=mount-hdd.service
+
+[Service]
+Type=forking
+ExecStart=/etc/init.d/picapport start
+ExecStop=/etc/init.d/picapport stop
+ExecReload=/etc/init.d/picapport restart
+ExecStopPost=/opt/picapport/cleanup-picapport.sh
+PIDFile=/var/run/picapport.pid
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

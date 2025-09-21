@@ -186,18 +186,52 @@ sudo cp -f "$PICAPPORT_PROPS_SRC" "$PICAPP_HOME/picapport.properties"
 sudo chown -R pi:pi "$PICAPP_HOME"
 echo "[INFO] picapport.properties copied to $PICAPP_HOME/picapport.properties"
 
-# ---------- Init.d daemon - install and enable ----------
+# ---------- Init.d daemon - install but do NOT enable ----------
 banner "Installing init.d service for Picapport"
 if [ -f "$INITD_SRC" ]; then
   sudo cp "$INITD_SRC" /etc/init.d/picapport
   sudo chmod +x /etc/init.d/picapport
-  # Ensure init.d script uses correct paths (we'll adjust in-place)
   sudo sed -i "s|/opt/picapport/start-picapport.sh|$START_SCRIPT|g" /etc/init.d/picapport || true
-  sudo update-rc.d picapport defaults
-  echo "[INFO] Picapport service installed. It will start automatically on next reboot."
+  # Disable auto-start via SysV, systemd wrapper will handle it
+  sudo update-rc.d picapport remove || true
+  echo "[INFO] Picapport init.d script installed but autostart disabled (systemd wrapper will manage it)."
 else
   echo "[WARN] init.d source missing: $INITD_SRC"
 fi
+
+# ---------- Systemd wrapper for init.d Picapport ----------
+banner "Installing systemd wrapper for Picapport (monitors init.d service)"
+WRAPPER_SRC="$REPO_ROOT/systemd/picapport-wrapper.service"
+if [ -f "$WRAPPER_SRC" ]; then
+  sudo cp "$WRAPPER_SRC" /etc/systemd/system/picapport-wrapper.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable picapport-wrapper.service
+  echo "[INFO] Picapport wrapper systemd service installed and enabled."
+else
+  echo "[WARN] Wrapper service missing: $WRAPPER_SRC"
+fi
+
+# ---------- Deploy cleanup script ----------
+banner "Installing Picapport cleanup script"
+CLEANUP_SCRIPT="/opt/picapport/cleanup-picapport.sh"
+sudo tee "$CLEANUP_SCRIPT" > /dev/null <<'EOF'
+#!/bin/bash
+NAME="picapport"
+PIDFILE="/var/run/$NAME.pid"
+echo "[CLEANUP] Stopping $NAME..."
+if [ -x /etc/init.d/$NAME ]; then
+  /etc/init.d/$NAME stop
+fi
+if pgrep -f "picapport-headless.jar" >/dev/null 2>&1; then
+  echo "[CLEANUP] Killing stray Picapport process..."
+  pkill -f "picapport-headless.jar"
+fi
+echo "[CLEANUP] Done."
+EOF
+sudo chmod +x "$CLEANUP_SCRIPT"
+sudo chown pi:pi "$CLEANUP_SCRIPT"
+
+
 
 # ---------- Chromium GUI service for Picapport slideshow ----------
 banner "Installing Chromium GUI systemd service template (opens slideshow on boot)"
