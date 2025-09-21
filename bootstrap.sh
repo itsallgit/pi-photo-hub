@@ -180,7 +180,7 @@ sudo chown pi:pi "$START_SCRIPT"
 
 # Create Picapport home and copy properties (always overwrite)
 banner "Configuring Picapport properties & directories"
-PICAPP_HOME="/home/pi/.picapport"
+PICAPP_HOME="/opt/picapport/.picapport"
 sudo mkdir -p "$PICAPP_HOME"
 sudo cp -f "$PICAPPORT_PROPS_SRC" "$PICAPP_HOME/picapport.properties"
 sudo chown -R pi:pi "$PICAPP_HOME"
