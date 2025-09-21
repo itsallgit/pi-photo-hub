@@ -2,22 +2,11 @@
 set -e  # Exit on first error
 
 MOUNTPOINT="/mnt/photos"
-DELETE_PICAPPORT=false
 
-# -----------------------------
-# Parse arguments
-# -----------------------------
-for arg in "$@"; do
-  case $arg in
-    delete-picapport)
-      DELETE_PICAPPORT=true
-      shift
-      ;;
-    *)
-      echo "[WARN] Unknown argument: $arg"
-      ;;
-  esac
-done
+DELETE_PICAPPORT=false
+if [[ "$1" == "delete-picapport" ]]; then
+    DELETE_PICAPPORT=true
+fi
 
 echo "============================================================"
 echo ">>> Full cleanup before fresh bootstrap"
@@ -27,29 +16,34 @@ echo "============================================================"
 # Stop & disable services
 # -----------------------------
 echo "[INFO] Stopping services..."
-sudo systemctl stop picapport.service || true
+# init.d Picapport service (managed by wrapper)
+sudo service picapport stop || true
+
+# systemd services
 sudo systemctl stop picapport-wrapper.service || true
 sudo systemctl stop picapport-chromium.service || true
+sudo systemctl stop photo-api.service || true
 sudo systemctl stop mount-hdd.service || true
 
 echo "[INFO] Disabling services..."
-sudo systemctl disable picapport.service || true
 sudo systemctl disable picapport-wrapper.service || true
 sudo systemctl disable picapport-chromium.service || true
+sudo systemctl disable photo-api.service || true
 sudo systemctl disable mount-hdd.service || true
 
 # -----------------------------
 # Remove old unit files
 # -----------------------------
 echo "[INFO] Removing systemd unit files..."
-sudo rm -f /etc/systemd/system/picapport.service
+sudo rm -f /etc/systemd/system/picapport.service   # Just in case one exists
 sudo rm -f /etc/systemd/system/picapport-wrapper.service
 sudo rm -f /etc/systemd/system/picapport-chromium.service
+sudo rm -f /etc/systemd/system/photo-api.service
 sudo rm -f /etc/systemd/system/mount-hdd.service
 
-# Also clean up any legacy SysV init script
+# Remove init.d script if present
 if [ -f "/etc/init.d/picapport" ]; then
-    echo "[INFO] Removing legacy init.d script..."
+    echo "[INFO] Removing init.d picapport service script..."
     sudo rm -f /etc/init.d/picapport
 fi
 
@@ -84,14 +78,20 @@ if [ -d "/home/pi/.picapport" ]; then
 fi
 
 if [ "$DELETE_PICAPPORT" = true ] && [ -d "/opt/picapport/.picapport" ]; then
-    echo "[INFO] Removing old Picapport home folder in /opt/..."
-    sudo rm -rf /opt/picapport/.picapport
+    echo "⚠️ WARNING: You have requested to delete /opt/picapport/.picapport"
+    read -p "Are you sure you want to permanently delete this folder? [y/N] " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        echo "[INFO] Deleting /opt/picapport/.picapport..."
+        sudo rm -rf /opt/picapport/.picapport
+    else
+        echo "[INFO] Skipping deletion of /opt/picapport/.picapport"
+    fi
 else
-    echo "[INFO] Preserving /opt/picapport/.picapport"
+    echo "[INFO] Skipping removal of /opt/picapport/.picapport (no delete-picapport flag)."
 fi
 
 # -----------------------------
-# Clone fresh repo & run bootstrap
+# Clone fresh repo
 # -----------------------------
 echo "[INFO] Cloning pi-photo-hub repository..."
 git clone https://github.com/itsallgit/pi-photo-hub.git /home/pi/pi-photo-hub
@@ -99,10 +99,19 @@ git clone https://github.com/itsallgit/pi-photo-hub.git /home/pi/pi-photo-hub
 echo "[INFO] Making bootstrap.sh executable..."
 chmod +x /home/pi/pi-photo-hub/bootstrap.sh
 
-echo "[INFO] Running bootstrap.sh..."
-cd /home/pi/pi-photo-hub
-sudo ./bootstrap.sh
+# -----------------------------
+# Ask whether to trigger bootstrap
+# -----------------------------
+read -p "Do you want to run bootstrap.sh now? [y/N] " run_bootstrap
+if [[ "$run_bootstrap" =~ ^[Yy]$ ]]; then
+    echo "[INFO] Running bootstrap.sh..."
+    cd /home/pi/pi-photo-hub
+    sudo ./bootstrap.sh
+else
+    echo "[INFO] Skipping bootstrap.sh (can run manually later)."
+fi
 
-echo "============================================================"
-echo ">>> Done. You may now reboot or start services manually."
-echo "============================================================"
+echo "=================================================================="
+echo ">>> Done. You may now manually run the bootstrap script if skipped."
+echo ">>> sudo /home/pi/pi-photo-hub/bootstrap.sh
+echo "=================================================================="

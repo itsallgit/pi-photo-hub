@@ -10,17 +10,27 @@ const app = express();
 const PORT = 3000;
 const urlFilePath = path.join(__dirname, "slideshow_url.txt");
 
+// -----------------------------
+// Logging
+// -----------------------------
+const logDir = "/var/log/photo-api";
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+}
+
 const logger = winston.createLogger({
     level: "info",
     format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.printf(({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`)
+        winston.format.printf(
+            ({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`
+        )
     ),
     transports: [
         new winston.transports.Console(),
         new winston.transports.DailyRotateFile({
             filename: "server-%DATE%.log",
-            dirname: path.join(__dirname, "logs"),
+            dirname: logDir,
             datePattern: "YYYY-MM-DD",
             maxSize: "10m",
             maxFiles: "7d",
@@ -29,16 +39,40 @@ const logger = winston.createLogger({
     ],
 });
 
+// -----------------------------
+// Helpers
+// -----------------------------
 const generateSlideshowUrl = (query = "noimagesfound", interval = "30") => {
     const encodedQuery = encodeURIComponent(query);
     return `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=${interval}&query=${encodedQuery}`;
 };
 
 const loadBrowserUrl = async (url = "http://localhost:8080/picapport") => {
-    await exec("pkill -o chromium || true");
-    await exec(`chromium-browser --start-fullscreen "${url}" &>/dev/null &`);
-}
+    try {
+        logger.info("Closing any running Chromium instances...");
+        await exec("pkill -9 chromium || true");
 
+        // Chromium flags to enforce kiosk mode and suppress popups
+        const flags = [
+            "--no-first-run",
+            "--disable-restore-session-state",
+            "--disable-session-crashed-bubble",
+            "--disable-infobars",
+            "--start-fullscreen",
+            "--kiosk"
+        ].join(" ");
+
+        logger.info(`Launching Chromium with URL: ${url}`);
+        await exec(`chromium-browser ${flags} "${url}" &>/dev/null &`);
+    } catch (err) {
+        logger.error(`Failed to launch Chromium: ${err.message}`);
+        throw err;
+    }
+};
+
+// -----------------------------
+// Routes
+// -----------------------------
 app.get("/api/test", (req, res) => {
     logger.info("Accessed /api/test");
     res.status(200).send("Testing");
@@ -46,9 +80,13 @@ app.get("/api/test", (req, res) => {
 
 app.get("/api/home", async (req, res) => {
     logger.info("Accessed /api/home");
-    loadBrowserUrl();
-    logger.info("Opened Picapport homepage successfully");
-    res.status(200).send(`Picapport homepage opened`);
+    try {
+        await loadBrowserUrl();
+        logger.info("Opened Picapport homepage successfully");
+        res.status(200).send(`Picapport homepage opened`);
+    } catch (err) {
+        res.status(500).send("Failed to open homepage");
+    }
 });
 
 app.get("/api/slideshow", async (req, res) => {
@@ -56,7 +94,7 @@ app.get("/api/slideshow", async (req, res) => {
     logger.info(`Generated slideshow URL: ${url}`);
     try {
         fs.writeFileSync(urlFilePath, url, "utf8");
-        loadBrowserUrl(url);
+        await loadBrowserUrl(url);
         logger.info("Slideshow started successfully");
         res.status(200).send(`Playing slideshow with URL: ${url}`);
     } catch (error) {
@@ -90,6 +128,9 @@ app.get("/api/screen", async (req, res) => {
     }
 });
 
+// -----------------------------
+// Start server
+// -----------------------------
 app.listen(PORT, () => {
     logger.info(`Server started on port ${PORT}`);
 });
