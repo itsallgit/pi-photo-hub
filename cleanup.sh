@@ -31,6 +31,9 @@ sudo systemctl disable picapport-chromium.service || true
 sudo systemctl disable photo-api.service || true
 sudo systemctl disable mount-hdd.service || true
 
+# Kill stray Chromium
+pkill -9 chromium-browser || true
+
 # -----------------------------
 # Remove old unit files
 # -----------------------------
@@ -111,7 +114,7 @@ else
     echo "[INFO] Skipping bootstrap.sh (can run manually later)."
 fi
 
-echo "=================================================================="
+echo "==================================================================="
 echo ">>> Done. You may now manually run the bootstrap script if skipped."
-echo ">>> sudo /home/pi/pi-photo-hub/bootstrap.sh
-echo "=================================================================="
+echo ">>> sudo /home/pi/pi-photo-hub/bootstrap.sh"
+echo "==================================================================="

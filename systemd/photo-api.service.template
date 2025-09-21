@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/pi-photo-hub/api
-# Ensure logs folder exists with correct ownership
 ExecStart=/opt/node/bin/node /home/pi/pi-photo-hub/api/server.js
 Restart=always
 RestartSec=5

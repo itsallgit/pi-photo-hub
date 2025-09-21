@@ -1,28 +1,28 @@
 [Unit]
-Description=Picapport Chromium Kiosk
+Description=Picapport Chromium Kiosk (delegates to API)
 After=graphical.target network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=oneshot
 User=pi
+# Ensure XAUTHORITY uses default location
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
 
-# Run after Picapport is reachable (port 8080)
-ExecStartPre=/bin/bash -c 'for i in {1..30}; do curl -s --head http://localhost:8080 && exit 0 || sleep 1; done; exit 1'
+# Pre-check: wait until both Picapport (8080) and photo-api (3000) are up
+ExecStartPre=/bin/bash -c '\
+  for i in {1..60}; do \
+    (curl -s --head http://localhost:8080 >/dev/null 2>&1) && \
+    (curl -s --head http://localhost:3000 >/dev/null 2>&1) && exit 0; \
+    sleep 1; \
+  done; \
+  exit 1'
 
-# Start Chromium in kiosk mode directly at Picapport URL
-ExecStart=/usr/bin/chromium-browser \
-  --no-first-run \
-  --disable-session-crashed-bubble \
-  --disable-infobars \
-  --start-fullscreen \
-  --kiosk "http://localhost:8080/picapport"
+# Instead of launching Chromium, delegate to API
+ExecStart=/usr/bin/curl -s -X POST http://localhost:3000/api/home
 
-# Do not restart on failure (only launch once at startup)
-Restart=no
+RemainAfterExit=yes
 
 [Install]
 WantedBy=graphical.target
-

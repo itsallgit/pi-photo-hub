@@ -47,12 +47,14 @@ const generateSlideshowUrl = (query = "noimagesfound", interval = "30") => {
     return `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=${interval}&query=${encodedQuery}`;
 };
 
+const { spawn } = require("child_process");
+
 const loadBrowserUrl = async (url = "http://localhost:8080/picapport") => {
     try {
         logger.info("Closing any running Chromium instances...");
         await exec("pkill -9 chromium || true");
 
-        // Chromium flags to enforce kiosk mode and suppress popups
+        // chromium flags
         const flags = [
             "--no-first-run",
             "--disable-restore-session-state",
@@ -60,12 +62,27 @@ const loadBrowserUrl = async (url = "http://localhost:8080/picapport") => {
             "--disable-infobars",
             "--start-fullscreen",
             "--kiosk"
-        ].join(" ");
+        ];
 
-        logger.info(`Launching Chromium with URL: ${url}`);
-        await exec(`chromium-browser ${flags} "${url}" &>/dev/null &`);
+        const env = {
+            ...process.env,
+            DISPLAY: process.env.DISPLAY || ":0",
+            XAUTHORITY: process.env.XAUTHORITY || "/home/pi/.Xauthority",
+            HOME: "/home/pi",
+            USER: "pi"
+        };
+
+        logger.info(`Spawning Chromium at: ${url}`);
+        const child = spawn("/usr/bin/chromium-browser", [...flags, url], {
+            detached: true,
+            stdio: "ignore",
+            env
+        });
+
+        child.unref();
+        logger.info(`Chromium spawned successfully.`);
     } catch (err) {
-        logger.error(`Failed to launch Chromium: ${err.message}`);
+        logger.error(`Failed to launch Chromium: ${err.stack || err.message}`);
         throw err;
     }
 };
@@ -82,9 +99,8 @@ app.get("/api/home", async (req, res) => {
     logger.info("Accessed /api/home");
     try {
         await loadBrowserUrl();
-        logger.info("Opened Picapport homepage successfully");
-        res.status(200).send(`Picapport homepage opened`);
-    } catch (err) {
+        res.status(200).send("Picapport homepage opened");
+    } catch {
         res.status(500).send("Failed to open homepage");
     }
 });
@@ -95,7 +111,6 @@ app.get("/api/slideshow", async (req, res) => {
     try {
         fs.writeFileSync(urlFilePath, url, "utf8");
         await loadBrowserUrl(url);
-        logger.info("Slideshow started successfully");
         res.status(200).send(`Playing slideshow with URL: ${url}`);
     } catch (error) {
         logger.error(`Error starting slideshow: ${error.message}`);
@@ -105,22 +120,15 @@ app.get("/api/slideshow", async (req, res) => {
 
 app.get("/api/screen", async (req, res) => {
     logger.info("Accessed /api/screen");
-    const cmdScreenStatus = "vcgencmd display_power";
-    const cmdScreenOff = "sudo vcgencmd display_power 0";
-    const cmdScreenOn = "sudo vcgencmd display_power 1";
     try {
-        const resp = await exec(cmdScreenStatus);
+        const resp = await exec("vcgencmd display_power");
         const screenState = resp.stdout.trim();
         if (screenState === "display_power=1") {
-            await exec(cmdScreenOff);
-            logger.info("Screen turned OFF");
+            await exec("sudo vcgencmd display_power 0");
             res.status(200).send("Screen is OFF");
-        } else if (screenState === "display_power=0") {
-            await exec(cmdScreenOn);
-            logger.info("Screen turned ON");
-            res.status(200).send("Screen is ON");
         } else {
-            throw new Error(`Unexpected response: ${screenState}`);
+            await exec("sudo vcgencmd display_power 1");
+            res.status(200).send("Screen is ON");
         }
     } catch (error) {
         logger.error(`Error toggling screen: ${error.message}`);
