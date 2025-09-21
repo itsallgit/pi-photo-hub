@@ -34,9 +34,21 @@ const generateSlideshowUrl = (query = "noimagesfound", interval = "30") => {
     return `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=${interval}&query=${encodedQuery}`;
 };
 
+const loadBrowserUrl = async (url = "http://localhost:8080/picapport") => {
+    await exec("pkill -o chromium || true");
+    await exec(`chromium-browser --start-fullscreen "${url}" &>/dev/null &`);
+}
+
 app.get("/api/test", (req, res) => {
     logger.info("Accessed /api/test");
     res.status(200).send("Testing");
+});
+
+app.get("/api/home", async (req, res) => {
+    logger.info("Accessed /api/home");
+    loadBrowserUrl();
+    logger.info("Opened Picapport homepage successfully");
+    res.status(200).send(`Picapport homepage opened`);
 });
 
 app.get("/api/slideshow", async (req, res) => {
@@ -44,8 +56,7 @@ app.get("/api/slideshow", async (req, res) => {
     logger.info(`Generated slideshow URL: ${url}`);
     try {
         fs.writeFileSync(urlFilePath, url, "utf8");
-        await exec("pkill -o chromium || true");
-        await exec(`chromium-browser --start-fullscreen "${url}" &>/dev/null &`);
+        loadBrowserUrl(url);
         logger.info("Slideshow started successfully");
         res.status(200).send(`Playing slideshow with URL: ${url}`);
     } catch (error) {
