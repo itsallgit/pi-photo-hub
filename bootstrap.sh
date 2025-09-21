@@ -1,20 +1,30 @@
 #!/bin/bash
-# bootstrap.sh - Main setup script for pi-photo-hub
+# bootstrap.sh - Complete setup for pi-photo-hub (PicApport headless + init.d + API + mounting)
 
-set -e  # exit immediately if a command fails
+set -euo pipefail
 
-# -----------------------------
-# Log file
-# -----------------------------
+# ---------- Config ----------
 LOGFILE="/var/log/pi-photo-hub/bootstrap.log"
-sudo mkdir -p $(dirname "$LOGFILE")
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PICAPPORT_REPO_JAR="$REPO_ROOT/picapport/picapport-headless.jar"   # ensure jar placed in repo
+PICAPPORT_INSTALL_DIR="/opt/picapport"
+INITD_SRC="$REPO_ROOT/initd/picapport"
+CR_CHROMIUM_TEMPLATE_SRC="$REPO_ROOT/systemd/picapport-chromium.service.template"
+MOUNT_SERVICE_SRC="$REPO_ROOT/systemd/mount-hdd.service"
+MOUNT_SCRIPT_SRC="$REPO_ROOT/scripts/mount-hdd.sh"
+PHOTO_API_SERVICE_SRC="$REPO_ROOT/systemd/photo-api.service.template"
+PICAPPORT_PROPS_SRC="$REPO_ROOT/config/picapport.properties"
+
+# Default settings (overridable by --latest)
+USE_LATEST=false
+
+# ---------- Logging setup ----------
+sudo mkdir -p "$(dirname "$LOGFILE")"
 sudo touch "$LOGFILE"
-sudo chown $USER:$USER "$LOGFILE"
+sudo chown "$USER:$USER" "$LOGFILE"
 exec > >(tee -a "$LOGFILE") 2>&1
 
-# -----------------------------
-# Helpers
-# -----------------------------
+# ---------- Helpers ----------
 CURRENT_STEP=0
 banner() {
   CURRENT_STEP=$((CURRENT_STEP+1))
@@ -29,11 +39,9 @@ banner() {
 run_with_spinner() {
   local cmd="$1"
   local msg="$2"
-
   echo -n "[INFO] $msg... "
   bash -c "$cmd" &> >(tee -a "$LOGFILE") &
   local pid=$!
-
   local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   local i=0
   while kill -0 $pid 2>/dev/null; do
@@ -41,10 +49,8 @@ run_with_spinner() {
     printf "\b${spin:$i:1}"
     sleep 0.1
   done
-
   wait $pid
   local exit_code=$?
-
   if [ $exit_code -eq 0 ]; then
     printf "\b[OK]\n"
   else
@@ -53,139 +59,187 @@ run_with_spinner() {
   fi
 }
 
+# ---------- Start ----------
 banner "Pi Photo Hub Bootstrap Starting - $(date)"
 
-# -----------------------------
-# Parse arguments
-# -----------------------------
-USE_LATEST=false
+# ---------- Parse args ----------
 for arg in "$@"; do
   if [ "$arg" == "--latest" ]; then
     USE_LATEST=true
   fi
 done
-
-# Load configs
-source "$(dirname "$0")/config/versions.conf"
 echo "[INFO] USE_LATEST=$USE_LATEST"
-echo "[INFO] JAVA_VERSION=$JAVA_VERSION"
-echo "[INFO] NODE_VERSION=$NODE_VERSION"
 
-# -----------------------------
-# Update system
-# -----------------------------
+# ---------- Source versions config if present ----------
+if [ -f "$REPO_ROOT/config/versions.conf" ]; then
+  # keep but optional
+  source "$REPO_ROOT/config/versions.conf"
+  echo "[INFO] Loaded versions.conf: JAVA_VERSION=${JAVA_VERSION:-unset}, NODE_VERSION=${NODE_VERSION:-unset}"
+fi
+
+# ---------- System update ----------
 banner "Updating System"
 export DEBIAN_FRONTEND=noninteractive
 run_with_spinner "sudo apt update -y && sudo apt full-upgrade -y" "Updating packages"
 
-# -----------------------------
-# Install essentials
-# -----------------------------
+# ---------- Essentials ----------
 banner "Installing Essentials"
-run_with_spinner "sudo apt install -y curl unzip chromium-browser" "Installing essentials"
+run_with_spinner "sudo apt install -y curl unzip cron screen x11-xserver-utils" "Installing essentials"
+# chromium-browser is installed later in chrome service if needed; keep it installed earlier
+run_with_spinner "sudo apt install -y chromium-browser" "Installing Chromium browser"
 
-# -----------------------------
-# Java
-# -----------------------------
-banner "Installing Java"
+# ---------- Install JRE ----------
+banner "Installing Java Runtime Environment (JRE)"
 if [ "$USE_LATEST" = true ]; then
-  run_with_spinner "sudo apt install -y openjdk-17-jre" "Installing latest Java (OpenJDK 17)"
+  run_with_spinner "sudo apt install -y openjdk-17-jre-headless" "Installing latest OpenJDK JRE (headless)"
+  JAVA_BIN="$(command -v java || true)"
 else
-  JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
-  run_with_spinner "curl -L -o /tmp/openjdk.tar.gz \"$JAVA_URL\"" "Downloading Java $JAVA_VERSION"
+  # pinned JRE URL (Temurin/Adoptium JRE)
+  JAVA_PKG_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}%2B8/OpenJDK17U-jre_aarch64_linux_hotspot_${JAVA_VERSION}_8.tar.gz"
+  run_with_spinner "curl -L -o /tmp/openjre.tar.gz \"$JAVA_PKG_URL\"" "Downloading pinned JRE ${JAVA_VERSION}"
   sudo mkdir -p /opt/java
-  run_with_spinner "sudo tar -xzf /tmp/openjdk.tar.gz -C /opt/java --strip-components=1" "Extracting Java"
+  run_with_spinner "sudo tar -xzf /tmp/openjre.tar.gz -C /opt/java --strip-components=1" "Extracting pinned JRE"
+  # Create a stable symlink so scripts use /usr/local/bin/java
+  if [ -x /opt/java/bin/java ]; then
+    sudo ln -sf /opt/java/bin/java /usr/local/bin/java
+    JAVA_BIN="/usr/local/bin/java"
+  else
+    echo "[WARN] /opt/java/bin/java not found after extract"
+    JAVA_BIN="$(command -v java || true)"
+  fi
 fi
-echo "export PATH=/opt/java/bin:\$PATH" | sudo tee /etc/profile.d/jdk.sh
-source /etc/profile.d/jdk.sh
 
-# -----------------------------
-# Node.js
-# -----------------------------
+# Ensure java is available
+if [ -z "${JAVA_BIN:-}" ]; then
+  JAVA_BIN="$(command -v java || true)"
+fi
+if [ -z "$JAVA_BIN" ]; then
+  echo "[ERROR] java not found after install. Exiting."
+  exit 1
+fi
+echo "[INFO] Using java at: $JAVA_BIN"
+
+# ---------- Node.js (API) ----------
 banner "Installing Node.js"
 if [ "$USE_LATEST" = true ]; then
   run_with_spinner "sudo apt install -y nodejs npm" "Installing latest Node.js"
 else
-  run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js $NODE_VERSION"
-  sudo mkdir -p /opt/node
-  run_with_spinner "sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
+  if [ -n "${NODE_VERSION:-}" ]; then
+    run_with_spinner "curl -L -o /tmp/node.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-arm64.tar.xz" "Downloading Node.js ${NODE_VERSION}"
+    sudo mkdir -p /opt/node
+    run_with_spinner "sudo tar -xf /tmp/node.tar.xz -C /opt/node --strip-components=1" "Extracting Node.js"
+    sudo ln -sf /opt/node/bin/node /usr/local/bin/node
+    sudo ln -sf /opt/node/bin/npm /usr/local/bin/npm
+  else
+    run_with_spinner "sudo apt install -y nodejs npm" "Installing Node.js from apt (no pinned version)"
+  fi
 fi
-echo "export PATH=/opt/node/bin:\$PATH" | sudo tee /etc/profile.d/node.sh
-source /etc/profile.d/node.sh
+echo "[INFO] node: $(command -v node || echo 'not found')"
 
-# -----------------------------
-# Fix ownership
-# -----------------------------
+# ---------- Fix repo ownership ----------
 banner "Fixing Folder Ownership"
-sudo chown -R pi:pi /home/pi/pi-photo-hub
+sudo chown -R pi:pi "$REPO_ROOT" || true
 
-# -----------------------------
-# Ensure Picapport home & logs folder exist
-# -----------------------------
-banner "Setting up Picapport folders"
-PICAPP_HOME="/home/pi/.picapport"
-sudo mkdir -p "$PICAPP_HOME/logfiles" "$PICAPP_HOME/users" "$PICAPP_HOME/plugins" "$PICAPP_HOME/thesaurus" "$PICAPP_HOME/designs"
-sudo chown -R pi:pi "$PICAPP_HOME"
-
-# Source and destination for properties
-PROPS_SRC="$(dirname "$0")/config/picapport.properties"
-PROPS_DEST="$PICAPP_HOME/picapport.properties"
-
-# Copy picapport.properties, always overwrite
-if [ -f "$PROPS_SRC" ]; then
-    sudo cp "$PROPS_SRC" "$PROPS_DEST"
-    sudo chown pi:pi "$PROPS_DEST"
-    echo "[INFO] picapport.properties updated from repo"
+# ---------- Mount HDD service (systemd) ----------
+banner "Setting up HDD Automount (systemd unit & script)"
+if [ -f "$MOUNT_SERVICE_SRC" ]; then
+  sudo cp "$MOUNT_SERVICE_SRC" /etc/systemd/system/mount-hdd.service
+  sudo chmod +x "$MOUNT_SCRIPT_SRC"
+  sudo systemctl daemon-reload
+  sudo systemctl enable mount-hdd.service
+  # start so subsequent steps can see mount
+  sudo systemctl start mount-hdd.service || true
 else
-    echo "[WARN] picapport.properties not found in repo at $PROPS_SRC"
+  echo "[WARN] Mount service source missing: $MOUNT_SERVICE_SRC"
 fi
 
-# -----------------------------
-# Mount HDD service
-# -----------------------------
-banner "Setting up HDD Automount"
-sudo cp "$(dirname "$0")/systemd/mount-hdd.service" /etc/systemd/system/
-chmod +x "$(dirname "$0")/scripts/mount-hdd.sh"
-sudo systemctl daemon-reload
-sudo systemctl enable mount-hdd.service
-sudo systemctl start mount-hdd.service
+# ---------- Picapport installation ----------
+banner "Installing Picapport headless"
+if [ ! -f "$PICAPPORT_REPO_JAR" ]; then
+  echo "[ERROR] Expected picapport-headless.jar at $PICAPPORT_REPO_JAR (place it there and re-run). Exiting."
+  exit 1
+fi
 
-# -----------------------------
-# Picapport service
-# -----------------------------
-banner "Setting up Picapport Service"
-sudo cp "$(dirname "$0")/systemd/picapport.service.template" /etc/systemd/system/picapport.service
-sudo systemctl daemon-reload
-sudo systemctl enable picapport.service
+sudo mkdir -p "$PICAPPORT_INSTALL_DIR"
+sudo cp "$PICAPPORT_REPO_JAR" "$PICAPPORT_INSTALL_DIR/"
+sudo chown -R pi:pi "$PICAPPORT_INSTALL_DIR"
 
-# -----------------------------
-# Chromium GUI service for Picapport slideshow
-# -----------------------------
-banner "Setting up Chromium GUI service for Picapport Slideshow"
-sudo cp "$(dirname "$0")/systemd/picapport-chromium.service.template" /etc/systemd/system/picapport-chromium.service
-sudo systemctl daemon-reload
-sudo systemctl enable picapport-chromium.service
+# ---------- Start script for Picapport ----------
+banner "Creating Picapport start script"
+START_SCRIPT="$PICAPPORT_INSTALL_DIR/start-picapport.sh"
+sudo tee "$START_SCRIPT" > /dev/null <<EOF
+#!/bin/bash
+# start-picapport.sh - launches PicAppport headless
+export PATH=/opt/java/bin:\$PATH
+# use explicit java path
+JAVA_BIN="\$(command -v java || echo /usr/local/bin/java)"
+exec "\$JAVA_BIN" -Xms512m -Xmx1024m -Duser.home=$PICAPPORT_INSTALL_DIR -jar $PICAPPORT_INSTALL_DIR/picapport-headless.jar
+EOF
+sudo chmod +x "$START_SCRIPT"
+sudo chown pi:pi "$START_SCRIPT"
 
-# -----------------------------
-# Photo API service
-# -----------------------------
-banner "Setting up Photo API Service"
-pushd "$(dirname "$0")/api"
-run_with_spinner "npm install" "Installing API dependencies"
-mkdir -p logs
-chown -R pi:pi logs
-popd
-sudo cp "$(dirname "$0")/systemd/photo-api.service.template" /etc/systemd/system/photo-api.service
-sudo systemctl daemon-reload
-sudo systemctl enable photo-api.service
+# Create Picapport home and copy properties (always overwrite)
+banner "Configuring Picapport properties & directories"
+PICAPP_HOME="/home/pi/.picapport"
+sudo mkdir -p "$PICAPP_HOME"
+sudo cp -f "$PICAPPORT_PROPS_SRC" "$PICAPP_HOME/picapport.properties"
+sudo chown -R pi:pi "$PICAPP_HOME"
+echo "[INFO] picapport.properties copied to $PICAPP_HOME/picapport.properties"
 
-# -----------------------------
-# Done
-# -----------------------------
+# ---------- Init.d daemon - install and enable ----------
+banner "Installing init.d service for Picapport"
+if [ -f "$INITD_SRC" ]; then
+  sudo cp "$INITD_SRC" /etc/init.d/picapport
+  sudo chmod +x /etc/init.d/picapport
+  # Ensure init.d script uses correct paths (we'll adjust in-place)
+  sudo sed -i "s|/opt/picapport/start-picapport.sh|$START_SCRIPT|g" /etc/init.d/picapport || true
+  sudo update-rc.d picapport defaults
+  # start now
+  sudo /etc/init.d/picapport stop || true
+  sudo /etc/init.d/picapport start || true
+else
+  echo "[WARN] init.d source missing: $INITD_SRC"
+fi
+
+# ---------- Chromium GUI service for Picapport slideshow ----------
+banner "Installing Chromium GUI systemd service template (opens slideshow on boot)"
+if [ -f "$CR_CHROMIUM_TEMPLATE_SRC" ]; then
+  sudo cp "$CR_CHROMIUM_TEMPLATE_SRC" /etc/systemd/system/picapport-chromium.service
+  sudo sed -i "s|__REPO_ROOT__|$REPO_ROOT|g" /etc/systemd/system/picapport-chromium.service || true
+  sudo systemctl daemon-reload
+  sudo systemctl enable picapport-chromium.service || true
+else
+  echo "[WARN] Chromium systemd template missing: $CR_CHROMIUM_TEMPLATE_SRC"
+fi
+
+# ---------- Photo API service (systemd) ----------
+banner "Installing Photo API systemd service"
+if [ -d "$REPO_ROOT/api" ]; then
+  pushd "$REPO_ROOT/api" >/dev/null
+  run_with_spinner "npm install --no-audit --no-fund" "Installing API dependencies"
+  mkdir -p logs
+  sudo chown -R pi:pi logs
+  popd >/dev/null
+fi
+if [ -f "$PHOTO_API_SERVICE_SRC" ]; then
+  sudo cp "$PHOTO_API_SERVICE_SRC" /etc/systemd/system/photo-api.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable photo-api.service
+else
+  echo "[WARN] Photo API systemd template missing: $PHOTO_API_SERVICE_SRC"
+fi
+
+# ---------- Finalize ----------
 banner "Bootstrap Complete"
-echo "[INFO] All components installed successfully!"
-echo "[INFO] Log file available at: $LOGFILE"
-
-banner "GOODBYE - Pi will reboot in 5 seconds"
-sleep 5
+echo "[INFO] All components installed (or were present)."
+echo "[INFO] Log file is at $LOGFILE"
+echo ""
+echo "You may now verify services:"
+echo "  sudo /etc/init.d/picapport status"
+echo "  sudo systemctl status mount-hdd.service"
+echo "  sudo systemctl status photo-api.service"
+echo "  sudo systemctl status picapport-chromium.service"
+echo ""
+echo "If everything looks good, rebooting in 8 seconds..."
+sleep 8
 sudo reboot

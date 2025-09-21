@@ -1,0 +1,66 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          picapport
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start Picapport at boot time
+# Description:       Headless Picapport daemon
+### END INIT INFO
+
+# /etc/init.d/picapport
+
+NAME=picapport
+DESC="PicApport Daemon"
+DAEMON="/opt/picapport/start-picapport.sh"
+PIDFILE="/var/run/$NAME.pid"
+USER="pi"
+
+case "$1" in
+  start)
+    echo "Starting $DESC..."
+    if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+      echo "$NAME is already running (PID $(cat $PIDFILE))"
+      exit 0
+    fi
+    start-stop-daemon --start --background --make-pidfile --pidfile "$PIDFILE" --chuid "$USER" --startas "$DAEMON"
+    sleep 1
+    if [ -f "$PIDFILE" ]; then
+      echo "$NAME started (PID $(cat $PIDFILE))"
+    else
+      echo "Failed to start $NAME"
+      exit 1
+    fi
+    ;;
+  stop)
+    echo "Stopping $DESC..."
+    if [ -f "$PIDFILE" ]; then
+      start-stop-daemon --stop --pidfile "$PIDFILE" --retry=TERM/30/KILL/5
+      rm -f "$PIDFILE"
+      echo "$NAME stopped."
+    else
+      echo "$NAME is not running (no PID file)."
+    fi
+    ;;
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  status)
+    if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+      echo "$NAME is running (PID $(cat $PIDFILE))"
+      exit 0
+    else
+      echo "$NAME is not running"
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Usage: /etc/init.d/$NAME {start|stop|restart|status}"
+    exit 2
+    ;;
+esac
+
+exit 0

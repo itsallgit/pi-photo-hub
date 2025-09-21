@@ -1,23 +1,20 @@
 [Unit]
-Description=Picapport Chromium Slideshow
-After=graphical.target picapport.service
-Wants=picapport.service
+Description=Picapport Chromium Kiosk (opens slideshow)
+After=graphical.target network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=pi
 Environment=DISPLAY=:0
-ExecStart=/bin/bash -c '\
-    URL_FILE="/home/pi/pi-photo-hub/api/slideshow_url.txt"; \
-    DEFAULT_URL="http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=30&query=noimagesfound"; \
-    if [ -f "$URL_FILE" ]; then \
-        URL=$(cat "$URL_FILE"); \
-    else \
-        URL=$DEFAULT_URL; \
-    fi; \
-    chromium-browser --app="$URL" --kiosk \
-'
+# Ensure XAUTHORITY uses default location; if you run a display manager you may need to adjust
+Environment=XAUTHORITY=/home/pi/.Xauthority
+# Run after Picapport is reachable (port 8080)
+ExecStartPre=/bin/bash -c 'for i in {1..30}; do nc -z localhost 8080 && exit 0 || sleep 1; done; exit 1'
+# ExecStart: open slideshow url from repo's slideshow_url.txt or default
+ExecStart=/bin/bash -lc 'URL_FILE="__REPO_ROOT__/slideshow_url.txt"; if [ -f "$URL_FILE" ]; then URL="$(cat $URL_FILE)"; else URL="http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=30&query=noimagesfound"; fi; exec /usr/bin/chromium-browser --no-first-run --start-fullscreen --kiosk "$URL"'
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=graphical.target
