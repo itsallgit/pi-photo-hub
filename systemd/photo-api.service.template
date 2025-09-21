@@ -7,8 +7,6 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/pi-photo-hub/api
 # Ensure logs folder exists with correct ownership
-ExecStartPre=/bin/mkdir -p /home/pi/pi-photo-hub/api/logs
-ExecStartPre=/bin/chown -R pi:pi /home/pi/pi-photo-hub/api/logs
 ExecStart=/opt/node/bin/node /home/pi/pi-photo-hub/api/server.js
 Restart=always
 RestartSec=5

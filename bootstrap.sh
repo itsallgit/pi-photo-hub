@@ -231,8 +231,6 @@ EOF
 sudo chmod +x "$CLEANUP_SCRIPT"
 sudo chown pi:pi "$CLEANUP_SCRIPT"
 
-
-
 # ---------- Chromium GUI service for Picapport slideshow ----------
 banner "Installing Chromium GUI systemd service template (opens slideshow on boot)"
 if [ -f "$CR_CHROMIUM_TEMPLATE_SRC" ]; then
@@ -249,8 +247,8 @@ banner "Installing Photo API systemd service"
 if [ -d "$REPO_ROOT/api" ]; then
   pushd "$REPO_ROOT/api" >/dev/null
   run_with_spinner "npm install --no-audit --no-fund" "Installing API dependencies"
-  mkdir -p logs
-  sudo chown -R pi:pi logs
+  sudo mkdir -p /var/log/photo-api
+  sudo chown -R pi:pi /var/log/photo-api
   popd >/dev/null
 fi
 if [ -f "$PHOTO_API_SERVICE_SRC" ]; then
