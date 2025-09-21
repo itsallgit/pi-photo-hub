@@ -194,9 +194,7 @@ if [ -f "$INITD_SRC" ]; then
   # Ensure init.d script uses correct paths (we'll adjust in-place)
   sudo sed -i "s|/opt/picapport/start-picapport.sh|$START_SCRIPT|g" /etc/init.d/picapport || true
   sudo update-rc.d picapport defaults
-  # start now
-  sudo /etc/init.d/picapport stop || true
-  sudo /etc/init.d/picapport start || true
+  echo "[INFO] Picapport service installed. It will start automatically on next reboot."
 else
   echo "[WARN] init.d source missing: $INITD_SRC"
 fi
