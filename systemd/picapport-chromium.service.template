@@ -1,5 +1,5 @@
 [Unit]
-Description=Picapport Chromium Kiosk (opens slideshow)
+Description=Picapport Chromium Kiosk
 After=graphical.target network-online.target
 Wants=network-online.target
 
@@ -7,14 +7,22 @@ Wants=network-online.target
 Type=simple
 User=pi
 Environment=DISPLAY=:0
-# Ensure XAUTHORITY uses default location; if you run a display manager you may need to adjust
 Environment=XAUTHORITY=/home/pi/.Xauthority
+
 # Run after Picapport is reachable (port 8080)
 ExecStartPre=/bin/bash -c 'for i in {1..30}; do curl -s --head http://localhost:8080 && exit 0 || sleep 1; done; exit 1'
-# ExecStart: open slideshow url from repo's slideshow_url.txt or default
-ExecStart=/bin/bash -lc 'URL_FILE="__REPO_ROOT__/slideshow_url.txt"; if [ -f "$URL_FILE" ]; then URL="$(cat $URL_FILE)"; else URL="http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=30&query=noimagesfound"; fi; exec /usr/bin/chromium-browser --no-first-run --start-fullscreen --kiosk "$URL"'
-Restart=always
-RestartSec=5
+
+# Start Chromium in kiosk mode directly at Picapport URL
+ExecStart=/usr/bin/chromium-browser \
+  --no-first-run \
+  --disable-session-crashed-bubble \
+  --disable-infobars \
+  --start-fullscreen \
+  --kiosk "http://localhost:8080/picapport"
+
+# Do not restart on failure (only launch once at startup)
+Restart=no
 
 [Install]
 WantedBy=graphical.target
+
