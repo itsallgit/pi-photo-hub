@@ -153,15 +153,14 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 1. Check Services are running after Pi Reboot
 
    * Check Service Status:
-      * `sudo systemctl status mount-hdd`
-      * `sudo systemctl status photo-api`
-      * `sudo systemctl status picapport-chromium`
-      * `sudo systemctl status picapport-wrapper`
+      * `sudo systemctl status mount-hdd photo-api picapport-chromium picapport-wrapper`
    * Check Service Logs:
       * `journalctl -u mount-hdd.service -n 100 --no-pager`
       * `journalctl -u photo-api.service -n 100 --no-pager`
       * `journalctl -u picapport-wrapper.service -n 100 --no-pager`
       * `journalctl -u picapport-chromium.service -n 100 --no-pager`
+   * Check Picapport Logs
+      * `tail -n 1000 /opt/picapport/.picapport/logfiles/*`
 
 ## Logs
 
