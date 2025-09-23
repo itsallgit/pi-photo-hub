@@ -130,7 +130,7 @@ If you want to make changes to pi-photo-hub and update an existing installed ver
 
 1. Make changes and commit them to `main`
 1. Access your pi via SSH
-1. Run cleanup script `sudo ~/pi-photo-hub/cleanup.sh`\
+1. Run cleanup script `sudo bash ~/pi-photo-hub/cleanup.sh`\
    * You will be asked if you want to run the bootstrap, enter `y` to pull the latest code from `main` and reinstall everything.
    * If you want to wipe your current Picapport install entirely and start with a fresh database then run:
-   * `sudo ~/pi-photo-hub/cleanup.sh delete-picapport`
+   * `sudo bash ~/pi-photo-hub/cleanup.sh delete-picapport`
