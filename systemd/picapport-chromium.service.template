@@ -22,7 +22,7 @@ ExecStartPre=/bin/bash -c '\
   exit 1'
 
 # Trigger slideshow API call
-ExecStart=/usr/bin/curl -s -X POST http://localhost:3000/api/slideshow
+ExecStart=/usr/bin/curl -s http://localhost:3000/api/slideshow
 
 # Don't remain active, so systemd will re-run on dependency restart
 RemainAfterExit=no
