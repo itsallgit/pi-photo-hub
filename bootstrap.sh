@@ -219,10 +219,9 @@ sudo chmod +x "$CLEANUP_SCRIPT"
 sudo chown pi:pi "$CLEANUP_SCRIPT"
 
 # ---------- Chromium GUI service for Picapport slideshow ----------
-banner "Installing Chromium GUI systemd service template (opens slideshow on boot)"
+banner "Installing Chromium slideshow trigger service"
 if [ -f "$CR_CHROMIUM_TEMPLATE_SRC" ]; then
   sudo cp "$CR_CHROMIUM_TEMPLATE_SRC" /etc/systemd/system/picapport-chromium.service
-  sudo sed -i "s|__REPO_ROOT__|$REPO_ROOT|g" /etc/systemd/system/picapport-chromium.service || true
   sudo systemctl daemon-reload
   sudo systemctl enable picapport-chromium.service || true
 else

@@ -72,7 +72,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
 - HDD mount logs: `/var/log/pi-photo-hub/mount-hdd.log`
-- API logs: `~/pi-photo-hub/api/logs/`
+- API logs: `/var/log/photo-api/`
 - Picapport logs: `/opt/picapport/.picapport/logfiles/`
 
 ## After Install

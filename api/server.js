@@ -106,10 +106,29 @@ app.get("/api/home", async (req, res) => {
 });
 
 app.get("/api/slideshow", async (req, res) => {
-    const url = generateSlideshowUrl(req.query.q, req.query.interval);
-    logger.info(`Generated slideshow URL: ${url}`);
     try {
-        fs.writeFileSync(urlFilePath, url, "utf8");
+        let url;
+
+        if (Object.keys(req.query).length > 0) {
+            // Query params provided → generate a new slideshow URL
+            url = generateSlideshowUrl(req.query.q, req.query.interval);
+            logger.info(`Generated new slideshow URL: ${url}`);
+
+            // Save to file
+            fs.writeFileSync(urlFilePath, url, "utf8");
+        } else {
+            // No query params → try to use the previously saved URL
+            if (fs.existsSync(urlFilePath)) {
+                url = fs.readFileSync(urlFilePath, "utf8").trim();
+                logger.info(`Loaded saved slideshow URL: ${url}`);
+            } else {
+                // Fallback if file doesn't exist
+                url = generateSlideshowUrl();
+                logger.warn(`No saved URL found, using fallback: ${url}`);
+            }
+        }
+
+        // Launch Chromium with the URL
         await loadBrowserUrl(url);
         res.status(200).send(`Playing slideshow with URL: ${url}`);
     } catch (error) {

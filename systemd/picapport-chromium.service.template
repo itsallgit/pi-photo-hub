@@ -1,28 +1,31 @@
 [Unit]
-Description=Picapport Chromium Kiosk (delegates to API)
-After=graphical.target network-online.target
-Wants=network-online.target
+Description=Trigger Picapport Slideshow via API
+After=photo-api.service picapport-wrapper.service
+Requires=photo-api.service picapport-wrapper.service
+BindsTo=photo-api.service picapport-wrapper.service
+PartOf=photo-api.service picapport-wrapper.service
 
 [Service]
 Type=oneshot
 User=pi
-# Ensure XAUTHORITY uses default location
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
 
-# Pre-check: wait until both Picapport (8080) and photo-api (3000) are up
+# Wait up to 120 seconds (2 minutes) for both services to respond
 ExecStartPre=/bin/bash -c '\
-  for i in {1..60}; do \
+  for i in {1..120}; do \
     (curl -s --head http://localhost:8080 >/dev/null 2>&1) && \
     (curl -s --head http://localhost:3000 >/dev/null 2>&1) && exit 0; \
     sleep 1; \
   done; \
+  echo "ERROR: Picapport or Photo API not ready after 120 seconds" >&2; \
   exit 1'
 
-# Instead of launching Chromium, delegate to API
-ExecStart=/usr/bin/curl -s -X POST http://localhost:3000/api/home
+# Trigger slideshow API call
+ExecStart=/usr/bin/curl -s -X POST http://localhost:3000/api/slideshow
 
-RemainAfterExit=yes
+# Don't remain active, so systemd will re-run on dependency restart
+RemainAfterExit=no
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
