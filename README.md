@@ -79,3 +79,58 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 
 The Pi will reboot automatically and open Chromium with Picapport homepage.  
 Your photo API will be available at `http://<pi-ip>:3000/api/test`.
+
+## Picapport Database Fix
+
+*Note: this will eventually be automated with a new photo-api endpoint.*
+
+> ERROR@ 18:24:57.863 Exception Error PhotoCrawler.DirectoryConsumer.handlePhotoUpdate:/mnt/photos/PHOTOS/2023.09.04 - 2023.09.24 - Croatia and Serbia/20230910_211633.jpg: com.orientechnologies.orient.core.exception.OPageIsBrokenException: Following files and pages are detected to be broken ['idxfileName.cbt' :2;'idxphotoId.cbt' :1;'photo.pcl' :0;'directory.pcl' :2;'photo.cpm' :0;], storage is switched to 'read only' mode. Any modification operations are prohibited. To restore database and make it fully operational you may export and import database to and from JSON. DB name="db_3_0_39"
+
+1. Stop Picapport
+   ```bash
+   sudo systemctl stop picapport-wrapper
+   sudo service picapport stop
+   ```
+1. Backup database
+   ```bash
+   mv /opt/picapport/.picapport/db/db_3_0_39/ /opt/picapport/.picapport/db/db_3_0_39.BROKEN
+   mkdir /opt/picapport/.picapport/db/db_3_0_39
+   ```
+1. Run OrientDB Console
+   ```bash
+   cd ~/pi-photo-hub/orientdb
+   #wget https://repo1.maven.org/maven2/com/orientechnologies/orientdb-community/3.0.39/orientdb-community-3.0.39.tar.gz
+   tar xzf ~/pi-photo-hub/orientdb/orientdb-community-3.0.39.tar.gz
+   sudo ~/pi-photo-hub/orientdb/orientdb-community-3.0.39/bin/console.sh
+   ```
+
+1. Export old database to JSON
+   ```bash
+   CONNECT plocal:/opt/picapport/.picapport/db/db_3_0_39.BROKEN admin admin
+   EXPORT DATABASE /tmp/picapport_backup.json
+   DISCONNECT
+   ```
+1. Create new database and import JSON
+   ```bash
+   CONNECT plocal:/opt/picapport/.picapport/db/db_3_0_39 admin admin
+   IMPORT DATABASE /tmp/picapport_backup.json.gz
+   SELECT FROM directory LIMIT 5
+   SELECT FROM photo LIMIT 5
+   EXIT
+   ```
+1. Restart Picapport
+   ```bash
+   sudo service picapport start
+   tail -f /opt/picapport/.picapport/logfiles/picapport.*
+   ```
+
+## Development
+
+If you want to make changes to pi-photo-hub and update an existing installed version on your pi do the following:
+
+1. Make changes and commit them to `main`
+1. Access your pi via SSH
+1. Run cleanup script `sudo ~/pi-photo-hub/cleanup.sh`\
+   * You will be asked if you want to run the bootstrap, enter `y` to pull the latest code from `main` and reinstall everything.
+   * If you want to wipe your current Picapport install entirely and start with a fresh database then run:
+   * `sudo ~/pi-photo-hub/cleanup.sh delete-picapport`

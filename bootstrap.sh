@@ -214,20 +214,7 @@ fi
 # ---------- Deploy cleanup script ----------
 banner "Installing Picapport cleanup script"
 CLEANUP_SCRIPT="/opt/picapport/cleanup-picapport.sh"
-sudo tee "$CLEANUP_SCRIPT" > /dev/null <<'EOF'
-#!/bin/bash
-NAME="picapport"
-PIDFILE="/var/run/$NAME.pid"
-echo "[CLEANUP] Stopping $NAME..."
-if [ -x /etc/init.d/$NAME ]; then
-  /etc/init.d/$NAME stop
-fi
-if pgrep -f "picapport-headless.jar" >/dev/null 2>&1; then
-  echo "[CLEANUP] Killing stray Picapport process..."
-  pkill -f "picapport-headless.jar"
-fi
-echo "[CLEANUP] Done."
-EOF
+cp "$REPO_ROOT/scripts/cleanup-picapport.sh" "$CLEANUP_SCRIPT"
 sudo chmod +x "$CLEANUP_SCRIPT"
 sudo chown pi:pi "$CLEANUP_SCRIPT"
 
