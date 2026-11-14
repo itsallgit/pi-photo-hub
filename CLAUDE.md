@@ -16,10 +16,19 @@ Read this file fully at the start of every session. Then read [docs/backlog.md](
 These are non-negotiable. The reasoning and how each is enforced is in [docs/principles.md](docs/principles.md).
 
 1. **NEVER modify the photo HDD** (mounted at `/mnt/photos` on the Pi, device `/dev/sda`). No writes, deletes, renames, moves, `fsck`, `mkfs`, `dd`, `wipefs`, `parted`, label changes, `chmod`/`chown`, remounting read-write, or anything else that changes its contents or filesystem, by any route: a direct command, a script you write or copy to the Pi, `rsync --delete`, `find -delete`, or any file-changing action in the Picapport web UI (tagging, rotating, deleting; whether it can write to photos is unverified, see Q4 in the backlog, so do not use such actions). Read-only commands only (`ls`, `find` without delete actions, `df`, reading files). This is the owner's irreplaceable photo library. If a task seems to need a change to the HDD, stop and ask the owner; the owner does it, not an agent.
-2. **Show a plan and wait for approval before changing anything**: repo files, anything on the Pi (including reboot, cron, files, git operations in its checkout), the SD card. An approved plan covers exactly the changes it describes. Read-only investigation needs no approval. State what you will touch, the risk, and how to undo it.
-3. **Build the project, not the instance.** Make changes in this repo so they work on a fresh build on new hardware, then apply them to the Pi through the same path a fresh build uses. Do not make ad hoc changes on the Pi. The Pi is never the source of truth. There is no automated apply/update path yet (backlog B06): until there is, every change to the Pi needs an approved plan. **Never run `cleanup.sh` or `bootstrap.sh` on the Pi as an agent.** `cleanup.sh` stops all services, unmounts the HDD, deletes and re-clones the checkout, and can delete the Picapport database; it is for the owner's deliberate rebuilds.
-4. **Docs move with code.** Any change to a script, service, config or behaviour updates, in the same commit: the README runbook (where a procedure has both a manual and an automated form, keep both), the relevant `docs/` page, and `docs/backlog.md`.
-5. **Do not assume.** If a fact is not verified, write it in the backlog as an open question rather than stating it as fact in docs.
+2. **Build the project, not the instance.** Make changes in this repo so they work on a fresh build on new hardware, then apply them to the Pi through the same path a fresh build uses. Do not make ad hoc changes on the Pi. The Pi is never the source of truth. There is no automated apply/update path yet (backlog B06), so until there is, agree any change to the Pi with the owner first. **Never run `cleanup.sh` or `bootstrap.sh` on the Pi as an agent.** `cleanup.sh` stops all services, unmounts the HDD, deletes and re-clones the checkout, and can delete the Picapport database; it is for the owner's deliberate rebuilds.
+3. **Docs move with code.** Any change to a script, service, config or behaviour updates, in the same commit: the README runbook (where a procedure has both a manual and an automated form, keep both), the relevant `docs/` page, and `docs/backlog.md`.
+4. **Do not assume.** If a fact is not verified, write it in the backlog as an open question rather than stating it as fact in docs.
+
+## Working with the owner
+
+This is how every session should behave. It is a working style, not a technical control, and it exists so the owner always knows what is going on and can steer.
+
+- **Discuss before changing.** When a task would change the project (repo files, scripts, docs) or the Pi (services, config, files, reboot, cron, anything over SSH that writes), first tell the owner what you propose and get their agreement, then act. Say what you will touch, why, the risk, and how to undo it. Keep it short enough to read on a phone.
+- **Investigate freely.** Read-only work (reading files and logs, `git status`, read-only SSH, screenshots) needs no discussion.
+- **Stay inside what was agreed.** If the plan needs to grow, say so and agree the new scope before doing it.
+- **Keep the owner informed.** Say briefly what you are doing and what you found. Report outcomes faithfully, including failures and anything you skipped.
+- **Raise assumptions and surprises.** Record unknowns in the backlog (hard rule 4) and tell the owner.
 
 ## Reaching the Pi
 
@@ -42,7 +51,7 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 
 - **Commits:** Conventional Commits, `<type>(<scope>): <description>`, types `feat fix chore docs refactor test ci`. No `Co-Authored-By` lines and no AI attribution.
 - **`main` is what a fresh Pi builds.** It is intended to always work. (A fresh build has not been re-tested since September 2025, backlog B11, so treat this as the goal, not a guarantee.) A fresh Pi clones `main`.
-- **Default:** small commits straight to `main`, for documentation and low-risk changes. One logical change per commit, including its docs and backlog updates (hard rule 4).
+- **Default:** small commits straight to `main`, for documentation and low-risk changes. One logical change per commit, including its docs and backlog updates (hard rule 3).
 - **Exception:** code that could break a fresh build or the running Pi (bootstrap, systemd units, mount scripts, update scripts) goes on a short-lived `feat/<topic>` or `fix/<topic>` branch. Push the branch so other clones and worktrees can see it. Test it on the Pi (`update.sh --branch <name>` once that exists; until then by an approved plan), then merge to `main` with `git merge --ff-only`. If `main` has moved on and `--ff-only` fails, merge `main` into the branch, retest, then fast-forward `main`. No pull request is needed. This repo-level rule overrides the global "use PRs for main" rule, by the owner's explicit decision; the global rule may still make a session ask first, which is fine.
 - Never force-push or rebase. Never `git reset --hard` without the owner's explicit instruction.
 - The Pi pulls from GitHub, so a change reaches the Pi only after it is pushed.

@@ -13,7 +13,7 @@ The owner and Claude were mid-way through diagnosing why the slideshow stops wit
 | ID | Item | Status | Notes |
 |---|---|---|---|
 | B01 | Foundation docs: `CLAUDE.md`, `AGENTS.md`, `docs/` | done | Reviewed by an independent Opus 5.5 subagent on 2026-11-15; corrections applied. |
-| B02 | Agent configuration in the repo: `.claude/settings.json` (permissions, HDD guard hook), `.gitignore`, and the cold-start acceptance test in Paseo | todo | Flat skills, no named agents, no orchestrator (owner decision). Skills are added later, each when the script or procedure it describes exists (for example `picapport-db-fix` with B04, an apply skill with B06), so they never describe untested procedures. The slideshow/tagging/query skills are future work (L2), not designed yet. Confirm exact hook and permission syntax against Claude Code docs before writing. After the acceptance test passes the work continues from Paseo. |
+| B02 | Cold-start acceptance test in Paseo, run in the owner's normal allow-all mode (`.gitignore` is done) | todo | Owner decisions (2026-11-15): no hooks, no PreToolUse scripts, no README section on this. "Discuss before changing" is a working-style instruction in `CLAUDE.md`, not a control. Whether to add static deny rules for the HDD in `.claude/settings.json` is optional and awaiting the owner's confirmation (principle 1). Flat skills, no named agents, no orchestrator (owner decision). Skills are added later, each when the script or procedure it describes exists (B18), so they never describe untested procedures. The slideshow/tagging/query skills are future work (L2), not designed yet. After the acceptance test passes, the work continues from Paseo. |
 
 ## Next (in order)
 
@@ -29,6 +29,7 @@ The owner and Claude were mid-way through diagnosing why the slideshow stops wit
 | B11 | Fresh-build test: run the full bootstrap on a spare SD card/blank Pi | todo | The bootstrap has not been run since September 2025, so "a fresh build works" is unproven. |
 | B12 | Remove the stale `~/.config/autostart/picapport-chromium.desktop` (starts Chromium at `localhost:80`) in a repo-managed way | todo | Drift on the Pi, not from the repo. |
 | B13 | Check script: shell syntax, dry runs, docs-sync check (changed script without a doc change), simple secret pattern check | todo | No git hooks (owner preference); run by hand or by an agent before committing. |
+| B18 | Agent skills for the procedures that need them, each written together with its script so it describes a tested procedure: `picapport-db-fix` (with B04), an apply/update skill (with B06), health diagnostics (with B03), and so on | todo | Owner decision (2026-11-15): not now; tackle soon after the foundation. Slideshow/tagging/query skills are separate future work (L2). |
 | B14 | `find-pi.ps1` works only in PowerShell 7 (`pwsh`); make it work in the built-in `powershell` 5.1 or keep the documented requirement | todo | Minor. |
 | B15 | Mark `cleanup.sh` in the README as destructive and for the owner's deliberate rebuilds only | todo | Today it is the only documented route to new code on the Pi: it cannot test a branch (it clones `main`), deletes the checkout, and bootstrap then runs `apt full-upgrade` and reboots. B06 (`update.sh`) replaces it for day-to-day changes. |
 | B16 | `scripts/mount-hdd.sh`: pin the HDD by UUID or label (`Expansion`) instead of "first non-SD partition", and make the mount wait for the device | todo | See architecture.md "Start order". The README's `mount-hdd.log` line is stale: the file exists but was last written in September 2025; the script now logs to stdout. |
@@ -57,6 +58,7 @@ The owner and Claude were mid-way through diagnosing why the slideshow stops wit
 | Q6 | What interface does the knob-and-buttons board use (GPIO or USB), and what should it do? |
 | Q7 | Picapport's jar manifest says `Version: 9` while its web UI reports `10.4.0`. Which version and licence terms apply? |
 | Q8 | Does the owner have tags, ratings or other data in Picapport that cannot be rebuilt from the photos? This decides how risky a database reset or `cleanup.sh delete-picapport` is. |
+| Q10 | In Paseo, nearly every recorded agent session across the owner's projects runs in the `bypassPermissions` mode (no permission prompts); a few use `plan` or `default`. Does a Claude Code `PreToolUse` hook, and do permission `deny` rules, still block actions in `bypassPermissions` mode? Can the repo's `.claude/settings.json` set the session mode, or does Paseo override it per session? Verify against the Claude Code docs before relying on any guardrail (B02). |
 | Q9 | `config/picapport.properties` sets `user.log.access=true`, but no access log was found in `/opt/picapport/.picapport/logfiles/`. Where does Picapport write it, or is it off? (Affects B03: Picapport does not give us request times.) |
 ## Done
 

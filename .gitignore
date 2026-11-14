@@ -1,0 +1,5 @@
+# Machine-local Claude Code settings (permission choices made on one PC)
+.claude/settings.local.json
+
+# Installed Node packages (created by `npm install` in api/)
+api/node_modules/
