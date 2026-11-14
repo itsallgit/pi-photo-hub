@@ -4,6 +4,8 @@ A Raspberry Pi 4 that plays the owner's photo library as a slideshow on an attac
 
 The Pi has **no keyboard or mouse** attached, only a monitor (see [docs/hardware.md](docs/hardware.md)). Never ask the owner to click, type or press a button on the Pi; plan everything to work over SSH, the API or the power button.
 
+Project principle: **long-lasting information lives in the photos' own metadata.** Picapport's database is a disposable index that is rebuilt from the images and folder structure; nothing that must last may exist only there (see [docs/principles.md](docs/principles.md), principle 11).
+
 This file holds context and the always-on rules. **How to do things lives in skills** (see "Skills" below), not here.
 
 ## Session start
@@ -28,6 +30,7 @@ This is how every session should behave. It is a working style, not a technical 
 
 - **The owner understands a change before it happens.** For anything that changes the Pi (a database reset, restarting or reconfiguring services, files, cron, a reboot, any SSH command that writes) or changes how the project behaves, say what you propose, why, the risk, and how to undo it, and get the owner's agreement first. Keep it short enough to read on a phone.
 - **You understand the objective before extending the project.** For a new feature or a substantial extension (for example the planned knob-and-buttons board), first make sure you understand what the owner is trying to achieve, discuss the options and agree a plan. Do not go straight in.
+- **Never suggest the power-cable button.** The owner switches the Pi off and on by the cable, a hard power cut that probably corrupts Picapport's database (backlog Q3). Whenever the Pi needs to be switched off or restarted, say so and offer a clean shutdown or reboot over SSH (agree it first), so the owner never has to remember to ask.
 - **Bookkeeping needs no review.** Updating the backlog, docs and similar notes to reflect what is known or decided is part of the job and needs no discussion.
 - **Investigate freely.** Read-only work (reading files and logs, `git status`, read-only SSH, screenshots) needs no discussion.
 - **Stay inside what was agreed.** If the plan needs to grow, say so and agree the new scope first.
