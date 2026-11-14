@@ -41,6 +41,8 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | Skill | Use it to |
 |---|---|
 | `pi-access` | Reach the Pi over SSH, read its state and logs, see its screen |
+| `git-workflow` | Commit, branch, test a branch on the Pi, merge to `main`, push |
+| `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 
 More skills are planned (backlog B18). Each is written together with the script or procedure it describes, so it never documents something untested.
 
@@ -54,8 +56,7 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 
 - **Commits:** Conventional Commits, `<type>(<scope>): <description>`, types `feat fix chore docs refactor test ci`. No `Co-Authored-By` lines and no AI attribution.
 - **`main` is what a fresh Pi builds.** It is intended to always work. (A fresh build has not been re-tested since September 2025, backlog B11, so treat this as the goal, not a guarantee.) A fresh Pi clones `main`.
-- **Default:** small commits straight to `main`, for documentation and low-risk changes. One logical change per commit, including its docs and backlog updates (hard rule 3).
-- **Exception:** code that could break a fresh build or the running Pi (bootstrap, systemd units, mount scripts, update scripts) goes on a short-lived `feat/<topic>` or `fix/<topic>` branch. Push the branch so other clones and worktrees can see it. Test it on the Pi (`scripts/update.sh --branch <name>` once that exists; until then by an agreed plan), then merge to `main` with `git merge --ff-only`. If `main` has moved on and `--ff-only` fails, merge `main` into the branch, retest, then fast-forward `main`. No pull request is needed. This repo-level rule overrides the global "use PRs for main" rule, by the owner's explicit decision; the global rule may still make a session ask first, which is fine.
+- **Default:** small commits straight to `main`. One logical change per commit, including its docs and backlog updates (hard rule 3). Risky code goes on a short-lived branch and is tested on the Pi before a fast-forward merge to `main`; no pull request is needed (the owner's decision, overriding the global "use PRs for main" rule). The steps are in the `git-workflow` skill.
 - Never force-push or rebase. Never `git reset --hard` without the owner's explicit instruction.
 - The Pi pulls from GitHub, so a change reaches the Pi only after it is pushed.
 
