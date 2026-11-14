@@ -1,0 +1,13 @@
+#!/bin/bash
+# Runs ONCE at boot from the SD card boot partition (injected by scripts/sd-recover.ps1).
+# Resets the login password and enables SSH, then removes itself.
+set +e
+PI_USER=$(getent passwd 1000 | cut -d: -f1)
+PI_USER=${PI_USER:-pi}
+PW=$(echo '__PW_B64__' | base64 -d)
+echo "$PI_USER:$PW" | chpasswd
+systemctl enable ssh
+rm -f /etc/ssh/sshd_not_to_be_run
+rm -f /boot/firmware/firstrun.sh
+sed -i 's| systemd.run=[^ ]*||g; s| systemd.run_success_action=[^ ]*||g; s| systemd.unit=[^ ]*||g' /boot/firmware/cmdline.txt
+exit 0

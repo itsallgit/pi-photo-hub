@@ -245,6 +245,10 @@ else
   echo "[WARN] Photo API systemd template missing: $PHOTO_API_SERVICE_SRC"
 fi
 
+# ---------- Health log (cron, every minute) ----------
+banner "Installing health logger (cron)"
+bash "$REPO_ROOT/scripts/install-health-log.sh" || echo "[WARN] Health logger not installed (non-fatal)"
+
 # ---------- Finalize ----------
 banner "Bootstrap Complete"
 echo "[INFO] All components installed (or were present)."

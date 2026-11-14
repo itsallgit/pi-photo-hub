@@ -1,0 +1,20 @@
+# Hardware
+
+Verified facts only. Anything unverified is an open question in the [backlog](backlog.md).
+
+## Current
+
+| Item | Detail | Source |
+|---|---|---|
+| Computer | Raspberry Pi 4 Model B Rev 1.5, 4 GB RAM (3790 MB usable), 64-bit | read from the Pi, 2026-11-15 |
+| Storage (boot/OS) | SD card, 119 GB (`/dev/mmcblk0`): `bootfs` 512 MB FAT at `/boot/firmware`, `rootfs` ext4 at `/`. 8% used. | read from the Pi |
+| Photo storage | External USB HDD, 1.8 TB, **exFAT**, label `Expansion`, mounted at `/mnt/photos`. **Never modified by agents** (see [principles](principles.md)). | read from the Pi |
+| Display | HP M22f FHD monitor over HDMI (`HDMI-A-1`) | read from the Pi |
+| Network | Wired ethernet (`eth0`). Wi-Fi (`wlan0`) exists but is down. | read from the Pi |
+| Real-time clock | None. The clock is wrong until NTP syncs after boot. | Pi 4 has no RTC; observed a clock jump at boot |
+| Power | Supplied through a cable with an inline button. The owner uses that button to turn the Pi off and on, which cuts power without a shutdown. | stated by the owner |
+| Throttling | `vcgencmd get_throttled` = `0x0` (no under-voltage or overheating) on 2026-11-15 | read from the Pi |
+
+## Planned
+
+- A small board with one volume knob and three buttons to be connected to the Pi, for local control. Model, connection (GPIO or USB) and the intended functions are undecided. See the backlog.
