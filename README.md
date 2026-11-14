@@ -162,7 +162,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 Every minute a cron job (user `pi`) runs [scripts/health-log.sh](scripts/health-log.sh) and appends one line describing the state of the hub. Every 5 minutes it also saves a small screenshot of the screen. It exists so that when something goes wrong (e.g. the slideshow shows "Network Error"), you can look back and see *when* it happened and *what the system was doing just before*.
 
 * It is installed automatically by `bootstrap.sh` (via [scripts/install-health-log.sh](scripts/install-health-log.sh)) and removed by `cleanup.sh`.
-* Data is stored in RAM (`/run/user/1000/pi-photo-hub-health/`) to avoid wearing the SD card. **It is lost on reboot or power loss.** The log holds ~3.5 days (5000 lines), screenshots the last 24 h (288 files, ~10 MB).
+* Data is stored in RAM (`/run/user/1000/pi-photo-hub-health/`) to avoid wearing the SD card. **It is lost on reboot or power loss.** The log holds ~3.5 days (5000 lines), screenshots the last 24 h (288 PNG files, roughly 15 MB; an estimate not yet measured on the Pi).
 * Overhead: a few seconds of light CPU per minute.
 
 ### Log fields (`health.log`, key=value, one line per minute)
@@ -195,7 +195,7 @@ ssh -i $env:USERPROFILE\.ssh\id_pi_photo_hub pi@<pi-ip> "tail -n 60 /run/user/10
 # Minutes where something was wrong (Picapport not 200, or new errors in the JSON servlet / pool)
 ssh -i $env:USERPROFILE\.ssh\id_pi_photo_hub pi@<pi-ip> "grep -vE 'pp=200 .* new_json=0 new_pool=0' /run/user/1000/pi-photo-hub-health/health.log | tail -n 40"
 
-# Copy the screenshots to your PC (newest are last; filenames are YYYYMMDD-HHMM.jpg)
+# Copy the screenshots to your PC (newest are last; filenames are YYYYMMDD-HHMM.png)
 scp -i $env:USERPROFILE\.ssh\id_pi_photo_hub -r pi@<pi-ip>:/run/user/1000/pi-photo-hub-health/shots .\shots
 ```
 

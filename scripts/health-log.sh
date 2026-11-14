@@ -8,7 +8,8 @@
 #
 # Data lives in RAM (/run/user/<uid>/pi-photo-hub-health) to avoid SD card wear.
 # It is lost on reboot/power loss by design. Log is capped at 5000 lines (~3.5 days),
-# screenshots at 288 (24 h, ~10 MB).
+# screenshots at 288 (24 h, roughly 15 MB; estimate, not yet measured on the Pi).
+# Screenshots are PNG: this Pi's grim is built without JPEG support.
 
 set -u
 
@@ -122,7 +123,7 @@ EOP
 if [ $(( $(date +%-M) % 5 )) -eq 0 ] && command -v grim >/dev/null 2>&1 \
    && [ -S "/run/user/$UID_NUM/wayland-0" ]; then
   XDG_RUNTIME_DIR="/run/user/$UID_NUM" WAYLAND_DISPLAY=wayland-0 \
-    grim -t jpeg -q 40 -s 0.35 "$SHOTS/$(date +%Y%m%d-%H%M).jpg" 2>/dev/null || true
-  ls -t "$SHOTS"/*.jpg 2>/dev/null | tail -n +$((MAX_SHOTS + 1)) | xargs -r rm -f
+    grim -t png -s 0.35 "$SHOTS/$(date +%Y%m%d-%H%M).png" 2>/dev/null || true
+  ls -t "$SHOTS"/*.png 2>/dev/null | tail -n +$((MAX_SHOTS + 1)) | xargs -r rm -f
 fi
 exit 0
