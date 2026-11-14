@@ -2,6 +2,8 @@
 
 A Raspberry Pi 4 that plays the owner's photo library as a slideshow on an attached monitor. Picapport (Java) indexes the photos on an attached HDD; a small Node.js API (`photo-api`) launches Chromium in kiosk mode on a Picapport slideshow URL. This repo is the **whole project**: install scripts, Pi configuration, the API, documentation and the AI agent configuration used to manage it.
 
+The Pi has **no keyboard or mouse** attached, only a monitor (see [docs/hardware.md](docs/hardware.md)). Never ask the owner to click, type or press a button on the Pi; plan everything to work over SSH, the API or the power button.
+
 Read this file fully at the start of every session. Then read [docs/backlog.md](docs/backlog.md) to learn where the work is up to.
 
 ## Session start
