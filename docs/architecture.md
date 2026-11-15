@@ -37,6 +37,19 @@ Per the owner: Picapport's default indexing already supports queries based on th
 
 From the unit files (not observed failing): `mount-hdd.service` is ordered only `After=local-fs.target` and does not wait for the USB device to appear. If the HDD is not ready at that moment the mount script exits with an error, and because `picapport-wrapper` has `Requires=mount-hdd`, Picapport would not start. See B16.
 
+## Stop order and how the parts fail together
+
+What is known about how one part's failure becomes another part's symptom. Each link is marked observed or inferred; details and evidence in `docs/picapport-db.md` and the backlog.
+
+1. **Stopping Picapport kills it mid-shutdown** (observed 2026-11-15). On `systemctl stop picapport-wrapper`, and so on every reboot or shutdown, Picapport starts its shutdown but has not exited after 30 s; systemd ends the init script's stop at 30 s (`TimeoutStopSec=30`) and SIGKILLs Java at 60 s, while Picapport's shutdown hook is still running. OrientDB itself allows 30 s to flush its write cache at shutdown. A power cut at the cable does the same, without any shutdown at all (Q3).
+2. **The database is left unclosed** (inferred from 1 and the `dirty.fl` flag) and pages can be left half-written. This is the strongest suspect for the repeated damage (Q11).
+3. **A broken page puts the database in read-only mode** (observed in Picapport's log): `OPageIsBrokenException` names the page; since 2025-10-22 nothing new has been indexed (new photos, such as the honeymoon folder, never appear).
+4. **The crawler keeps hitting the broken page** on every run (at start and at midnight), then `OLockException` once a minute for hours (observed; causal link inferred).
+5. **The slideshow page fails** (observed): it plays right after a fresh Picapport start, then a JSON request fails (`PicApportJsonServlet ... InvocationTargetException`) and the page goes white or shows "Network Error", and does not recover by itself. That this is caused by 3 and 4 is a strong hypothesis (B03).
+6. **Restarting `photo-api` takes Chromium down with it** (observed): Chromium runs in its cgroup. `update.sh` therefore relaunches the slideshow itself (B20).
+
+Consequence for any fix: a repaired database will break again at the next stop or reboot unless step 1 is fixed first (B10, Q11).
+
 ## Photo API (port 3000, no authentication, LAN only)
 
 | Endpoint | Behaviour |

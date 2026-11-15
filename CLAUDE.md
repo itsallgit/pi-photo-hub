@@ -53,7 +53,7 @@ More skills are planned (backlog B18). Each is written together with the script 
 
 ## Shell environment
 
-The owner's PC is Windows 11. Two shells are available: PowerShell, and Git Bash through the Bash tool. `scripts/*.sh` run on the Pi (Linux), not on the PC. `scripts/*.ps1` are PC-side helpers and some require PowerShell 7 (`pwsh`), not the built-in `powershell` 5.1.
+The owner's PC is Windows 11. Two shells are available: PowerShell, and Git Bash through the Bash tool. Python 3.15 is installed for the user (on the user PATH for new shells; older shells may still hit the Microsoft Store `python` alias). There is no Java on the PC apart from the one bundled with Android Studio; OrientDB and other Pi-side tools run on the Pi (owner, 2026-11-15). `scripts/*.sh` run on the Pi (Linux), not on the PC. `scripts/*.ps1` are PC-side helpers and some require PowerShell 7 (`pwsh`), not the built-in `powershell` 5.1.
 
 ## Git standard
 
