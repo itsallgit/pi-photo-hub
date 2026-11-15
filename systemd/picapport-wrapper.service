@@ -13,7 +13,10 @@ ExecStopPost=/opt/picapport/cleanup-picapport.sh
 PIDFile=/var/run/picapport.pid
 Restart=on-failure
 RestartSec=10
-TimeoutStopSec=30
+# Give Picapport time to close its database. With 30 s it was SIGKILLed mid-shutdown on every
+# stop and reboot (observed 2026-11-15, backlog Q11/B10). Keep in step with the init script's
+# --retry TERM/<n> in initd/picapport. How long a clean stop really takes is still being measured.
+TimeoutStopSec=300
 
 [Install]
 WantedBy=multi-user.target

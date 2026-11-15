@@ -1,7 +1,7 @@
 #!/bin/bash
-# apply-units.sh - bring the installed systemd units in line with systemd/ in the source tree.
-# Called by scripts/update.sh. Only syncs units that are already installed (bootstrap.sh
-# installs and enables them); never enables, starts, stops or restarts anything.
+# apply-units.sh - bring the installed systemd units, and Picapport's init script, in line with
+# systemd/ and initd/ in the source tree. Called by scripts/update.sh. Only syncs files that are
+# already installed (bootstrap.sh installs and enables them); never enables, starts, stops or restarts anything.
 #   SRC=<tree> [DRY_RUN=1] bash scripts/lib/apply-units.sh
 set -euo pipefail
 SRC="${SRC:?SRC (the source tree to apply) is required}"
@@ -26,6 +26,19 @@ systemd/photo-api.service.template photo-api.service
 systemd/picapport-chromium.service.template picapport-chromium.service
 systemd/picapport-wrapper.service picapport-wrapper.service
 LIST
+
+# Picapport's init script (used by picapport-wrapper.service for start and stop). Synced like a
+# unit: only if installed; takes effect at the next Picapport stop/start, which this never does.
+INITD_DIR="${INITD_DIR:-/etc/init.d}"
+if [ -f "$SRC/initd/picapport" ]; then
+  if [ -f "$INITD_DIR/picapport" ]; then
+    if MODE=755 sync_file "$SRC/initd/picapport" "$INITD_DIR/picapport" "init script picapport"; then
+      note_changed "initd:picapport"
+    fi
+  else
+    log "init script picapport: not installed on this machine, skipped (bootstrap.sh installs it)"
+  fi
+fi
 
 if [ "$changed" = 1 ]; then
   run $SUDO "$SYSTEMCTL" daemon-reload

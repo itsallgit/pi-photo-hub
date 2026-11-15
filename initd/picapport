@@ -34,7 +34,9 @@ case "$1" in
   stop)
     echo "Stopping $DESC..."
     if [ -f "$PIDFILE" ]; then
-      start-stop-daemon --stop --pidfile "$PIDFILE" --retry=TERM/30/KILL/5
+      # Wait up to 290 s after TERM for Picapport to close its database before KILL (kept just
+      # under TimeoutStopSec=300 in picapport-wrapper.service; backlog Q11/B10).
+      start-stop-daemon --stop --pidfile "$PIDFILE" --retry=TERM/290/KILL/5
       rm -f "$PIDFILE"
       echo "$NAME stopped."
     else

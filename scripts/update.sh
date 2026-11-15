@@ -155,10 +155,12 @@ if [ "$PHASE2" = 1 ]; then
     log "  - picapport.properties changed: it takes effect when Picapport restarts (not restarted; see backlog Q11)"; need=1; fi
   for u in mount-hdd.service picapport-wrapper.service; do
     if grep -qx "unit:$u" "$UPDATE_CHANGED"; then
-      log "  - $u definition changed: takes effect at its next start/boot (not restarted)"; need=1; fi
+      log "  - $u definition changed: start settings take effect at its next start or boot, stop settings (TimeoutStopSec) at its next stop; not restarted"; need=1; fi
   done
-  if grep -E '^(initd/|picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" >/dev/null 2>&1; then
-    log "  - bootstrap-managed files changed ($(grep -E '^(initd/|picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" | tr '\n' ' ')): applied only by a rebuild (backlog B11)"; need=1; fi
+  if grep -qx "initd:picapport" "$UPDATE_CHANGED"; then
+    log "  - Picapport's init script changed: used at the next Picapport stop or start (not restarted)"; need=1; fi
+  if grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" >/dev/null 2>&1; then
+    log "  - bootstrap-managed files changed ($(grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" | tr '\n' ' ')): applied only by a rebuild (backlog B11)"; need=1; fi
   if grep -qx 'scripts/mount-hdd.sh' "$CHANGED" 2>/dev/null; then
     log "  - scripts/mount-hdd.sh changed: used at the next mount/boot"; need=1; fi
   [ "$need" = 0 ] && log "  (nothing)"

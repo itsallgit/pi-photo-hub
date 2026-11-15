@@ -41,13 +41,14 @@ note_changed() {
   if [ -n "${UPDATE_CHANGED:-}" ]; then echo "$1" >> "$UPDATE_CHANGED"; fi
 }
 
-# sync_file <src> <dst> <label> [extra install(1) args]: install src over dst when they differ.
+# sync_file <src> <dst> <label> [extra install(1) args]: install src over dst when they differ,
+# with mode $MODE (default 644).
 # Returns 0 if a change was (or, in dry-run, would be) made, 1 if already identical.
 sync_file() {
   local src="$1" dst="$2" label="$3" extra="${4:-}"
   if [ -f "$dst" ] && cmp -s "$src" "$dst"; then return 1; fi
   if [ -f "$dst" ]; then log "$label: differs from the repo, updating"; else log "$label: not present, installing"; fi
   # shellcheck disable=SC2086
-  run $SUDO install -m 644 $extra "$src" "$dst"
+  run $SUDO install -m "${MODE:-644}" $extra "$src" "$dst"
   return 0
 }
