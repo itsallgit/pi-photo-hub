@@ -40,4 +40,4 @@ The script prints the previous commit. Roll back with `update.sh --ref <that sha
 
 ## Last verified
 
-2026-11-15: run on the Pi through B06 stages A to C (update to branch `feat/update-script`, before the app-restart change). The app-restart and always-install changes are tested on the PC against a scratch clone with stubbed `systemctl`, `sudo`, `crontab`, `curl` and `pgrep` (dry run, real run, re-run, launcher failure, no Chromium); not yet on the Pi. The skill is not yet cold-tested.
+2026-11-15: run on the Pi for every stage of B06: a branch, the app-restart change (the slideshow came back by itself), `main`, a rollback with `--ref` and the return to `main`, all verified. Not yet exercised on the Pi: `--discard-local-changes`, `--reset-slideshow`, a change that needs `npm install`. The skill is not yet cold-tested.

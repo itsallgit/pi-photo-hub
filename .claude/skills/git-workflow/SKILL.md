@@ -24,7 +24,7 @@ Use a short-lived `feat/<topic>` or `fix/<topic>` branch for code that could bre
 
 1. `git switch -c feat/<topic>`
 2. Commit as above. `git push -u origin feat/<topic>` so the Pi and any other clone can see it.
-3. **Test it on the Pi.** Use the `apply-changes` skill with the branch name (`update.sh --branch <branch>`). Changes to the Pi follow "Working with the owner". Until `update.sh` has been deployed to the Pi (backlog B06), agree the deploy with the owner first.
+3. **Test it on the Pi.** Use the `apply-changes` skill with the branch name (`update.sh --branch <branch>`). Changes to the Pi follow "Working with the owner". Agree every deploy with the owner first (the skill has the agreement gate).
 4. When it works: `git switch main`, `git pull --ff-only`, `git merge --ff-only feat/<topic>`, `git push origin main`.
 5. If `--ff-only` fails because `main` has moved: `git switch feat/<topic>`, `git merge main`, retest on the Pi, then repeat step 4.
 6. Ask the owner before deleting the branch (deleting branches needs explicit instruction).

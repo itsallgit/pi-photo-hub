@@ -52,13 +52,13 @@ Chromium is started with `pkill -9 chromium` first, so any running browser is ki
 
 ## Known design issues (tracked in the backlog)
 
-- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06 (branch `feat/update-script`): the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on the branch, not yet `main`); the Pi's checkout is now clean apart from an untracked `api/package-lock.json`.
+- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06: the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on `main`); the Pi's checkout is now clean apart from an untracked `api/package-lock.json`.
 - Restarting `photo-api` by hand (outside `update.sh`) kills the slideshow and nothing relaunches it; start `picapport-chromium` or call `/api/slideshow` afterwards. (B20)
 - Picapport's database is repeatedly corrupted (`OPageIsBrokenException`); a manual recovery procedure is in the README. (B03, B04)
 - journald is configured `Storage=volatile`, so service logs are lost on every reboot. (B09)
 - A leftover `~/.config/autostart/picapport-chromium.desktop` on the Pi (not from the repo) starts Chromium at `http://localhost:80`. (B12)
 - The HDD is mounted read-write, and `scripts/mount-hdd.sh` picks the first non-SD partition that has a filesystem, so a second USB drive could be mounted instead. (L6, B16)
-- The update path (`scripts/update.sh`, B06) has run on the Pi once (2026-11-15, update to branch `feat/update-script`); the merge to `main`, a rollback and the optional parts are not yet tested there. (B06, B15)
+- The update path (`scripts/update.sh`, B06) is in use on the Pi since 2026-11-15: tested there for a branch, `main`, a rollback with `--ref` and the return to `main`. Not yet tested: `--discard-local-changes`, `--reset-slideshow`, a change that needs `npm install`. (B06, B15)
 - `bootstrap.sh` does not yet use the shared install steps that `update.sh` uses (`scripts/lib/`); two code paths install units and config until bootstrap adopts them as part of the fresh-build test. (B11)
 - The bootstrap has not been run on a blank Pi since September 2025. (B11)
 

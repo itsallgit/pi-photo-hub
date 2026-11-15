@@ -289,7 +289,7 @@ Optional flags: `--reset-slideshow` (forget the saved slideshow; the API falls b
 **First time, or after rolling back past the script** (the Pi's checkout has no `scripts/update.sh`): pipe it from the PC instead, from a Git Bash window in this repo. The script must already be pushed. `git show` sends the committed (LF) version, which a Windows checkout with CRLF line endings would not:
 
 ```bash
-git show origin/feat/update-script:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@<pi-ip> 'bash -s -- --dry-run --branch feat/update-script'
+git show origin/main:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@<pi-ip> 'bash -s -- --dry-run'
 ```
 
 **Saved slideshow.** The last slideshow is kept in `/var/lib/photo-api/slideshow_url.txt` (created by systemd, outside the repo checkout), so an update never touches it. If you ever need to carry an old one over by hand, copy the old `api/slideshow_url.txt` there before the first update (`sudo mkdir -p /var/lib/photo-api && sudo chown pi:pi /var/lib/photo-api`).
