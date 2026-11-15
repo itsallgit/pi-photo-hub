@@ -288,7 +288,7 @@ cmd_repair() {
   check_db "$new" "$R/check-new.log"
   {
     echo "repair started $ts; picapport stop ${STOP_SECS}s (killed: $STOP_KILLED)"
-    echo "source: errors=$(grep -o '[0-9]* with errors' "$R/check-source.log" | head -1 || true); exported photos=$exported_photos"
+    echo "source: errors=$(grep -o "completed in [0-9]*ms. [0-9]* with errors" "$R/check-source.log" | grep -o "[0-9]* with" | grep -o "^[0-9]*" || echo 0); exported photos=$exported_photos"
     echo "new: errors=$CHECK_ERRORS photos=$PHOTOS"
   } > "$R/INFO"
   if [ "$CHECK_ERRORS" != 0 ] || [ "$PHOTOS" != "$exported_photos" ]; then
