@@ -48,6 +48,7 @@ A snapshot changes nothing on the live system. To delete one: `chmod -R u+w <sna
 
 - Delete or move the live database, or start a full re-index, without the owner's explicit decision.
 - Run OrientDB tools against the live database while Picapport runs, or against a snapshot (work on a further copy).
+- **Run an OrientDB import (or anything heavier than `CHECK DATABASE`, `REBUILD INDEX` or `EXPORT DATABASE`) while Picapport and the slideshow are running.** On 2026-11-15 an import with `-Xmx768m` next to Picapport (about 1.4 GB) and Chromium (about 1.1 GB) on the 4 GB Pi made it stop answering SSH, the API and Picapport for over 30 minutes. Imports run only in an agreed maintenance window with Picapport stopped.
 - Put any work files on `/mnt/photos`.
 - Restart Picapport outside an agreed step.
 
