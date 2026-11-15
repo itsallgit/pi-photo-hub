@@ -47,6 +47,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | `git-workflow` | Commit, branch, test a branch on the Pi, merge to `main`, push |
 | `apply-changes` | Get a change (or a branch, or a rollback) onto the Pi with `scripts/update.sh`, behind an agreement gate |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
+| `picapport-db` | **Draft (B04).** Diagnose and repair Picapport's database on copies: status, snapshot, repair playbook, case history |
 
 More skills are planned (backlog B18). Each is written together with the script or procedure it describes, so it never documents something untested.
 
@@ -72,6 +73,7 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 | The rules and how they are enforced | [docs/principles.md](docs/principles.md) |
 | Components, services, paths, API | [docs/architecture.md](docs/architecture.md) |
 | Network layout (router, Deco, Pi) | [docs/network.md](docs/network.md) |
+| Picapport database facts and repair history | [docs/picapport-db.md](docs/picapport-db.md) |
 | Hardware | [docs/hardware.md](docs/hardware.md) |
 | How to do things | `.claude/skills/` |
 | Runbooks for humans (install, SSH, DB fix, ...) | [README.md](README.md) |

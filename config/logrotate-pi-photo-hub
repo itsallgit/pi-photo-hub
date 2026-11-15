@@ -1,6 +1,6 @@
 # Installed to /etc/logrotate.d/pi-photo-hub by scripts/update.sh (on every update).
-# Covers update.log only for now; backlog B09 extends this to the other logs.
-/var/log/pi-photo-hub/update.log {
+# Covers update.log and picapport-db.log for now; backlog B09 extends this to the other logs.
+/var/log/pi-photo-hub/update.log /var/log/pi-photo-hub/picapport-db.log {
     weekly
     rotate 8
     compress

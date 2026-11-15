@@ -220,7 +220,7 @@ Your photo API will be available at `http://<pi-ip>:3000/api/test`.
 
 ## Picapport Database Fix
 
-*Note: this will eventually be automated with a new photo-api endpoint.*
+**Diagnose and repair, do not rebuild** (owner, 2026-11-15; backlog B04). Automated: the `picapport-db` skill and `scripts/picapport-db.sh` (`status` is read-only; `snapshot [--dry-run]` stops Picapport for a few minutes, copies the database to a read-only snapshot in `/home/pi/picapport-db-work/` and starts it again). Facts and case history: `docs/picapport-db.md`. The repair steps on a copy are being built; until then the manual export/import below is the older procedure, which the owner recalls did not work.
 
 > ERROR@ 18:24:57.863 Exception Error PhotoCrawler.DirectoryConsumer.handlePhotoUpdate:/mnt/photos/PHOTOS/2023.09.04 - 2023.09.24 - Croatia and Serbia/20230910_211633.jpg: com.orientechnologies.orient.core.exception.OPageIsBrokenException: Following files and pages are detected to be broken ['idxfileName.cbt' :2;'idxphotoId.cbt' :1;'photo.pcl' :0;'directory.pcl' :2;'photo.cpm' :0;], storage is switched to 'read only' mode. Any modification operations are prohibited. To restore database and make it fully operational you may export and import database to and from JSON. DB name="db_3_0_39"
 
