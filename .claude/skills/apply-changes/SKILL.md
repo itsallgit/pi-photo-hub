@@ -13,7 +13,7 @@ description: Use when a change in this repo has to reach the Pi (new code, a sys
 
 1. The change is **pushed to GitHub** (`git push`; for a branch `git push -u origin <branch>`). The Pi pulls from GitHub, so what is not pushed does not exist for it. The `git-workflow` skill covers branches, testing and merging.
 2. Read-only state check with the `pi-access` skill: services `active`, the checkout's `git status --short` and `git log --oneline -1`, and `cd ~/pi-photo-hub && git ls-remote origin HEAD` (proves the Pi can reach GitHub).
-3. The Pi has `scripts/update.sh` in its checkout. If it does not (first deploy, or after rolling back past it), **pipe it from the PC** instead: `git fetch `ssh ... pi@pi.local 'bash -s -- <options>' < scripts/update.sh` (Git Bash). Pipe only a script that is already pushed.`ssh ... pi@pi.local 'bash -s -- <options>' < scripts/update.sh` (Git Bash). Pipe only a script that is already pushed. git show origin/<branch>:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@pi.local 'bash -s -- <options>'` (Git Bash). Pipe only a script that is already pushed. Use `git show`, not `< scripts/update.sh`: the committed file is LF, a Windows working copy may be CRLF, and CR characters break bash on the Pi.
+3. The Pi has `scripts/update.sh` in its checkout. If it does not (first deploy, or after rolling back past it), **pipe it from the PC** (Git Bash): `git fetch origin && git show origin/<branch>:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@pi.local 'bash -s -- <options>'`. Pipe only a script that is already pushed. Use `git show`, not `< scripts/update.sh`: the committed file is LF, a Windows working copy may be CRLF, and CR characters break bash on the Pi.
 
 ## Steps
 
