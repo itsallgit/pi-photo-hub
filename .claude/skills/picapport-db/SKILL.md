@@ -28,7 +28,7 @@ From the broken-page list: index files (`idx...`) are derived data and can in pr
 
 | Step | Command | Changes | Status |
 |---|---|---|---|
-| Snapshot the live database | `picapport-db.sh snapshot` (`--dry-run` first) | Stops Picapport for a few minutes, copies `db/` to a read-only snapshot in `/home/pi/picapport-db-work/`, starts Picapport and the slideshow again. The live database is only read | tested on the PC only |
+| Snapshot the live database | `picapport-db.sh snapshot` (`--dry-run` first) | Stops Picapport (about 1 min: it is killed after 60 s, see `docs/picapport-db.md`), copies `db/` (about 30 s for 696 MB) to a read-only snapshot in `/home/pi/picapport-db-work/`, starts Picapport (about 15 s) and the slideshow again; about 2 min in all. The live database is only read | **tested on the Pi** 2026-11-15 |
 | Rebuild a broken index on a copy | to be built | | untested |
 | Export/import on a copy | to be built (manual steps in the README) | | untested |
 | Swap a repaired, checked copy in; keep the original | to be built | | untested |
@@ -57,4 +57,4 @@ A snapshot changes nothing on the live system. To delete one: `chmod -R u+w <sna
 
 ## Last verified
 
-Draft, 2026-11-15: `status` and `snapshot` tested on the PC with stubs (dry run, real run, Java still running after stop, Picapport failing to start, HDD path guard). Not yet run on the Pi.
+Draft, 2026-11-15: `status` and `snapshot` tested on the PC with stubs (dry run, real run, Java still running after stop, Picapport failing to start, HDD path guard) and run on the Pi (status; snapshot dry run and real run 13:33, slideshow back afterwards). Repair steps not built yet. Not cold-tested.

@@ -74,7 +74,7 @@ cmd_status() {
     grep -o "detected to be broken \[[^]]*\]" "$f" | sort | uniq -c | sed 's/^/    /' || echo "    none"
     echo "  other error classes in it (count):"
     grep '^ERROR@' "$f" | grep -v OPageIsBrokenException \
-      | sed -E 's/.*Exception Error ([^:]+): ([A-Za-z0-9_.$]+).*/\2   (in \1)/' \
+      | sed -E 's/^ERROR@ [0-9:.]+ Exception Error ([^: ]+).* ([a-z]+\.[A-Za-z0-9_.$]*(Exception|Error))[: ].*/\2   (in \1)/' \
       | sed -E 's/^[a-z0-9_.]+\.([A-Z])/\1/' | sort | uniq -c | sort -rn | head -8 | sed 's/^/    /' || true
   fi
   echo "Snapshots in $WORK_DIR:"
@@ -89,7 +89,7 @@ cmd_snapshot() {
   [ -d "$db" ] || die "database not found: $db"
   ts="$(date +%Y%m%d-%H%M%S)"; dest="$WORK_DIR/snapshot-$ts"
   need=$(( $(du -sk "$DB_PARENT" | cut -f1) * 3 ))
-  mkdir -p "$WORK_DIR" 2>/dev/null || [ "$DRY_RUN" = 1 ] || die "cannot create $WORK_DIR"
+  if [ "$DRY_RUN" != 1 ]; then mkdir -p "$WORK_DIR" || die "cannot create $WORK_DIR"; fi
   avail=$(df -Pk "$( [ -d "$WORK_DIR" ] && echo "$WORK_DIR" || dirname "$WORK_DIR")" | awk 'NR==2{print $4}')
   log "snapshot: $DB_PARENT ($(du -sh "$DB_PARENT" | cut -f1)) -> $dest"
   [ "$avail" -gt "$need" ] || die "not enough free space in $WORK_DIR (need about $((need/1024)) MB for this and two working copies, have $((avail/1024)) MB)"
