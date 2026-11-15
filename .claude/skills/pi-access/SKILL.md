@@ -67,7 +67,7 @@ Picapport writes no access log that we have found (backlog Q9), so it does not r
 
 ## See what the screen shows
 
-The Pi runs a Wayland desktop as user `pi`. Stream a screenshot over SSH straight to a file on the PC, so nothing is written on the Pi, then look at it with the Read tool and delete it. **This Pi's `grim` cannot make JPEGs; use PNG.**
+The Pi runs a Wayland desktop as user `pi`. Stream a screenshot over SSH straight to a file on the PC, so nothing is written on the Pi, then look at it with the Read tool and delete it. **This Pi's `grim` cannot make JPEGs; use PNG.** In Git Bash, `/tmp` is a Windows folder (`C:\Users\Troy\AppData\Local\Temp`), and the Read tool needs the Windows path: get it with `cygpath -w /tmp/pi-screen.png`.
 
 ```
 ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local "XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 grim -t png -s 0.5 -" > /tmp/pi-screen.png
