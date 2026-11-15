@@ -22,16 +22,16 @@ Hard rules (`CLAUDE.md`): the photo HDD is never modified; changes reach the Pi 
 
 ## 2. Diagnosis
 
-From the broken-page list: index files (`idx...`) are derived data and can in principle be rebuilt from the records; record files (`.pcl`, `.cpm`) hold the data itself. *(Next to build: an offline `check` on a snapshot copy with the OrientDB console.)*
+Run OrientDB's own check on a **copy** (never the live database): `CHECK DATABASE -v` names every damaged file and page (about 20 s). Index files (`idx...`) are derived data and can be rebuilt from the records; position maps (`.cpm`) and record files (`.pcl`) hold or locate the data itself. Compare `LIST CLASSES` (records) with `LIST INDEXES` (what an index can reach): the gap is the number of records a damaged map page hides. The console commands and their output are in `docs/picapport-db.md`; `repair` runs the check for you.
 
 ## 3. Treatment playbook (mildest first; all on copies)
 
 | Step | Command | Changes | Status |
 |---|---|---|---|
 | Snapshot the live database | `picapport-db.sh snapshot` (`--dry-run` first) | Stops Picapport (about 1 min: it is killed after 60 s, see `docs/picapport-db.md`), copies `db/` (about 30 s for 696 MB) to a read-only snapshot in `/home/pi/picapport-db-work/`, starts Picapport (about 15 s) and the slideshow again; about 2 min in all. The live database is only read | **tested on the Pi** 2026-11-15 |
-| Rebuild a broken index on a copy | to be built | | untested |
-| Export/import on a copy | to be built (manual steps in the README) | | untested |
-| Swap a repaired, checked copy in; keep the original | to be built | | untested |
+| Rebuild a broken index | `REBUILD INDEX <name>` in the OrientDB console, on a copy | Only the copy | **tested on a copy on the Pi** 2026-11-15 (cleared both damaged `idxfileName` pages in 25 s); not used alone, because a damaged map page also needs export/import |
+| Repair: export everything reachable, import into a fresh database, check it, swap it in | `picapport-db.sh repair` (`--dry-run` first; `--no-swap` to stop after the check). **Maintenance window: Picapport and the slideshow are down for 15 to 30 min.** Records behind a damaged map page are not exported; Picapport's crawler re-adds them from the photos | Stops Picapport; the live database is moved aside and kept (`<work>/repair-<time>/live-before`); a fresh one takes its place. Rolls back by itself if the new one is not clean or Picapport will not start on it | export **tested on a copy on the Pi** (4 min, 0 broken); import tested on the Pi only with Picapport running, which froze the Pi (memory), so `repair` now stops Picapport first and caps the cache; the full command is tested on the PC with stubs only |
+| Undo a swap | `picapport-db.sh restore <work>/repair-<time>/live-before` | Stops Picapport, puts the kept database back (the replaced one is kept too), starts it | tested on the PC with stubs only |
 | Full re-index | **only by the owner's decision** | | |
 
 **Agreement gate** before `snapshot` or any later step that changes the Pi: tell the owner what stops, for how long, what is copied or moved, the risk and the undo, and wait for a yes.
@@ -58,4 +58,4 @@ A snapshot changes nothing on the live system. To delete one: `chmod -R u+w <sna
 
 ## Last verified
 
-Draft, 2026-11-15: `status` and `snapshot` tested on the PC with stubs (dry run, real run, Java still running after stop, Picapport failing to start, HDD path guard) and run on the Pi (status; snapshot dry run and real run 13:33, slideshow back afterwards). Repair steps not built yet. Not cold-tested.
+Draft, 2026-11-15: `status` and `snapshot` run on the Pi (snapshot 13:33). Console diagnosis, index rebuild and export run on copies on the Pi. `repair` and `restore` tested on the PC with stubs (dry run, swap, no-swap, unclean copy, photo-count mismatch, rollback when Picapport will not start, HDD guard); not yet run on the Pi. Not cold-tested.
