@@ -1,4 +1,4 @@
-# Installed to /etc/logrotate.d/pi-photo-hub by scripts/update.sh (--with-logrotate).
+# Installed to /etc/logrotate.d/pi-photo-hub by scripts/update.sh (on every update).
 # Covers update.log only for now; backlog B09 extends this to the other logs.
 /var/log/pi-photo-hub/update.log {
     weekly

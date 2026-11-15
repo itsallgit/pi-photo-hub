@@ -8,8 +8,6 @@
 #   update.sh --dry-run            show what would change; changes nothing except `git fetch`
 #                                  and a temporary export of the target under /tmp
 #   update.sh --reset-slideshow    also forget the saved slideshow (the API falls back to its default)
-#   update.sh --with-health-log    also install the health-log cron entry (refreshed if present)
-#   update.sh --with-logrotate     also install the logrotate config (refreshed if present)
 #   update.sh --discard-local-changes   move tracked local changes aside (backup in the state
 #                                  directory) and restore them from git, instead of refusing
 #
@@ -18,9 +16,11 @@
 #
 # What it does: preflight, git fetch, check out the target (fast-forward only, never a reset,
 # stash or rebase), then run the TARGET version's own copy of this script to apply it
-# (--phase2): sync systemd units that are already installed, API dependencies, Picapport's
-# properties file, optional logrotate / cron, restart photo-api only if it changed, verify.
-# It never runs apt, reboots, touches the photo HDD or mount-hdd, or restarts Picapport.
+# (--phase2): sync installed systemd units, API dependencies, Picapport's properties file,
+# the logrotate config and the health-log cron entry; then RESTART THE APP the way a boot
+# starts it (photo-api, then the boot's slideshow launcher picapport-chromium), and verify.
+# It never runs apt, reboots, restarts mount-hdd (it would remount the photo HDD) or restarts
+# Picapport (suspected to damage its database, backlog Q11); it says when those are needed.
 set -euo pipefail
 
 REPO_ROOT="${PI_REPO:-/home/pi/pi-photo-hub}"
@@ -28,6 +28,8 @@ STATE_DIR="${STATE_DIR:-/var/lib/photo-api}"
 LOG_DIR="${LOG_DIR:-/var/log/pi-photo-hub}"
 SYSTEMCTL="${SYSTEMCTL:-systemctl}"
 CURL="${CURL:-curl}"
+PGREP="${PGREP:-pgrep}"
+UNIT_DIR="${UNIT_DIR:-/etc/systemd/system}"
 if [ -z "${SUDO+x}" ]; then
   if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
 fi
@@ -37,7 +39,7 @@ MODE=main; TARGET_NAME=main
 DRY_RUN=0; RESET_SLIDESHOW=0; WITH_HEALTH_LOG=0; WITH_LOGROTATE=0; DISCARD=0
 PHASE2=0; SRC=""; CHANGED=""; FROM=""; TO=""; FROM_DESC=""; CLEANUP_SRC=0
 
-usage() { sed -n '2,23p' "${BASH_SOURCE[0]:-$0}" 2>/dev/null | sed 's/^# \{0,1\}//' || true; }
+usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]:-$0}" 2>/dev/null | sed '$d; s/^# \{0,1\}//' || true; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -45,6 +47,7 @@ while [ $# -gt 0 ]; do
     --ref) MODE=ref; TARGET_NAME="${2:?--ref needs a commit}"; shift ;;
     --dry-run) DRY_RUN=1 ;;
     --reset-slideshow) RESET_SLIDESHOW=1 ;;
+    # Accepted for older callers; both are now always installed (part of the app).
     --with-health-log) WITH_HEALTH_LOG=1 ;;
     --with-logrotate) WITH_LOGROTATE=1 ;;
     --discard-local-changes) DISCARD=1 ;;
@@ -119,21 +122,30 @@ if [ "$PHASE2" = 1 ]; then
   bash "$LIB/apply-units.sh"
   bash "$LIB/apply-extras.sh"
 
-  # --- decide what to restart ---------------------------------------------------------
-  restart_api=0
-  grep -qx 'unit:photo-api.service' "$UPDATE_CHANGED" && restart_api=1
-  if grep -E '^api/' "$CHANGED" 2>/dev/null | grep -vq '^api/package-lock.json$'; then restart_api=1; fi
-  grep -qx 'api-deps' "$UPDATE_CHANGED" && restart_api=1
-  if [ "$restart_api" = 1 ]; then
-    if [ "$DRY_RUN" = 1 ]; then
-      log "photo-api: changed, WOULD restart it (the slideshow is likely to relaunch: the screen may blink)"
-    else
-      log "photo-api: changed, restarting it (the slideshow is likely to relaunch: the screen may blink)"
-      $SUDO "$SYSTEMCTL" restart photo-api.service
-    fi
+  # --- restart the app, the way a boot starts it ---------------------------------------
+  # Every update ends with the app restarted, whether or not it changed, so an update
+  # exercises the same start path as a boot (owner decision 2026-11-15, backlog B20):
+  #   1. photo-api (restarting it also kills Chromium, which runs in its cgroup)
+  #   2. picapport-chromium.service, the boot's own slideshow launcher (oneshot: waits for
+  #      Picapport and the API, then GET /api/slideshow replays the saved slideshow)
+  # Not restarted: mount-hdd (would unmount/remount the photo HDD, hard rule 1) and
+  # Picapport (its stop may damage the database, backlog Q11).
+  echo
+  launcher_rc=skipped
+  if [ "$DRY_RUN" = 1 ]; then
+    log "restart the app: WOULD restart photo-api, then start picapport-chromium (the boot's slideshow launcher). The screen shows the desktop for a moment, then the saved slideshow."
   else
-    log "photo-api: unchanged, not restarted"
+    log "restart the app: restarting photo-api (this also closes the slideshow)"
+    $SUDO "$SYSTEMCTL" restart photo-api.service
+    if [ -f "$UNIT_DIR/picapport-chromium.service" ]; then
+      log "restart the app: starting picapport-chromium (the boot's slideshow launcher; waits up to 120 s for Picapport and the API)"
+      if timeout 200 $SUDO "$SYSTEMCTL" start picapport-chromium.service; then launcher_rc=ok; else launcher_rc=failed; fi
+    else
+      log "[WARN] picapport-chromium.service is not installed: the slideshow was not relaunched"
+      launcher_rc=missing
+    fi
   fi
+  log "not restarted by design: mount-hdd (photo HDD, hard rule 1), Picapport (backlog Q11)"
 
   # --- things this script deliberately does not apply ---------------------------------
   echo
@@ -141,7 +153,7 @@ if [ "$PHASE2" = 1 ]; then
   need=0
   if grep -qx 'picapport-properties' "$UPDATE_CHANGED"; then
     log "  - picapport.properties changed: it takes effect when Picapport restarts (not restarted; see backlog Q11)"; need=1; fi
-  for u in mount-hdd.service picapport-wrapper.service picapport-chromium.service; do
+  for u in mount-hdd.service picapport-wrapper.service; do
     if grep -qx "unit:$u" "$UPDATE_CHANGED"; then
       log "  - $u definition changed: takes effect at its next start/boot (not restarted)"; need=1; fi
   done
@@ -172,6 +184,16 @@ if [ "$PHASE2" = 1 ]; then
   pic="$($CURL -s -o /dev/null -w '%{http_code}' -m 10 http://localhost:8080/picapport 2>/dev/null || true)"
   log "  api /api/test: $api    picapport: $pic"
   [ "$api" = 200 ] && [ "$pic" = 200 ] || problems=1
+  log "  slideshow launcher (picapport-chromium): $launcher_rc"
+  [ "$launcher_rc" = ok ] || { problems=1; log "    see: journalctl -u picapport-chromium -n 20 --no-pager"; }
+  chromium_n=0
+  for _ in 1 2 3 4 5; do
+    chromium_n="$($PGREP -c chromium 2>/dev/null || true)"; chromium_n="${chromium_n:-0}"
+    [ "$chromium_n" -gt 0 ] && break
+    sleep 2
+  done
+  log "  chromium processes: $chromium_n (whether the slideshow itself plays is checked on the screen)"
+  [ "$chromium_n" -gt 0 ] || problems=1
   log "Update applied: now at $(git -C "$REPO_ROOT" log --oneline -1) ($FROM_DESC before: ${FROM:0:7})"
   log "Undo: update.sh --ref ${FROM:0:7}${FROM_DESC:+   (or get back onto a branch: update.sh --branch main)}"
   [ "$problems" = 0 ] || die "verification found a problem (see above). Nothing was rolled back automatically."

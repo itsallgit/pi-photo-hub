@@ -5,7 +5,9 @@ description: Use when a change in this repo has to reach the Pi (new code, a sys
 
 # Applying repo changes to the Pi
 
-`scripts/update.sh` is the one way a change reaches the Pi (hard rule 2). This skill is the gate around it: what to check, what to tell the owner, how to verify and undo. The script is the source of truth for the steps; read its header (`sed -n 1,25p scripts/update.sh`) rather than trusting a copy of it here. **This changes the Pi**: agree it first (`CLAUDE.md`, "Working with the owner").
+`scripts/update.sh` is the one way a change reaches the Pi (hard rule 2). This skill is the gate around it: what to check, what to tell the owner, how to verify and undo. The script is the source of truth for the steps; read its header (`bash scripts/update.sh --help`) rather than trusting a copy of it here. **This changes the Pi**: agree it first (`CLAUDE.md`, "Working with the owner").
+
+**Every update ends with the app restarted the way a boot starts it** (owner decision, 2026-11-15): the script restarts `photo-api` and then starts `picapport-chromium`, the boot's own slideshow launcher, even if nothing changed. It never restarts `mount-hdd` (that would remount the photo HDD, hard rule 1) or Picapport (suspected to damage its database, backlog Q11), and it never reboots. The health-log cron entry and the logrotate config are part of the app and are always installed.
 
 **Never** use `cleanup.sh` or `bootstrap.sh` for this, and never run `git pull`, `checkout`, `stash`, `reset` or `clean` on the Pi by hand.
 
@@ -17,26 +19,25 @@ description: Use when a change in this repo has to reach the Pi (new code, a sys
 
 ## Steps
 
-1. **Dry run first, always.** On the Pi: `bash ~/pi-photo-hub/scripts/update.sh --dry-run [--branch NAME]` (or piped, as above). It changes nothing except `git fetch`, and prints the commits, the files that differ, the units/config it would sync, whether it would restart `photo-api`, and what it leaves for a separate step.
-2. **Agreement gate.** Show the owner the plan in a few lines: from which commit to which, what changes on the Pi, what restarts (restarting `photo-api` **kills the slideshow** and nothing relaunches it; plan a `GET /api/slideshow` afterwards, see Verify and backlog B20), what is *not* done (Picapport is never restarted by this script; see backlog Q11), the risk, and the undo below. Wait for a yes.
-3. **Run it** without `--dry-run`. Options: `--branch NAME` (test a branch), `--ref SHA` (roll back / pin), `--with-health-log`, `--with-logrotate` (install those; they are only refreshed if already installed), `--reset-slideshow` (forget the saved slideshow), `--discard-local-changes` (backs the changes up, then restores git's version; ask the owner first). No arguments means the tip of `main`.
-4. **Verify**: the script prints service states and the HTTP codes for `/api/test` and Picapport; check them. If `photo-api` was restarted, the screen shows the bare desktop: relaunch the saved slideshow with `curl -s http://localhost:3000/api/slideshow` on the Pi (no query string, so nothing is overwritten; part of the agreed plan), then take a `pi-access` screenshot. Chromium can show a white page for a while before Picapport loads. `tail /var/log/pi-photo-hub/update.log` shows what was done.
+1. **Dry run first, always.** On the Pi: `bash ~/pi-photo-hub/scripts/update.sh --dry-run [--branch NAME]` (or piped, as above). It changes nothing except `git fetch`, and prints the commits, the files that differ, the units/config it would sync, the app restart, and what it leaves for a separate step.
+2. **Agreement gate.** Show the owner the plan in a few lines: from which commit to which, what changes on the Pi, the app restart (the screen shows the desktop for a moment, then the saved slideshow), anything listed under "Needs a separate, agreed step" (for example a Picapport restart), the risk, and the undo below. Wait for a yes.
+3. **Run it** without `--dry-run`. Options: `--branch NAME` (test a branch), `--ref SHA` (roll back / pin), `--reset-slideshow` (forget the saved slideshow), `--discard-local-changes` (backs the changes up, then restores git's version; ask the owner first). No arguments means the tip of `main`. (`--with-health-log` and `--with-logrotate` are still accepted but do nothing: both are always installed.)
+4. **Verify**: the script checks the services, `/api/test`, Picapport, that the slideshow launcher succeeded and that Chromium is running, and exits non-zero if any fails. Then take a `pi-access` screenshot to see the slideshow itself. Chromium can show a white page for a while before Picapport loads. `tail /var/log/pi-photo-hub/update.log` shows what was done.
 
 ## Undo
 
-The script prints the previous commit. Roll back with `update.sh --ref <that sha>` (a detached checkout; no reset or stash). To get back onto a branch afterwards run `update.sh` (that is `main`) or `update.sh --branch NAME`. Rolling back to a commit older than `scripts/update.sh` leaves no script on the Pi: pipe it from the PC (precondition 3). The saved slideshow lives in `/var/lib/photo-api/` and is not touched by a rollback, but commits before the state-directory change read the old tracked file instead.
+The script prints the previous commit. Roll back with `update.sh --ref <that sha>` (a detached checkout; no reset or stash). To get back onto a branch afterwards run `update.sh` (that is `main`) or `update.sh --branch NAME`. The rollback is applied by the **older** commit's own script, which may not restart the app: if the screen is left on the desktop, relaunch with `curl -s http://localhost:3000/api/slideshow` on the Pi (agreed as part of the rollback). Rolling back to a commit older than `scripts/update.sh` leaves no script on the Pi: pipe it from the PC (precondition 3). The saved slideshow lives in `/var/lib/photo-api/` and is not touched by a rollback, but commits before the state-directory change read the old tracked file instead.
 
 ## Do not
 
 - Run it without a dry run and the owner's agreement, or push work in progress to `main` to get it onto the Pi (use a branch and `--branch`).
-- Restart Picapport, reboot, or touch `/mnt/photos` as part of an update. If a change needs a Picapport restart (`picapport.properties`, `picapport-wrapper.service`), the script says so; that restart is a separate step to agree.
-- Install the health-log cron entry or logrotate config without being asked: they have their own flags.
+- Restart Picapport or `mount-hdd`, reboot, or touch `/mnt/photos` as part of an update. If a change needs a Picapport restart (`picapport.properties`, `picapport-wrapper.service`), the script says so; that restart is a separate step to agree.
 - Treat a "verify" failure as done. Report it; nothing is rolled back automatically.
 
 ## Links
 
-`scripts/update.sh`, `scripts/lib/`; README "Updating the Pi"; `docs/architecture.md` ("Updating the Pi"); backlog B06, B11, B15.
+`scripts/update.sh`, `scripts/lib/`; README "Updating the Pi"; `docs/architecture.md` ("Updating the Pi"); backlog B06, B11, B15, B20.
 
 ## Last verified
 
-Script logic tested on the PC against a scratch clone with a stubbed `systemctl` (2026-11-15); **not yet run on the Pi**, and the skill is not yet cold-tested. Update this line after the staged deploy and a cold test.
+2026-11-15: run on the Pi through B06 stages A to C (update to branch `feat/update-script`, before the app-restart change). The app-restart and always-install changes are tested on the PC against a scratch clone with stubbed `systemctl`, `sudo`, `crontab`, `curl` and `pgrep` (dry run, real run, re-run, launcher failure, no Chromium); not yet on the Pi. The skill is not yet cold-tested.

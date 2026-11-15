@@ -155,7 +155,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 ## Logs
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
-- Update log: `/var/log/pi-photo-hub/update.log` (written by `scripts/update.sh`; rotated by `/etc/logrotate.d/pi-photo-hub` once installed with `--with-logrotate`)
+- Update log: `/var/log/pi-photo-hub/update.log` (written by `scripts/update.sh`; rotated by `/etc/logrotate.d/pi-photo-hub` installed by every update)
 - HDD mount logs: `/var/log/pi-photo-hub/mount-hdd.log` (stale: last written September 2025; the script now logs to the journal, see `journalctl -u mount-hdd`)
 - API logs: `/var/log/photo-api/`
 - Picapport logs: `/opt/picapport/.picapport/logfiles/`
@@ -264,7 +264,7 @@ Your photo API will be available at `http://<pi-ip>:3000/api/test`.
 
 ## Updating the Pi
 
-To get a change in this repo onto an installed Pi, use `scripts/update.sh`. It fetches from GitHub, checks out `main` or a branch (fast-forward only: no reset, stash or rebase), re-applies what changed (systemd units that are already installed, API dependencies, Picapport's properties file), restarts `photo-api` only if it changed, and verifies. It never runs apt, reboots, touches the photo HDD, or restarts Picapport. It logs to `/var/log/pi-photo-hub/update.log`.
+To get a change in this repo onto an installed Pi, use `scripts/update.sh`. It fetches from GitHub, checks out `main` or a branch (fast-forward only: no reset, stash or rebase), re-applies the repo (systemd units that are already installed, API dependencies, Picapport's properties file, the logrotate config and the health-log cron entry), then **restarts the app the way a boot starts it** (`photo-api`, then the boot's slideshow launcher `picapport-chromium`, so the saved slideshow comes back by itself) and verifies. It never runs apt, reboots, touches the photo HDD, restarts `mount-hdd` (it would remount the HDD) or restarts Picapport (backlog Q11); it says when one of those is needed. It logs to `/var/log/pi-photo-hub/update.log`.
 
 > `cleanup.sh` is **not** the way to update. It stops every service, unmounts the HDD, deletes and re-clones the checkout, can delete the Picapport database, and bootstrap then runs `apt full-upgrade` and reboots. Use it only for a deliberate rebuild.
 
@@ -284,7 +284,7 @@ bash scripts/update.sh --branch feat/my-change   # test a branch
 bash scripts/update.sh --ref <sha>               # roll back to a commit (detached checkout)
 ```
 
-Optional flags: `--with-health-log` (install the health-log cron entry), `--with-logrotate` (install the logrotate config for `update.log`), `--reset-slideshow` (forget the saved slideshow; the API falls back to its default), `--discard-local-changes` (back up tracked local changes in `/var/lib/photo-api/discarded-<time>/`, then restore git's version). Without `--with-...` those two are only refreshed if already installed.
+Optional flags: `--reset-slideshow` (forget the saved slideshow; the API falls back to its default), `--discard-local-changes` (back up tracked local changes in `/var/lib/photo-api/discarded-<time>/`, then restore git's version). `--with-health-log` and `--with-logrotate` are still accepted but do nothing: both are always installed.
 
 **First time, or after rolling back past the script** (the Pi's checkout has no `scripts/update.sh`): pipe it from the PC instead, from a Git Bash window in this repo. The script must already be pushed. `git show` sends the committed (LF) version, which a Windows checkout with CRLF line endings would not:
 
@@ -294,7 +294,7 @@ git show origin/feat/update-script:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo
 
 **Saved slideshow.** The last slideshow is kept in `/var/lib/photo-api/slideshow_url.txt` (created by systemd, outside the repo checkout), so an update never touches it. If you ever need to carry an old one over by hand, copy the old `api/slideshow_url.txt` there before the first update (`sudo mkdir -p /var/lib/photo-api && sudo chown pi:pi /var/lib/photo-api`).
 
-**After a `photo-api` restart** the slideshow is gone (the screen shows the desktop) and does not come back by itself (backlog B20). Bring it back with `curl -s http://localhost:3000/api/slideshow` (no query string: it replays the saved slideshow).
+**If the slideshow is not back after an update or a rollback** (a rollback runs the older commit's script, which may not relaunch it): `curl -s http://localhost:3000/api/slideshow` (no query string: it replays the saved slideshow).
 
 **Undo.** The script prints the commit it came from; `bash scripts/update.sh --ref <that sha>` goes back.
 

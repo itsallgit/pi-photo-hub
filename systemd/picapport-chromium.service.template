@@ -24,7 +24,9 @@ ExecStartPre=/bin/bash -c '\
 # Trigger slideshow API call
 ExecStart=/usr/bin/curl -s http://localhost:3000/api/slideshow
 
-# Don't remain active, so systemd will re-run on dependency restart
+# Runs once at boot and then goes inactive. It does NOT re-run when photo-api or Picapport
+# restarts (PartOf= passes a restart only to units that are active; observed 2026-11-15).
+# scripts/update.sh starts it after every update to relaunch the slideshow (backlog B20).
 RemainAfterExit=no
 
 [Install]

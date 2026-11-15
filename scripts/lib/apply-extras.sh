@@ -2,8 +2,8 @@
 # apply-extras.sh - the non-unit parts of an update, called by scripts/update.sh:
 #   * API dependencies (npm install, only if api/package.json changed or node_modules is missing)
 #   * Picapport's properties file (copied; Picapport is NOT restarted, see update.sh output)
-#   * the logrotate config and the health-log cron entry: refreshed if already installed,
-#     installed only when asked (WITH_LOGROTATE=1, WITH_HEALTH_LOG=1)
+#   * the logrotate config and the health-log cron entry: always installed or refreshed
+#     (they are part of the app; owner decision 2026-11-15, backlog B20)
 # Env: SRC (tree to apply, required), REPO (the real checkout; default SRC), CHANGED_FILES
 # (file listing the repo files that changed in this update), DRY_RUN, UPDATE_CHANGED.
 set -euo pipefail
@@ -39,9 +39,11 @@ fi
 
 # --- logrotate --------------------------------------------------------------------
 LR_DST="$LOGROTATE_DIR/pi-photo-hub"
-if [ -f "$LR_DST" ] || [ "${WITH_LOGROTATE:-0}" = 1 ]; then
-  if [ "$DRY_RUN" != 1 ] && command -v logrotate >/dev/null 2>&1; then
-    $SUDO logrotate -d "$SRC/config/logrotate-pi-photo-hub" >/dev/null 2>&1 \
+# logrotate lives in /usr/sbin, which is not on user pi's PATH over SSH.
+LOGROTATE_BIN="${LOGROTATE_BIN:-$(command -v logrotate 2>/dev/null || { [ -x /usr/sbin/logrotate ] && echo /usr/sbin/logrotate; } || true)}"
+if [ -n "$LOGROTATE_BIN" ]; then
+  if [ "$DRY_RUN" != 1 ]; then
+    $SUDO "$LOGROTATE_BIN" -d "$SRC/config/logrotate-pi-photo-hub" >/dev/null 2>&1 \
       || die "logrotate rejected config/logrotate-pi-photo-hub; nothing installed"
   fi
   if sync_file "$SRC/config/logrotate-pi-photo-hub" "$LR_DST" "logrotate config"; then
@@ -50,7 +52,7 @@ if [ -f "$LR_DST" ] || [ "${WITH_LOGROTATE:-0}" = 1 ]; then
     log "logrotate config: already matches the repo"
   fi
 else
-  log "logrotate config: not installed (use --with-logrotate to install it)"
+  log "[WARN] logrotate is not installed on this machine: its config was not installed"
 fi
 
 # --- health-log cron entry --------------------------------------------------------
@@ -59,10 +61,10 @@ if [ "$(id -un)" = "$OWNER" ]; then
 else
   cron_now="$($SUDO crontab -u "$OWNER" -l 2>/dev/null || true)"
 fi
-if printf '%s\n' "$cron_now" | grep -q 'pi-photo-hub health-log' || [ "${WITH_HEALTH_LOG:-0}" = 1 ]; then
-  log "health log: installing/refreshing the cron entry"
-  run bash "$SRC/scripts/install-health-log.sh"
-  note_changed "health-log-cron"
+if printf '%s\n' "$cron_now" | grep -q 'pi-photo-hub health-log'; then
+  log "health log: refreshing the cron entry"
 else
-  log "health log: cron entry not installed (use --with-health-log to install it)"
+  log "health log: installing the cron entry (scripts/health-log.sh every minute; its data is kept in RAM)"
 fi
+run bash "$SRC/scripts/install-health-log.sh"
+note_changed "health-log-cron"
