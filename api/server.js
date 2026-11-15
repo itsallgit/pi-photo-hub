@@ -8,7 +8,10 @@ require("winston-daily-rotate-file");
 
 const app = express();
 const PORT = 3000;
-const urlFilePath = path.join(__dirname, "slideshow_url.txt");
+// Saved slideshow lives outside the repo checkout (principle 5). systemd creates and
+// owns this directory (StateDirectory=photo-api) and sets STATE_DIRECTORY.
+const stateDir = (process.env.STATE_DIRECTORY || "/var/lib/photo-api").split(":")[0];
+const urlFilePath = path.join(stateDir, "slideshow_url.txt");
 
 // -----------------------------
 // Logging
@@ -114,17 +117,30 @@ app.get("/api/slideshow", async (req, res) => {
             url = generateSlideshowUrl(req.query.q, req.query.interval);
             logger.info(`Generated new slideshow URL: ${url}`);
 
-            // Save to file
-            fs.writeFileSync(urlFilePath, url, "utf8");
+            // Save it. A failure to save must not stop the slideshow playing.
+            try {
+                fs.mkdirSync(stateDir, { recursive: true });
+                fs.writeFileSync(urlFilePath, url, "utf8");
+            } catch (err) {
+                logger.warn(`Could not save slideshow URL to ${urlFilePath}: ${err.message}`);
+            }
         } else {
-            // No query params → try to use the previously saved URL
-            if (fs.existsSync(urlFilePath)) {
-                url = fs.readFileSync(urlFilePath, "utf8").trim();
+            // No query params → use the previously saved URL, or today's default
+            // if there is none or it cannot be read.
+            let saved = "";
+            try {
+                saved = fs.readFileSync(urlFilePath, "utf8").trim();
+            } catch (err) {
+                if (err.code !== "ENOENT") {
+                    logger.warn(`Could not read saved slideshow URL ${urlFilePath}: ${err.message}`);
+                }
+            }
+            if (saved) {
+                url = saved;
                 logger.info(`Loaded saved slideshow URL: ${url}`);
             } else {
-                // Fallback if file doesn't exist
                 url = generateSlideshowUrl();
-                logger.warn(`No saved URL found, using fallback: ${url}`);
+                logger.warn(`No saved URL found, using default: ${url}`);
             }
         }
 

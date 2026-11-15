@@ -22,6 +22,8 @@ Per the owner: Picapport's default indexing already supports queries based on th
 | Picapport logs | `/opt/picapport/.picapport/logfiles/` (rotated by Picapport) | | |
 | Picapport service | init.d script `/etc/init.d/picapport` (autostart disabled) controlled by systemd unit `picapport-wrapper.service` (self-heals with `Restart=on-failure`) | `initd/picapport`, `systemd/picapport-wrapper.service` | |
 | Photo API | `/home/pi/pi-photo-hub/api/server.js`, unit `photo-api.service`, `node` at `/opt/node/bin/node` | `api/`, `systemd/photo-api.service.template` | `pi` |
+| Saved slideshow (runtime state) | `/var/lib/photo-api/slideshow_url.txt`, in a directory systemd creates for `photo-api` (`StateDirectory=photo-api` in the unit; the API reads `STATE_DIRECTORY`, falling back to `/var/lib/photo-api`). Outside the repo checkout (principle 5). | `systemd/photo-api.service.template`, `api/server.js` | `pi` |
+| Update log | `/var/log/pi-photo-hub/update.log` (rotated by `/etc/logrotate.d/pi-photo-hub` once installed) | `scripts/update.sh`, `config/logrotate-pi-photo-hub` | |
 | API logs | `/var/log/photo-api/` (winston daily rotate, 7 days, 10 MB, zipped) | `api/server.js` | |
 | Slideshow trigger | `picapport-chromium.service` (oneshot; waits up to 120 s for ports 8080 and 3000, then `curl /api/slideshow`) | `systemd/picapport-chromium.service.template` | `pi` |
 | HDD mount | `mount-hdd.service` runs `scripts/mount-hdd.sh`: finds the first non-SD partition with a filesystem and mounts it at `/mnt/photos` with `-o uid=pi,gid=pi` (**currently read-write**) | `systemd/mount-hdd.service`, `scripts/mount-hdd.sh` | root |
@@ -41,20 +43,31 @@ From the unit files (not observed failing): `mount-hdd.service` is ordered only 
 |---|---|
 | `GET /api/test` | Returns "Testing". Health check. |
 | `GET /api/home` | Kills any Chromium and opens the Picapport home page in kiosk mode. |
-| `GET /api/slideshow` | With **no** query string: replays the saved slideshow URL. With **any** query string: builds `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=<interval>&query=<q>`, saves it to `api/slideshow_url.txt`, and opens it. A missing `q` becomes `noimagesfound` and a missing `interval` becomes 30, so for example `?interval=10` overwrites the saved slideshow with `noimagesfound` (B17). The "no saved URL" fallback in the code never runs in practice because `slideshow_url.txt` is a tracked file and always exists. |
+| `GET /api/slideshow` | With **no** query string: replays the saved slideshow URL from `/var/lib/photo-api/slideshow_url.txt`; if that file is missing, empty or unreadable it uses the default (`q=noimagesfound`, interval 30). With **any** query string: builds `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=<interval>&query=<q>`, saves it there (a failure to save is logged and the slideshow still opens), and opens it. A missing `q` becomes `noimagesfound` and a missing `interval` becomes 30, so for example `?interval=10` overwrites the saved slideshow with `noimagesfound` (B17). |
 | `GET /api/screen` | Toggles the monitor on/off with `vcgencmd display_power` (uses `sudo`). **Unverified** that this works under the current Wayland (labwc) desktop. |
 
 Chromium is started with `pkill -9 chromium` first, so any running browser is killed. Flags include `--kiosk --start-fullscreen`.
 
 ## Known design issues (tracked in the backlog)
 
-- `api/slideshow_url.txt` is runtime state but is a tracked file in the repo, so the Pi's checkout is always dirty. (B06)
+- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06 (branch `feat/update-script`): the saved slideshow moved to `/var/lib/photo-api/`. Until that branch is deployed to the Pi, the Pi still has the old behaviour and a dirty checkout.
 - Picapport's database is repeatedly corrupted (`OPageIsBrokenException`); a manual recovery procedure is in the README. (B03, B04)
 - journald is configured `Storage=volatile`, so service logs are lost on every reboot. (B09)
 - A leftover `~/.config/autostart/picapport-chromium.desktop` on the Pi (not from the repo) starts Chromium at `http://localhost:80`. (B12)
 - The HDD is mounted read-write, and `scripts/mount-hdd.sh` picks the first non-SD partition that has a filesystem, so a second USB drive could be mounted instead. (L6, B16)
-- There is no apply/update path: the only documented route is `cleanup.sh`, which deletes and re-clones the checkout. (B06, B15)
+- The update path (`scripts/update.sh`, B06) is written and tested only against a scratch clone on the PC; it has not run on the Pi yet. Until it has, the only route is `cleanup.sh`, which deletes and re-clones the checkout. (B06, B15)
+- `bootstrap.sh` does not yet use the shared install steps that `update.sh` uses (`scripts/lib/`); two code paths install units and config until bootstrap adopts them as part of the fresh-build test. (B11)
 - The bootstrap has not been run on a blank Pi since September 2025. (B11)
+
+## Updating the Pi (`scripts/update.sh`)
+
+How a change reaches the Pi. Procedure: the `apply-changes` skill and README "Updating the Pi". Design facts:
+
+- **Two phases.** Phase 1 (self-contained, so it can be piped over SSH before the Pi has it): checks the checkout is clean, `git ls-remote` and `git fetch`, resolves the target (`main`, `--branch`, `--ref`), prints the plan, then checks out (fast-forward only, or a detached checkout for `--ref`). Phase 2 is the **target commit's own** copy of the script, which applies it: state directory, `scripts/lib/apply-units.sh` (units that are already installed, `daemon-reload`), `scripts/lib/apply-extras.sh` (API `npm install` if `package.json` changed, Picapport properties, optional logrotate and health-log cron), restart of `photo-api` only if it or its unit changed, then verify. `--dry-run` runs phase 2 from a temporary export of the target under `/tmp`, so a dry run previews the new logic without checking anything out.
+- **Never done by the script:** apt, reboot, touching `/mnt/photos` or `mount-hdd`, restarting Picapport (Q11), enabling or starting units that are not installed, `git reset`/`stash`/`rebase`.
+- **Dirty checkouts.** It refuses tracked local changes, except executable-bit-only differences (git is run with `core.fileMode=false`, then the executable bits recorded in the repo are applied: `mount-hdd.service` runs `scripts/mount-hdd.sh` directly, so the bit matters) and `api/slideshow_url.txt`, which is accepted only if an identical copy is already in `/var/lib/photo-api/`; it is then moved there as `slideshow_url.txt.from-checkout-<time>`, not discarded.
+- **Optional parts** (`--with-health-log`, `--with-logrotate`) are installed only when asked, and refreshed on later runs once present.
+- **Testing the logic away from the Pi.** Paths and commands can be overridden by environment variables (`PI_REPO`, `STATE_DIR`, `LOG_DIR`, `UNIT_DIR`, `LOGROTATE_DIR`, `PICAPPORT_PROPS_DST`, `SYSTEMCTL`, `CURL`, `SUDO`; see `scripts/lib/common.sh`), which allows running it against a scratch clone with a stubbed `systemctl`. That tests the script logic only: it does **not** test `systemctl`, the real unit sync, `sudo`, file ownership or executable-bit handling (Windows git ignores modes), or Pi-specific behaviour.
 
 ## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code)
 

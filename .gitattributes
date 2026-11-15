@@ -1,0 +1,9 @@
+# Force LF line endings for files that run on the Pi (Linux), whatever the
+# checkout's core.autocrlf says. Needed so a script can be piped from the
+# Windows PC over SSH (ssh pi bash -s < scripts/update.sh) without CR characters.
+*.sh              text eol=lf
+*.template        text eol=lf
+systemd/**        text eol=lf
+initd/**          text eol=lf
+config/**         text eol=lf
+api/*.js          text eol=lf

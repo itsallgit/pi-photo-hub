@@ -1,1 +1,0 @@
-http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=30&query=noimagesfound

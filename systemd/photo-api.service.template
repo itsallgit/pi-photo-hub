@@ -7,6 +7,7 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/pi-photo-hub/api
 ExecStart=/opt/node/bin/node /home/pi/pi-photo-hub/api/server.js
+StateDirectory=photo-api
 Restart=always
 RestartSec=5
 

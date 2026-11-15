@@ -13,6 +13,7 @@
 | Play a search | `http://<pi-ip>:3000/api/slideshow?q=honeymoon&interval=30` (saved, replayed on boot) |
 | Replay last slideshow | `http://<pi-ip>:3000/api/slideshow` |
 | Photos HDD | auto-mounted at `/mnt/photos`; Picapport crawls it |
+| Get a change onto the Pi | `bash ~/pi-photo-hub/scripts/update.sh --dry-run`, then without `--dry-run` (see [Updating the Pi](#updating-the-pi)) |
 
 **Adding new photos:** plug the HDD into the Pi, reboot (or `sudo systemctl restart mount-hdd picapport-wrapper`), wait for Picapport to index (`tail -f /opt/picapport/.picapport/logfiles/*`), then call `/api/slideshow?q=<search>`. The default saved query is `noimagesfound`, so a real query must be set once.
 
@@ -120,6 +121,8 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 
 1. Trigger Fresh Bootstrap using Cleanup Script
 
+   **For a fresh build or a deliberate rebuild only.** It is destructive (see [Updating the Pi](#updating-the-pi)); to get a change onto a Pi that already works, use `scripts/update.sh`.
+
    * Access the Pi via VSCode SSH Remote Session
    * Create a helper script in `/home/pi/pi-photo-hub` using `cleanup.sh` in this repo
    * Run helper script
@@ -152,6 +155,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 ## Logs
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
+- Update log: `/var/log/pi-photo-hub/update.log` (written by `scripts/update.sh`; rotated by `/etc/logrotate.d/pi-photo-hub` once installed with `--with-logrotate`)
 - HDD mount logs: `/var/log/pi-photo-hub/mount-hdd.log` (stale: last written September 2025; the script now logs to the journal, see `journalctl -u mount-hdd`)
 - API logs: `/var/log/photo-api/`
 - Picapport logs: `/opt/picapport/.picapport/logfiles/`
@@ -258,13 +262,42 @@ Your photo API will be available at `http://<pi-ip>:3000/api/test`.
    tail -f /opt/picapport/.picapport/logfiles/picapport.*
    ```
 
-## Development
+## Updating the Pi
 
-If you want to make changes to pi-photo-hub and update an existing installed version on your pi do the following:
+To get a change in this repo onto an installed Pi, use `scripts/update.sh`. It fetches from GitHub, checks out `main` or a branch (fast-forward only: no reset, stash or rebase), re-applies what changed (systemd units that are already installed, API dependencies, Picapport's properties file), restarts `photo-api` only if it changed, and verifies. It never runs apt, reboots, touches the photo HDD, or restarts Picapport. It logs to `/var/log/pi-photo-hub/update.log`.
 
-1. Make changes and commit them to `main`
-1. Access your pi via SSH
-1. Run cleanup script `sudo bash ~/pi-photo-hub/cleanup.sh`\
-   * You will be asked if you want to run the bootstrap, enter `y` to pull the latest code from `main` and reinstall everything.
-   * If you want to wipe your current Picapport install entirely and start with a fresh database then run:
-   * `sudo bash ~/pi-photo-hub/cleanup.sh delete-picapport`
+> `cleanup.sh` is **not** the way to update. It stops every service, unmounts the HDD, deletes and re-clones the checkout, can delete the Picapport database, and bootstrap then runs `apt full-upgrade` and reboots. Use it only for a deliberate rebuild.
+
+The change must be **pushed to GitHub** first: the Pi pulls from there.
+
+### Automated (from an agent session: the `apply-changes` skill)
+
+The skill runs a dry run, shows the plan, waits for the owner's agreement, runs the update and verifies. See `.claude/skills/apply-changes/SKILL.md`.
+
+### Manual (by hand over SSH)
+
+```bash
+cd ~/pi-photo-hub
+bash scripts/update.sh --dry-run                 # look first: changes nothing except `git fetch`
+bash scripts/update.sh                           # update to the tip of main (also: get back onto main)
+bash scripts/update.sh --branch feat/my-change   # test a branch
+bash scripts/update.sh --ref <sha>               # roll back to a commit (detached checkout)
+```
+
+Optional flags: `--with-health-log` (install the health-log cron entry), `--with-logrotate` (install the logrotate config for `update.log`), `--reset-slideshow` (forget the saved slideshow; the API falls back to its default), `--discard-local-changes` (back up tracked local changes in `/var/lib/photo-api/discarded-<time>/`, then restore git's version). Without `--with-...` those two are only refreshed if already installed.
+
+**First time, or after rolling back past the script** (the Pi's checkout has no `scripts/update.sh`): pipe it from the PC instead, from a Git Bash window in this repo. The script must already be pushed. `git show` sends the committed (LF) version, which a Windows checkout with CRLF line endings would not:
+
+```bash
+git show origin/feat/update-script:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@<pi-ip> 'bash -s -- --dry-run --branch feat/update-script'
+```
+
+**Saved slideshow.** The last slideshow is kept in `/var/lib/photo-api/slideshow_url.txt` (created by systemd, outside the repo checkout), so an update never touches it. If you ever need to carry an old one over by hand, copy the old `api/slideshow_url.txt` there before the first update (`sudo mkdir -p /var/lib/photo-api && sudo chown pi:pi /var/lib/photo-api`).
+
+**Undo.** The script prints the commit it came from; `bash scripts/update.sh --ref <that sha>` goes back.
+
+### Development workflow
+
+1. Make the change on a branch for risky code (see the `git-workflow` skill), commit, `git push -u origin <branch>`.
+2. Test it on the Pi with `update.sh --branch <branch>`.
+3. When it works, fast-forward `main`, push, and run `update.sh` (no arguments) on the Pi to get back onto `main`.

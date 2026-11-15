@@ -45,6 +45,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 |---|---|
 | `pi-access` | Reach the Pi over SSH, read its state and logs, see its screen |
 | `git-workflow` | Commit, branch, test a branch on the Pi, merge to `main`, push |
+| `apply-changes` | Get a change (or a branch, or a rollback) onto the Pi with `scripts/update.sh`, behind an agreement gate |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 
 More skills are planned (backlog B18). Each is written together with the script or procedure it describes, so it never documents something untested.

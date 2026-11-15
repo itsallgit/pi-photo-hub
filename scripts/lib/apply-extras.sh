@@ -1,0 +1,68 @@
+#!/bin/bash
+# apply-extras.sh - the non-unit parts of an update, called by scripts/update.sh:
+#   * API dependencies (npm install, only if api/package.json changed or node_modules is missing)
+#   * Picapport's properties file (copied; Picapport is NOT restarted, see update.sh output)
+#   * the logrotate config and the health-log cron entry: refreshed if already installed,
+#     installed only when asked (WITH_LOGROTATE=1, WITH_HEALTH_LOG=1)
+# Env: SRC (tree to apply, required), REPO (the real checkout; default SRC), CHANGED_FILES
+# (file listing the repo files that changed in this update), DRY_RUN, UPDATE_CHANGED.
+set -euo pipefail
+SRC="${SRC:?SRC (the source tree to apply) is required}"
+REPO="${REPO:-$SRC}"
+CHANGED_FILES="${CHANGED_FILES:-/dev/null}"
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+# --- API dependencies -------------------------------------------------------------
+if grep -qx 'api/package.json' "$CHANGED_FILES" || [ ! -d "$REPO/api/node_modules" ]; then
+  log "api: installing dependencies (package.json changed or node_modules missing)"
+  if [ "$DRY_RUN" = 1 ]; then
+    log "  [dry-run] would run: (cd $REPO/api && npm install --no-audit --no-fund)"
+  else
+    ( cd "$REPO/api" && PATH="/opt/node/bin:$PATH" npm install --no-audit --no-fund )
+  fi
+  note_changed "api-deps"
+else
+  log "api: dependencies unchanged"
+fi
+
+# --- Picapport properties ---------------------------------------------------------
+if [ -d "$(dirname "$PICAPPORT_PROPS_DST")" ]; then
+  if sync_file "$SRC/config/picapport.properties" "$PICAPPORT_PROPS_DST" "picapport.properties" "$OWNER_ARGS"; then
+    note_changed "picapport-properties"
+  else
+    log "picapport.properties: already matches the repo"
+  fi
+else
+  log "picapport.properties: Picapport home not found, skipped"
+fi
+
+# --- logrotate --------------------------------------------------------------------
+LR_DST="$LOGROTATE_DIR/pi-photo-hub"
+if [ -f "$LR_DST" ] || [ "${WITH_LOGROTATE:-0}" = 1 ]; then
+  if [ "$DRY_RUN" != 1 ] && command -v logrotate >/dev/null 2>&1; then
+    $SUDO logrotate -d "$SRC/config/logrotate-pi-photo-hub" >/dev/null 2>&1 \
+      || die "logrotate rejected config/logrotate-pi-photo-hub; nothing installed"
+  fi
+  if sync_file "$SRC/config/logrotate-pi-photo-hub" "$LR_DST" "logrotate config"; then
+    note_changed "logrotate"
+  else
+    log "logrotate config: already matches the repo"
+  fi
+else
+  log "logrotate config: not installed (use --with-logrotate to install it)"
+fi
+
+# --- health-log cron entry --------------------------------------------------------
+if [ "$(id -un)" = "$OWNER" ]; then
+  cron_now="$(crontab -l 2>/dev/null || true)"
+else
+  cron_now="$($SUDO crontab -u "$OWNER" -l 2>/dev/null || true)"
+fi
+if printf '%s\n' "$cron_now" | grep -q 'pi-photo-hub health-log' || [ "${WITH_HEALTH_LOG:-0}" = 1 ]; then
+  log "health log: installing/refreshing the cron entry"
+  run bash "$SRC/scripts/install-health-log.sh"
+  note_changed "health-log-cron"
+else
+  log "health log: cron entry not installed (use --with-health-log to install it)"
+fi

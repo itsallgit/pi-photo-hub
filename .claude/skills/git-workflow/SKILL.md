@@ -24,7 +24,7 @@ Use a short-lived `feat/<topic>` or `fix/<topic>` branch for code that could bre
 
 1. `git switch -c feat/<topic>`
 2. Commit as above. `git push -u origin feat/<topic>` so the Pi and any other clone can see it.
-3. **Test it on the Pi.** Use the `apply-changes` skill with the branch name once it exists (backlog B06); until then agree a plan with the owner first. Changes to the Pi follow "Working with the owner".
+3. **Test it on the Pi.** Use the `apply-changes` skill with the branch name (`update.sh --branch <branch>`). Changes to the Pi follow "Working with the owner". Until `update.sh` has been deployed to the Pi (backlog B06), agree the deploy with the owner first.
 4. When it works: `git switch main`, `git pull --ff-only`, `git merge --ff-only feat/<topic>`, `git push origin main`.
 5. If `--ff-only` fails because `main` has moved: `git switch feat/<topic>`, `git merge main`, retest on the Pi, then repeat step 4.
 6. Ask the owner before deleting the branch (deleting branches needs explicit instruction).
@@ -40,7 +40,7 @@ This repo-level rule (no pull request needed, fast-forward merge) overrides the 
 
 ## Links
 
-`CLAUDE.md` (commit format, hard rules), `docs/principles.md`, `docs/backlog.md` (B06, B11).
+`CLAUDE.md` (commit format, hard rules), `docs/principles.md`, `docs/backlog.md` (B06, B11), the `apply-changes` skill.
 
 ## Last verified
 
