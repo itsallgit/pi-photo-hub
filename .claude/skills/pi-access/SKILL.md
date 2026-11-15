@@ -29,7 +29,7 @@ The key is per-machine and is never in the repo. If it is missing, see the READM
 
 1. Is `pi.local` already known? `ssh-keygen -F pi.local`.
 2. If there is **no** entry and there **is** a trusted entry for the Pi's IP (see `docs/network.md`; `ssh-keygen -lF <ip>`): compare fingerprints. `ssh-keyscan -T 10 pi.local | ssh-keygen -lf -` against `ssh-keygen -lF <ip>`. If all key types match, it is the same machine: back up `~/.ssh/known_hosts` first (`cp ~/.ssh/known_hosts ~/.ssh/known_hosts.bak-<reason>`), append the `pi.local` keys, and tell the owner exactly what you wrote. Appending to `known_hosts` is a change on the owner's PC, so say so before doing it.
-3. If there is no trusted entry at all (a new PC), tell the owner and ask before trusting the key.
+3. If there is no trusted entry at all (a new PC), compare the live fingerprints (`ssh-keyscan -T 10 pi.local | ssh-keygen -lf -`) with the ones recorded in `docs/network.md`. If all match, back up `known_hosts` and add the keys as in step 2, and tell the owner. If they do not match (the SD card may have been re-flashed, or something is impersonating the Pi), stop and tell the owner.
 4. If SSH says **REMOTE HOST IDENTIFICATION HAS CHANGED**, stop. The Pi may have been re-flashed or something is impersonating it. Tell the owner; do not edit `known_hosts`.
 
 To test this procedure without touching the real file, add `-o UserKnownHostsFile=/tmp/test_known_hosts` to the command.

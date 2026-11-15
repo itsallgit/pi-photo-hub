@@ -33,6 +33,18 @@ The Pi's IP can change. Prefer the name `pi.local`; it resolved from the owner's
 2. The Deco app's client list.
 3. `pwsh -File scripts\find-pi.ps1`: sweeps the PC's subnet for hosts with SSH open. The Pi's MAC starts `e4:5f:01` (also `b8:27:eb`, `dc:a6:32`, `d8:3a:dd`, `2c:cf:67` for other Pi models) in `arp -a`.
 
+## SSH host keys (to verify the Pi before trusting it)
+
+Host-key fingerprints are public by design: they let a new PC confirm it is talking to the right machine, and do not let anyone impersonate it. Recorded 2026-11-15 from the Pi:
+
+| Type | Fingerprint |
+|---|---|
+| ED25519 | `SHA256:tfJcKjvj0N9QGe5FSasGUmShQw9Vucya9S75UkyyAFs` |
+| ECDSA | `SHA256:ohbUwRPSbK3MkDMxBzFHyiFTRraY724aeQvdpPrehiU` |
+| RSA | `SHA256:JOrCQVof6LctzB7DQwg7KcBASlqdGkwo67Mj61Ciow0` |
+
+Compare with `ssh-keyscan -T 10 pi.local | ssh-keygen -lf -`. **These change if the Pi's SD card is re-flashed**; if they differ, find out why before trusting the new keys, and update this table once confirmed.
+
 ## Ports on the Pi
 
 | Port | Service |
