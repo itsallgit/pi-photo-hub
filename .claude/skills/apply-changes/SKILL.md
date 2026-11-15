@@ -18,9 +18,9 @@ description: Use when a change in this repo has to reach the Pi (new code, a sys
 ## Steps
 
 1. **Dry run first, always.** On the Pi: `bash ~/pi-photo-hub/scripts/update.sh --dry-run [--branch NAME]` (or piped, as above). It changes nothing except `git fetch`, and prints the commits, the files that differ, the units/config it would sync, whether it would restart `photo-api`, and what it leaves for a separate step.
-2. **Agreement gate.** Show the owner the plan in a few lines: from which commit to which, what changes on the Pi, what restarts (restarting `photo-api` probably relaunches the slideshow: the screen blinks), what is *not* done (Picapport is never restarted by this script; see backlog Q11), the risk, and the undo below. Wait for a yes.
+2. **Agreement gate.** Show the owner the plan in a few lines: from which commit to which, what changes on the Pi, what restarts (restarting `photo-api` **kills the slideshow** and nothing relaunches it; plan a `GET /api/slideshow` afterwards, see Verify and backlog B20), what is *not* done (Picapport is never restarted by this script; see backlog Q11), the risk, and the undo below. Wait for a yes.
 3. **Run it** without `--dry-run`. Options: `--branch NAME` (test a branch), `--ref SHA` (roll back / pin), `--with-health-log`, `--with-logrotate` (install those; they are only refreshed if already installed), `--reset-slideshow` (forget the saved slideshow), `--discard-local-changes` (backs the changes up, then restores git's version; ask the owner first). No arguments means the tip of `main`.
-4. **Verify**: the script prints service states and the HTTP codes for `/api/test` and Picapport; check them. If `photo-api` was restarted, look at the screen (`pi-access` screenshot) and confirm the slideshow came back. `tail /var/log/pi-photo-hub/update.log` shows what was done.
+4. **Verify**: the script prints service states and the HTTP codes for `/api/test` and Picapport; check them. If `photo-api` was restarted, the screen shows the bare desktop: relaunch the saved slideshow with `curl -s http://localhost:3000/api/slideshow` on the Pi (no query string, so nothing is overwritten; part of the agreed plan), then take a `pi-access` screenshot. Chromium can show a white page for a while before Picapport loads. `tail /var/log/pi-photo-hub/update.log` shows what was done.
 
 ## Undo
 

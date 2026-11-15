@@ -294,6 +294,8 @@ git show origin/feat/update-script:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo
 
 **Saved slideshow.** The last slideshow is kept in `/var/lib/photo-api/slideshow_url.txt` (created by systemd, outside the repo checkout), so an update never touches it. If you ever need to carry an old one over by hand, copy the old `api/slideshow_url.txt` there before the first update (`sudo mkdir -p /var/lib/photo-api && sudo chown pi:pi /var/lib/photo-api`).
 
+**After a `photo-api` restart** the slideshow is gone (the screen shows the desktop) and does not come back by itself (backlog B20). Bring it back with `curl -s http://localhost:3000/api/slideshow` (no query string: it replays the saved slideshow).
+
 **Undo.** The script prints the commit it came from; `bash scripts/update.sh --ref <that sha>` goes back.
 
 ### Development workflow

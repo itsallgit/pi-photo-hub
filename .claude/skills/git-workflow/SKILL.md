@@ -34,7 +34,7 @@ This repo-level rule (no pull request needed, fast-forward merge) overrides the 
 ## Do not
 
 - Force-push, rebase, `git reset --hard`, `git clean`, or skip checks (`--no-verify`) without the owner's explicit instruction.
-- Run any of those, or `git checkout`/`stash`, on the Pi's checkout: it is known to be dirty (backlog B06) and is changed only through the agreed apply path.
+- Run any of those, or `git checkout`/`stash`, on the Pi's checkout: it is changed only through the agreed apply path (`scripts/update.sh`, the `apply-changes` skill; backlog B06).
 - Commit a script that has never been run and describe it as working. Say it is untested (the health logger is an example, backlog B03).
 - Push work in progress to `main`. Use a branch.
 

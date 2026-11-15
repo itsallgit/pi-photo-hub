@@ -12,7 +12,7 @@ This file holds context and the always-on rules. **How to do things lives in ski
 
 1. `git status` and `git log --oneline -5`: know what state the repo is in.
 2. Read [docs/backlog.md](docs/backlog.md): what is in progress, next, and still an open question.
-3. If the task involves the Pi, use the `pi-access` skill to reach it and read its state. The Pi's checkout at `/home/pi/pi-photo-hub` is known to be dirty (`api/slideshow_url.txt` holds the saved slideshow, plus file-mode changes; backlog B06). Do **not** "fix" that with `git checkout`, `git clean`, `git stash` or `git reset` on the Pi.
+3. If the task involves the Pi, use the `pi-access` skill to reach it and read its state. The Pi's checkout at `/home/pi/pi-photo-hub` is changed only by `scripts/update.sh` (the `apply-changes` skill); it may be on a test branch (backlog B06). If it is dirty, report it; do **not** "fix" it with `git checkout`, `git clean`, `git stash` or `git reset` on the Pi.
 4. Never rely on chat history or personal memory for project facts. If a fact matters, it belongs in this repo.
 
 ## Hard rules

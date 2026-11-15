@@ -52,7 +52,7 @@ ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local 
 
 - Healthy services print `active`. `picapport-chromium` is a one-shot service and shows `inactive` after it has run; that is normal.
 - **Picapport is on port 8080, not 80.**
-- The Pi's checkout is known to be dirty and behind `main` (backlog B06). Report it; do not change it.
+- Since 2026-11-15 the Pi's checkout is updated by `scripts/update.sh` (the `apply-changes` skill). Expected: clean apart from an untracked `api/package-lock.json`, possibly on a test branch rather than `main` (backlog B06). Report anything else; do not change it.
 
 ## Reading logs (read-only)
 

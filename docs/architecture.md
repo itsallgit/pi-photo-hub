@@ -48,14 +48,17 @@ From the unit files (not observed failing): `mount-hdd.service` is ordered only 
 
 Chromium is started with `pkill -9 chromium` first, so any running browser is killed. Flags include `--kiosk --start-fullscreen`.
 
+**Restarting `photo-api` takes the slideshow off the screen** (observed on the Pi, 2026-11-15). Chromium is spawned by the API, so it runs inside `photo-api.service`'s cgroup (`KillMode=control-group`) and is killed when `photo-api` stops or restarts; the screen then shows the bare desktop. Nothing brings it back by itself: the API does not open Chromium when it starts, and `picapport-chromium.service` does **not** re-run (it is an inactive oneshot, and `PartOf=` only passes a restart on to units that are active), despite the comment in its unit file. A `GET /api/slideshow` (no query string) brings the saved slideshow back. (B06, B20)
+
 ## Known design issues (tracked in the backlog)
 
-- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06 (branch `feat/update-script`): the saved slideshow moved to `/var/lib/photo-api/`. Until that branch is deployed to the Pi, the Pi still has the old behaviour and a dirty checkout.
+- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06 (branch `feat/update-script`): the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on the branch, not yet `main`); the Pi's checkout is now clean apart from an untracked `api/package-lock.json`.
+- Restarting `photo-api` (which `update.sh` does when the API changes) kills the slideshow and nothing relaunches it. (B20)
 - Picapport's database is repeatedly corrupted (`OPageIsBrokenException`); a manual recovery procedure is in the README. (B03, B04)
 - journald is configured `Storage=volatile`, so service logs are lost on every reboot. (B09)
 - A leftover `~/.config/autostart/picapport-chromium.desktop` on the Pi (not from the repo) starts Chromium at `http://localhost:80`. (B12)
 - The HDD is mounted read-write, and `scripts/mount-hdd.sh` picks the first non-SD partition that has a filesystem, so a second USB drive could be mounted instead. (L6, B16)
-- The update path (`scripts/update.sh`, B06) is written and tested only against a scratch clone on the PC; it has not run on the Pi yet. Until it has, the only route is `cleanup.sh`, which deletes and re-clones the checkout. (B06, B15)
+- The update path (`scripts/update.sh`, B06) has run on the Pi once (2026-11-15, update to branch `feat/update-script`); the merge to `main`, a rollback and the optional parts are not yet tested there. (B06, B15)
 - `bootstrap.sh` does not yet use the shared install steps that `update.sh` uses (`scripts/lib/`); two code paths install units and config until bootstrap adopts them as part of the fresh-build test. (B11)
 - The bootstrap has not been run on a blank Pi since September 2025. (B11)
 
