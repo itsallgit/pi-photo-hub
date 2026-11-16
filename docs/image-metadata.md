@@ -17,6 +17,7 @@ On the Pi, against Picapport on `localhost:8080` (no login needed today):
 - **See exactly what Picapport indexed for a photo**: with the same cookie jar (`curl -c jar -b jar`), `cmd=GetMetaData&vid=<vid>&index=<n>` returns `fileName`, `creationDate`, `rating`, `make`, `model`, `software`, `latitude`/`longitude`, `myTags`, and **`textSearch`: the list of words the query engine matches**. This is the ground truth for "is field X indexed".
 - **Read what a file carries**: `exiftool` (installed from `config/packages.txt`). Read options only; never a write option against `/mnt/photos` (hard rule 1). For the whole library: `scripts/metadata-survey.sh scan` then `summary` (README, "Photo Metadata Survey"). The last full survey (2026-11-16, 40 minutes, 64,419 image files under `PHOTOS/`) is in `~/metadata-survey/survey.tsv` on the Pi (scratch data on the SD card; re-create it with the script).
 - **Find which photos have a kind of data**: `-$nokeyword`, `-$noperson`, `-$notitle`, `-$nodesc` as queries, then walk the result with `GetMetaData`.
+- **Test which fields are indexed**: `scripts/metadata-testset.sh` (`create`, `check`, `clean`) writes one small JPEG per field into Picapport's test folder on the SD card (`/home/pi/picapport-testset`, `robot.root.1`), each with a unique word, and asks Picapport for each word. Results below.
 
 ## What gets indexed
 
@@ -70,8 +71,8 @@ The words a query matches can come from any source at once: `croatia` matches 2,
 2. **The date is the photo's EXIF `DateTimeOriginal`.** It gives year, month and day words. Scans and screenshots without it fall back to the file date (`$nodate` marks some of these).
 3. **Tags are XMP `dc:subject`** (proven), which Windows Explorer's "Tags" box writes together with `XPKeywords`. Not IPTC alone (unproven).
 4. **People are face regions plus `PersonInImage`**, as in the 2025 folders (proven); a name query also matches the same word anywhere else.
-5. **Every tag and name has 3 or more letters** and is not a common word you would also use in folder names, unless you mean it to match both. `LB` must be renamed to be findable (for example `Lbee` or the full word; owner to choose).
-6. **JPEG for anything that should play.** HEIC and PNG are not indexed today. Whether to convert copies, or accept that they are not shown, is the owner's decision; this project never writes to the HDD itself (hard rule 1).
+5. **Every tag and name has 3 or more letters** and is not a common word you would also use in folder names, unless you mean it to match both. `LB` (the name of the owner's home) is to be retagged with its full name by the owner (decided 2026-11-16).
+6. **JPEG for anything that should play.** HEIC and PNG are not indexed; the owner accepts that they are not shown (decided 2026-11-16). Video is a possible later addition (backlog L8).
 7. **No sidecars, nothing only in Picapport** (principle 11): no Picapport "MyTags", likes or ratings set in its web UI.
 
 Open before agreeing: whether Windows-only or IPTC-only keywords are indexed, how to query by rating and by GPS area (a test photo set on the SD card would settle the first; backlog B24).

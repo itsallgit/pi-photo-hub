@@ -1,7 +1,8 @@
 #!/bin/bash
 # apply-extras.sh - the non-unit parts of an update, called by scripts/update.sh:
 #   * API dependencies (npm install, only if api/package.json changed or node_modules is missing)
-#   * Picapport's properties file (copied; Picapport is NOT restarted, see update.sh output)
+#   * Picapport's test folder (/home/pi/picapport-testset, created if missing) and properties file
+#     (copied; Picapport is NOT restarted, see update.sh output)
 #   * the logrotate config and the health-log cron entry: always installed or refreshed
 #     (they are part of the app; owner decision 2026-11-15, backlog B20)
 # Env: SRC (tree to apply, required), REPO (the real checkout; default SRC), CHANGED_FILES
@@ -24,6 +25,21 @@ if grep -qx 'api/package.json' "$CHANGED_FILES" || [ ! -d "$REPO/api/node_module
   note_changed "api-deps"
 else
   log "api: dependencies unchanged"
+fi
+
+# --- Picapport test folder (robot.root.1 in picapport.properties) -------------------
+# Second folder Picapport scans, on the SD card; normally empty. scripts/metadata-testset.sh
+# puts test JPEGs there to find out which metadata fields are indexed (backlog B24).
+TESTSET_DIR="${TESTSET_DIR:-/home/pi/picapport-testset}"
+if [ -d "$TESTSET_DIR" ]; then
+  log "picapport test folder: present ($TESTSET_DIR)"
+else
+  log "picapport test folder: missing, creating $TESTSET_DIR"
+  if [ "$DRY_RUN" != 1 ]; then
+    $SUDO mkdir -p "$TESTSET_DIR"
+    if id "$OWNER" >/dev/null 2>&1; then $SUDO chown "$OWNER:$OWNER" "$TESTSET_DIR"; fi
+  fi
+  note_changed "picapport-testset-dir"
 fi
 
 # --- Picapport properties ---------------------------------------------------------

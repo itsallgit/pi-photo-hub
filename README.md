@@ -173,6 +173,15 @@ bash ~/pi-photo-hub/scripts/metadata-survey.sh summary   # per field: number of 
 
 Manual alternative for one photo: `exiftool -G1 -a -s "<photo path>"` (never with a write option).
 
+Which fields Picapport indexes is tested with small JPEGs in a test folder on the SD card (`/home/pi/picapport-testset`, Picapport's second scan root), never on the HDD:
+
+```bash
+bash ~/pi-photo-hub/scripts/metadata-testset.sh create   # one test JPEG per metadata field
+# Picapport indexes them at its next scan (a Picapport restart: sudo systemctl restart picapport-wrapper)
+bash ~/pi-photo-hub/scripts/metadata-testset.sh check    # found / NOT found per field
+bash ~/pi-photo-hub/scripts/metadata-testset.sh clean    # remove them so they never appear in slideshows
+```
+
 ## Health Log (diagnostics)
 
 Every minute a cron job (user `pi`) runs [scripts/health-log.sh](scripts/health-log.sh) and appends one line describing the state of the hub. Every 5 minutes it also saves a small screenshot of the screen. It exists so that when something goes wrong (e.g. the slideshow shows "Network Error"), you can look back and see *when* it happened and *what the system was doing just before*.

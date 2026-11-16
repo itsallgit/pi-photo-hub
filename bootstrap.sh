@@ -190,6 +190,8 @@ banner "Configuring Picapport properties & directories"
 PICAPP_HOME="/opt/picapport/.picapport"
 sudo mkdir -p "$PICAPP_HOME"
 sudo cp -f "$PICAPPORT_PROPS_SRC" "$PICAPP_HOME/picapport.properties"
+# Second root in picapport.properties: the (normally empty) metadata test folder, backlog B24
+mkdir -p /home/pi/picapport-testset
 sudo chown -R pi:pi "$PICAPP_HOME"
 echo "[INFO] picapport.properties copied to $PICAPP_HOME/picapport.properties"
 

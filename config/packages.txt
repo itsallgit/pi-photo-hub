@@ -6,3 +6,6 @@
 # exiftool: read (and, through the project only, later write) photo metadata; backlog B24.
 # Never used with a write option against /mnt/photos by an agent (hard rule 1).
 libimage-exiftool-perl
+
+# python3-pil: scripts/metadata-testset.sh makes its small test JPEGs with it (B24).
+python3-pil

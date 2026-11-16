@@ -84,6 +84,7 @@ State of the Pi (2026-11-16, 09:20, after landing B04): checkout on `main` at `3
 | L5 | Authentication for the photo API | It is open on the LAN today. |
 | L6 | Optional hardening: mount the HDD read-only (`mount -o ro` in `scripts/mount-hdd.sh`) | Owner decided (2026-11-15) that agent boundaries live in the agent setup, not on the Pi, so this is not planned. If ever done, first answer Q4 (does Picapport write to photos?) and test that Picapport still crawls and serves. The `pi` user has passwordless sudo, so a read-only mount is not a hard guarantee anyway. |
 | L7 | Image ingestion pipeline from the owner's phone to the final storage (currently the HDD), with the photos' own metadata as the long-lasting store | Owner's long-running vision (principle 11). Not designed. Discuss the objective with the owner before building anything. |
+| L8 | Video in slideshows | Picapport does not index videos (about 1,500 on the HDD) or HEIC/PNG (owner accepts that for now, 2026-11-16). Way down the line; not designed. |
 
 ## Open questions (unverified; do not state as fact in docs)
 
