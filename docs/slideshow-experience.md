@@ -1,6 +1,6 @@
 # Slideshow experience
 
-Layer 3 of slideshow control (principle 12): what it is like to ask for photos, and what the agent does and says. This page records the **design decisions** agreed with the owner (backlog B24, phase 3). The `slideshow-control` skill (phase 5) turns them into behaviour; when the owner asks for a different experience, this page and the skill change together.
+Layer 3 of slideshow control (principle 12): what it is like to ask for photos, and what the agent does and says. This page records the **design decisions** agreed with the owner (backlog B24, phase 3). The `slideshow-control` skill (`.claude/skills/slideshow-control/SKILL.md`, built 2026-11-16) turns them into behaviour; when the owner asks for a different experience, this page and the skill change together.
 
 Facts it builds on: what can be found ([image-metadata.md](image-metadata.md)), how the slideshow behaves ([architecture.md](architecture.md), "Picapport slideshow behaviour").
 
@@ -19,6 +19,7 @@ Someone who knows nothing about folders, tags, Picapport or query syntax, speaki
 7. **Default order: plain random.** Smart Random (short runs of about three consecutive photos) is available on request.
 8. **Screen off and on, now and for a while:** "turn it off", "turn it off for an hour", "off until tomorrow morning", "turn it back on". A timed request is a one-off and leaves no lasting schedule. This is different from a regular daily schedule (later, L9). By default the screen is always on.
 9. **Personal words.** "Us", "home", "my parents" mean specific people, places or folders. They come from a private word list (below), never guessed.
+10. **No mouse pointer on the slideshow screen** (owner, 2026-11-16): hidden by default, nothing to choose.
 
 ## Where the agent's knowledge comes from
 

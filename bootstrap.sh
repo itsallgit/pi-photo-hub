@@ -262,6 +262,7 @@ fi
 banner "Installing health logger (cron)"
 bash "$REPO_ROOT/scripts/install-health-log.sh" || echo "[WARN] Health logger not installed (non-fatal)"
 bash "$REPO_ROOT/scripts/install-vocabulary-cron.sh" || echo "[WARN] Vocabulary refresh not installed (non-fatal)"
+bash "$REPO_ROOT/scripts/install-hidden-cursor.sh" || echo "[WARN] Hidden mouse pointer not installed (non-fatal)"
 
 # ---------- Finalize ----------
 banner "Bootstrap Complete"

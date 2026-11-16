@@ -13,6 +13,9 @@ module.exports = {
     chromiumBin: process.env.CHROMIUM_BIN || "/usr/bin/chromium-browser",
     browserCheckCmd: process.env.BROWSER_CHECK_CMD || "pgrep chromium",
     browserKillCmd: process.env.BROWSER_KILL_CMD || "pkill -9 chromium || true",
+    // Pointer theme for Chromium: the blank theme hides the mouse pointer on the slideshow
+    // (scripts/install-hidden-cursor.sh). CURSOR_THEME= (empty) leaves the normal pointer.
+    cursorTheme: process.env.CURSOR_THEME ?? "pi-photo-hub-blank",
     wlrRandrBin: process.env.WLR_RANDR_BIN || "wlr-randr",
     screenOutput: process.env.SCREEN_OUTPUT || "", // empty: the first output wlr-randr lists
     waylandEnv: {

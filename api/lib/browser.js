@@ -25,6 +25,7 @@ async function open(url, logger) {
         XAUTHORITY: process.env.XAUTHORITY || "/home/pi/.Xauthority",
         HOME: "/home/pi",
         USER: "pi",
+        ...(config.cursorTheme ? { XCURSOR_THEME: config.cursorTheme } : {}),
     };
     logger.info(`Spawning Chromium at: ${url}`);
     const child = spawn(config.chromiumBin, [...flags, url], { detached: true, stdio: "ignore", env });

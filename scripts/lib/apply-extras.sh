@@ -3,7 +3,8 @@
 #   * API dependencies (npm install, only if api/package.json changed or node_modules is missing)
 #   * Picapport's test folder (/home/pi/picapport-testset, created if missing) and properties file
 #     (copied; Picapport is NOT restarted, see update.sh output)
-#   * the logrotate config, the health-log and vocabulary cron entries: always installed or refreshed
+#   * the logrotate config, the health-log and vocabulary cron entries and the hidden mouse
+#     pointer: always installed or refreshed
 #     (they are part of the app; owner decision 2026-11-15, backlog B20)
 # Env: SRC (tree to apply, required), REPO (the real checkout; default SRC), CHANGED_FILES
 # (file listing the repo files that changed in this update), DRY_RUN, UPDATE_CHANGED.
@@ -89,3 +90,12 @@ note_changed "health-log-cron"
 log "vocabulary: installing/refreshing the nightly cron entry (scripts/refresh-vocabulary.sh at 03:30)"
 run bash "$SRC/scripts/install-vocabulary-cron.sh"
 note_changed "vocabulary-cron"
+
+# --- hidden mouse pointer (owner, 2026-11-16) --------------------------------------------
+log "pointer: installing/refreshing the hidden pointer theme for $OWNER (desktop: from the next reboot)"
+if [ "$(id -un)" = "$OWNER" ]; then
+  run bash "$SRC/scripts/install-hidden-cursor.sh"
+else
+  run $SUDO -u "$OWNER" -H bash "$SRC/scripts/install-hidden-cursor.sh"
+fi
+note_changed "hidden-cursor"

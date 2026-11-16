@@ -154,7 +154,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 
 ## Controlling the Slideshow
 
-The photo API on port 3000 is how everything controls the slideshow (full reference: [docs/architecture.md](docs/architecture.md), "Photo API"; what can be searched: [docs/image-metadata.md](docs/image-metadata.md)). From an agent session, ask in plain words; the `slideshow-control` skill (planned, backlog B23) calls these for you. By hand, from any machine on the home network:
+The photo API on port 3000 is how everything controls the slideshow (full reference: [docs/architecture.md](docs/architecture.md), "Photo API"; what can be searched: [docs/image-metadata.md](docs/image-metadata.md)). From an agent session, ask in plain words; the `slideshow-control` skill calls these for you. By hand, from any machine on the home network:
 
 ```bash
 API=http://pi.local:3000
@@ -172,6 +172,8 @@ curl -s $API/api/slideshow                                       # replay the sa
 ```
 
 Manual alternative on the Pi, without the API: the screen with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --off` (or `--on`). The vocabulary is rebuilt nightly at 03:30; by hand: `bash ~/pi-photo-hub/scripts/refresh-vocabulary.sh` (about 40 minutes) or `--build-only` (seconds, from the last scan).
+
+The mouse pointer is hidden on the slideshow screen: `scripts/install-hidden-cursor.sh` (run by every update and by bootstrap) installs a blank pointer theme for `pi` and sets it for the desktop (from the next reboot); the API starts Chromium with it. To show the pointer again: `bash ~/pi-photo-hub/scripts/install-hidden-cursor.sh --remove`, set `CURSOR_THEME=` (empty) for `photo-api`, and reboot.
 
 The private word list and the other API state are only on the Pi's SD card (`/var/lib/photo-api/`); back them up with the Picapport database (backlog B25).
 

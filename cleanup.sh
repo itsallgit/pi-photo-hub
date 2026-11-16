@@ -34,6 +34,7 @@ sudo systemctl disable mount-hdd.service || true
 # Health log and vocabulary cron entries (must go before the repo directory is deleted below)
 bash /home/pi/pi-photo-hub/scripts/install-health-log.sh --remove || true
 bash /home/pi/pi-photo-hub/scripts/install-vocabulary-cron.sh --remove || true
+sudo -u pi -H bash /home/pi/pi-photo-hub/scripts/install-hidden-cursor.sh --remove || true
 
 # Kill stray Chromium
 pkill -9 chromium-browser || true
