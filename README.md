@@ -161,6 +161,18 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
 - Picapport logs: `/opt/picapport/.picapport/logfiles/`
 - Health log (per-minute snapshots + screenshots, in RAM): `/run/user/1000/pi-photo-hub-health/` (see [Health Log](#health-log-diagnostics))
 
+## Photo Metadata Survey (read-only)
+
+Shows which metadata the photos carry (keywords, people, dates, GPS, ...), as input for slideshow queries. Facts and findings: [docs/image-metadata.md](docs/image-metadata.md). It only reads the photo HDD; its output goes to the SD card.
+
+```bash
+# On the Pi (needs exiftool, installed by update.sh from config/packages.txt)
+bash ~/pi-photo-hub/scripts/metadata-survey.sh scan      # ~40 min for ~64,000 photos; writes ~/metadata-survey/survey.tsv
+bash ~/pi-photo-hub/scripts/metadata-survey.sh summary   # per field: number of files and top values
+```
+
+Manual alternative for one photo: `exiftool -G1 -a -s "<photo path>"` (never with a write option).
+
 ## Health Log (diagnostics)
 
 Every minute a cron job (user `pi`) runs [scripts/health-log.sh](scripts/health-log.sh) and appends one line describing the state of the hub. Every 5 minutes it also saves a small screenshot of the screen. It exists so that when something goes wrong (e.g. the slideshow shows "Network Error"), you can look back and see *when* it happened and *what the system was doing just before*.

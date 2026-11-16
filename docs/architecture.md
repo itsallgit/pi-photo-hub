@@ -85,16 +85,16 @@ How a change reaches the Pi. Procedure: the `apply-changes` skill and README "Up
 - **Restarting the app, not the Pi** (owner decision 2026-11-15, B20). An update is finished when the app is running again the way a boot starts it, so every update exercises the boot start path for the API and the slideshow. Not restarted: `mount-hdd` (hard rule 1) and Picapport (Q11, until its stop is shown to be clean, B10). No reboot after an update. The health-log cron entry and the logrotate config are part of the app and always installed.
 - **Testing the logic away from the Pi.** Paths and commands can be overridden by environment variables (`PI_REPO`, `STATE_DIR`, `LOG_DIR`, `UNIT_DIR`, `LOGROTATE_DIR`, `PICAPPORT_PROPS_DST`, `SYSTEMCTL`, `CURL`, `SUDO`, `APT_GET`, `DPKG_QUERY`; see `scripts/lib/common.sh`), which allows running it against a scratch clone with a stubbed `systemctl`. That tests the script logic only: it does **not** test `systemctl`, the real unit sync, `sudo`, file ownership or executable-bit handling (Windows git ignores modes), or Pi-specific behaviour.
 
-## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code)
+## Picapport queries
 
-## Picapport queries (probed read-only on the Pi, 2026-11-16)
+What the photos carry, what Picapport indexes, and the query syntax are in [image-metadata.md](image-metadata.md) (layer 1, principle 12). Interfaces found (read-only, 2026-11-16):
 
-- **Counting without changing the screen.** `GET http://localhost:8080/picapport_json?cmd=RunQuery&query=<q>&sort=random` (no login needed today) returns JSON with `status` (`OK` or `NORESULT`) and `numPhotos`. This is the call the slideshow page itself makes. It does not touch Chromium or the saved slideshow. Each call returns a new `vid` (a server-side view id); whether these accumulate in memory is not known.
-- **Words are ANDed:** `noosa 2022` gave 863, fewer than `noosa` (1,916). **`OR` works:** `wedding OR noosa` gave 3,644 (= 1,728 + 1,916). **`-word` excludes:** `-noosa` gave 61,821 of 63,737. `|` does not work (0). `@ll` matches everything (63,737).
-- **Matching is by word, not phrase:** `our` and `our wedding` both gave 904 (the folder `2024.09.14 - Our Wedding`). Matching is case-insensitive (`honeymoon` finds `Honeymoon`).
-- **Dates:** `2024` gave 5,450; `2024.09` gave 0, so a folder-name date prefix is not matched as one word. Whether `2024` matches folder names, photo dates, or both is not known; Picapport's date syntax is not yet found.
-- **What the library carries** (2026-11-16): about 63,500 JPEGs plus PNG, HEIC and videos under `/mnt/photos/PHOTOS`, in 68 top-level folders named by year (`2019`) or by date and event (`2024.09.14 - Our Wedding`, `2026.09 - 2026.10 - Honeymoon`), plus `_Friends`, `_Parents`, `_Work`. Only 57 `.xmp` sidecars. Whether the photos carry keywords, people or GPS in their own metadata is not checked (no `exiftool` on the Pi).
+- `GET http://localhost:8080/picapport_json?cmd=RunQuery&query=<q>&sort=random` (no login today) returns `status` (`OK`/`NORESULT`), `numPhotos` and a `vid` (server-side view id). This is the call the slideshow page makes; it does not touch Chromium or the saved slideshow. Whether `vid`s accumulate in memory is not known.
+- `cmd=GetMetaData&vid=<vid>&index=<n>` (same cookie jar) returns one result's file name, dates, camera, GPS and `textSearch` (the indexed words).
+- A query containing `*` makes `picapport_json` fail with HTTP 500. Never send one.
+- Picapport's documented Web API (`/picapportapi/1.0/runQuery`, wiki 2019) answers 404 here; `picapport.properties` has no `webapi` settings. Whether enabling it would be better for the photo API than `picapport_json` is open (B24, phase 3).
 
-## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code)
+## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code, and tested)
 
-The slideshow page asks the server for data with JSON calls. If one fails, the page goes into an offline state and shows the dialog "Network Error. Info: Not connected. Verify Network."; it does not retry by itself. See backlog B03.
+- **Order.** The slideshow page runs one `RunQuery` with `sort=random`, then plays index 0, 1, 2, ... of that result and wraps to 0 at the end. **The shuffle is a true shuffle** (tested 2026-11-16: the 1,916 Noosa photos gave 1,916 distinct files, and a second run a different order with 1 photo in the same place). So a photo repeats only after the whole result has played (11,807 honeymoon photos at 20 s is about 65 hours), **or after a relaunch**, which reshuffles: every boot, every `update.sh` and every `/api/slideshow` call. Two shuffles overlap quickly (watching 1,000 of 10,000 photos from each gives about 100 repeats). The API log showed 14 relaunches on 2026-11-15 (maintenance) against about one a day in normal use (B26).
+- **Failures.** The page asks the server for data with JSON calls. If one fails, the page goes into an offline state and shows the dialog "Network Error. Info: Not connected. Verify Network."; it does not retry by itself. See backlog B03.
