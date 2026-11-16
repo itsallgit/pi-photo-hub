@@ -39,7 +39,7 @@ To test this procedure without touching the real file, add `-o UserKnownHostsFil
 The Pi gets its IP by DHCP, so the address can change. In order:
 1. `ping -n 1 pi.local` (Windows ping).
 2. Try the last-seen IP in `docs/network.md`.
-3. `pwsh -File scripts\find-pi.ps1` sweeps the subnet for SSH (needs PowerShell 7).
+3. `powershell -File scripts\find-pi.ps1` sweeps the subnet for SSH in about 5 s (PowerShell 5.1 or 7).
 4. The owner can look in the Deco app's client list.
 
 If the Pi is off or unreachable, say so; do not guess.

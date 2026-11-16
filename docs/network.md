@@ -31,7 +31,7 @@ The Pi's IP can change. Prefer the name `pi.local`; it resolved from the owner's
 
 1. `pi.local` (works if mDNS works on the machine you are on).
 2. The Deco app's client list.
-3. `pwsh -File scripts\find-pi.ps1`: sweeps the PC's subnet for hosts with SSH open. The Pi's MAC starts `e4:5f:01` (also `b8:27:eb`, `dc:a6:32`, `d8:3a:dd`, `2c:cf:67` for other Pi models) in `arp -a`.
+3. `powershell -File scripts\find-pi.ps1` (PowerShell 5.1 or 7): sweeps the PC's subnet for hosts with SSH open. The Pi's MAC starts `e4:5f:01` (also `b8:27:eb`, `dc:a6:32`, `d8:3a:dd`, `2c:cf:67` for other Pi models) in `arp -a`.
 
 ## SSH host keys (to verify the Pi before trusting it)
 

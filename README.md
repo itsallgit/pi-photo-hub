@@ -18,7 +18,7 @@
 
 **Adding new photos:** plug the HDD into the Pi, reboot cleanly (`scripts/pi-power.sh reboot`), wait for Picapport to index (`tail -f /opt/picapport/.picapport/logfiles/*`), then call `/api/slideshow?q=<search>`. The default saved query is `noimagesfound`, so a real query must be set once.
 
-**Can't find the Pi?** Check the Deco app client list, or run `pwsh -File scripts\find-pi.ps1` from this repo. It needs PowerShell 7 (`pwsh`); the built-in `powershell` (5.1) fails with a `-Parallel` error. It lists hosts with SSH open; the Pi's MAC in `arp -a` starts with `b8-27-eb`, `dc-a6-32`, `d8-3a-dd`, `e4-5f-01` or `2c-cf-67`.
+**Can't find the Pi?** Check the Deco app client list, or run `powershell -File scripts\find-pi.ps1` from this repo (the built-in PowerShell 5.1 or PowerShell 7; about 5 s). It lists hosts with SSH open; the Pi's MAC in `arp -a` starts with `b8-27-eb`, `dc-a6-32`, `d8-3a-dd`, `e4-5f-01` or `2c-cf-67`.
 
 **Forgot the SSH password / SSH not enabled?** See [Password Recovery](#password-recovery-from-the-sd-card).
 
