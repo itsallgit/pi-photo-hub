@@ -14,8 +14,9 @@
 | Replay last slideshow | `http://<pi-ip>:3000/api/slideshow` |
 | Photos HDD | auto-mounted at `/mnt/photos`; Picapport crawls it |
 | Get a change onto the Pi | `bash ~/pi-photo-hub/scripts/update.sh --dry-run`, then without `--dry-run` (see [Updating the Pi](#updating-the-pi)) |
+| Reboot / switch off | `bash ~/pi-photo-hub/scripts/pi-power.sh reboot` or `shutdown` (see [Rebooting and Shutting Down](#rebooting-and-shutting-down)). **Not the cable button while it runs.** |
 
-**Adding new photos:** plug the HDD into the Pi, reboot (or `sudo systemctl restart mount-hdd picapport-wrapper`), wait for Picapport to index (`tail -f /opt/picapport/.picapport/logfiles/*`), then call `/api/slideshow?q=<search>`. The default saved query is `noimagesfound`, so a real query must be set once.
+**Adding new photos:** plug the HDD into the Pi, reboot cleanly (`scripts/pi-power.sh reboot`), wait for Picapport to index (`tail -f /opt/picapport/.picapport/logfiles/*`), then call `/api/slideshow?q=<search>`. The default saved query is `noimagesfound`, so a real query must be set once.
 
 **Can't find the Pi?** Check the Deco app client list, or run `pwsh -File scripts\find-pi.ps1` from this repo. It needs PowerShell 7 (`pwsh`); the built-in `powershell` (5.1) fails with a `-Parallel` error. It lists hosts with SSH open; the Pi's MAC in `arp -a` starts with `b8-27-eb`, `dc-a6-32`, `d8-3a-dd`, `e4-5f-01` or `2c-cf-67`.
 
@@ -312,6 +313,27 @@ Your photo API will be available at `http://<pi-ip>:3000/api/test`.
    sudo service picapport start
    tail -f /opt/picapport/.picapport/logfiles/picapport.*
    ```
+
+## Rebooting and Shutting Down
+
+**Do not switch the Pi off at the cable button while it is running.** A hard power cut is the strongest suspect for the past Picapport database damage (backlog Q3). Use `scripts/pi-power.sh` (backlog B10). It refuses while a project job is running (vocabulary refresh, metadata survey, database script, update) and lists them. It stops Picapport on its own first and checks that it closed its database (up to 5 minutes, usually about a minute). It records the result in `/var/log/pi-photo-hub/power.log`, then reboots or powers off. The OS unmounts the photo HDD itself.
+
+### Automated (from an agent session: the `pi-power` skill)
+
+Say "reboot the Pi" or "switch the Pi off". The agent shows what is running and asks before doing it (twice if it would interrupt a job), runs the script, and checks afterwards.
+
+### Manual (by hand over SSH)
+
+```bash
+bash ~/pi-photo-hub/scripts/pi-power.sh reboot --dry-run      # what is running, what it would do; changes nothing
+bash ~/pi-photo-hub/scripts/pi-power.sh reboot --reason "why"  # back in about 2-3 minutes, slideshow starts by itself
+bash ~/pi-photo-hub/scripts/pi-power.sh shutdown --reason "why"
+bash ~/pi-photo-hub/scripts/pi-power.sh verify                 # after it is back: clean stop? HDD clean? all running?
+```
+
+- Exit code 3 means it refused because jobs are running. Wait for them (`bash ~/pi-photo-hub/scripts/whats-running.sh`), or add `--force` if you accept interrupting them. A vocabulary refresh is safe to interrupt; a database script or an update is not.
+- **After `shutdown`:** wait until the Pi stops answering (`ping pi.local`, about 30 s). Then it is safe to switch it off at the cable. To start it again, switch the cable off and on.
+- If Picapport will not stop, the script does not power off. It starts Picapport again and exits with an error.
 
 ## Updating the Pi
 

@@ -52,7 +52,20 @@ What is known about how one part's failure becomes another part's symptom. Each 
 5. **The slideshow page fails** (observed): it plays right after a fresh Picapport start, then a JSON request fails (`PicApportJsonServlet ... InvocationTargetException`) and the page goes white or shows "Network Error", and does not recover by itself. That this is caused by 3 and 4 is a strong hypothesis (B03).
 6. **Restarting `photo-api` takes Chromium down with it** (observed): Chromium runs in its cgroup. `update.sh` therefore relaunches the slideshow itself (B20).
 
-Consequence for any fix: a repaired database will break again at the next stop or reboot unless step 1 is fixed first (B10, Q11).
+Consequence for any fix: a repaired database will break again at the next stop or reboot unless step 1 is fixed first (B10, Q11). Step 1 is fixed (stops are clean since 2026-11-15), and reboots and shutdowns now go through `scripts/pi-power.sh` (below).
+
+**Open (Q11):** after the clean reboot at 23:29 on 2026-11-16 (Picapport logged "shutdown completed"), the kernel still logged "exFAT-fs (sda1): Volume was not properly unmounted" at the next boot. So something at shutdown still keeps the HDD from unmounting cleanly. Picapport is not ordered against the HDD's mount unit, because the HDD is mounted by a script, not `fstab`, so systemd may try to unmount it while Picapport is still running. The persistent journal (B09) now records the shutdown, and `pi-power.sh verify` shows it.
+
+## Power: reboot and shutdown (`scripts/pi-power.sh`, B10)
+
+The only route an agent uses (the `pi-power` skill); the README has the manual form. Triggered over SSH. There is no API endpoint, by the owner's decision: this is maintenance, not slideshow control.
+
+1. **Jobs first.** It refuses (exit 3) while a project job runs (`scripts/lib/project-jobs.sh`, the same list `whats-running.sh` shows): safe to interrupt are the vocabulary refresh, metadata survey and test set; not safe are `picapport-db.sh` and `update.sh`. `--force` overrides it. The skill uses it only after the owner has confirmed twice.
+2. **Picapport is stopped on its own**, before the OS goes down, so its database is known to be closed: `systemctl stop picapport-wrapper` (up to 300 s), timed, then the check that its log gained "shutdown completed" and its java process is gone. If java is still running, the script does not power off; it starts Picapport and the slideshow again and exits 1.
+3. **Recorded** in `/var/log/pi-photo-hub/power.log` (SD card, kept across reboots): action, reason, `--force`, number of jobs, stop time, clean, killed.
+4. `systemctl --no-block reboot` or `poweroff`. The OS stops the rest and unmounts the HDD (hard rule 1 allows a normal reboot or shutdown; nobody runs `umount` by hand). After `poweroff` a Pi 4 stays powered but halted: the cable is switched off, and off and on again to start it.
+
+`pi-power.sh verify` (read-only, after a boot) reports whether the boot followed a `pi-power` entry within 15 minutes (otherwise a power cut or another kind of reboot), whether Picapport's previous run ended with "shutdown completed", the HDD's "not properly unmounted" message, the previous boot's journal lines about the HDD, services, HTTP codes and Chromium.
 
 ## Photo API (port 3000, no authentication, LAN only)
 

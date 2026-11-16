@@ -5,7 +5,7 @@ description: Use when a task needs to reach the Raspberry Pi over SSH, check whe
 
 # Reaching the Pi
 
-This skill is **read-only**. Anything that changes the Pi (restart a service, edit a file, `git` operations in its checkout, reboot) is a change the owner agrees first (see `CLAUDE.md`, "Working with the owner"). The photo HDD at `/mnt/photos` is never modified (hard rule 1).
+This skill is **read-only**. Anything that changes the Pi (restart a service, edit a file, `git` operations in its checkout) is a change the owner agrees first; a reboot or shutdown goes through the `pi-power` skill (see `CLAUDE.md`, "Working with the owner"). The photo HDD at `/mnt/photos` is never modified (hard rule 1).
 
 Facts used here (hostnames, ports, paths) are in `docs/network.md` and `docs/architecture.md`.
 
@@ -60,7 +60,7 @@ ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local 
 ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local "bash ~/pi-photo-hub/scripts/whats-running.sh"
 ```
 
-Shows the services, the slideshow (label, order, interval, screen), **project jobs running at this moment** (vocabulary refresh, metadata survey, database scripts, an update), the scheduled jobs (cron) and the last vocabulary refresh. Run it before anything disruptive (a reboot, a shutdown, an update) and tell the owner what is running. A running vocabulary refresh is safe to interrupt: it writes a new file and swaps it in only at the end (`docs/architecture.md`, "Vocabulary refresh"). A running `picapport-db.sh` or `update.sh` is not: wait for it.
+Shows the services, the slideshow (label, order, interval, screen), **project jobs running at this moment** (vocabulary refresh, metadata survey, database scripts, an update), the scheduled jobs (cron) and the last vocabulary refresh. Run it before anything disruptive (an update; `pi-power.sh` runs the same job check itself) and tell the owner what is running. It also shows when the Pi came up and the last clean reboot/shutdown. A running vocabulary refresh is safe to interrupt: it writes a new file and swaps it in only at the end (`docs/architecture.md`, "Vocabulary refresh"). A running `picapport-db.sh` or `update.sh` is not: wait for it.
 
 ## Reading logs (read-only)
 

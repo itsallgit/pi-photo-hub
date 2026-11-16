@@ -30,7 +30,8 @@ This is how every session should behave. It is a working style, not a technical 
 
 - **The owner understands a change before it happens.** For anything that changes the Pi (a database reset, restarting or reconfiguring services, files, cron, a reboot, any SSH command that writes) or changes how the project behaves, say what you propose, why, the risk, and how to undo it, and get the owner's agreement first. Keep it short enough to read on a phone.
 - **You understand the objective before extending the project.** For a new feature or a substantial extension (for example the planned knob-and-buttons board), first make sure you understand what the owner is trying to achieve, discuss the options and agree a plan. Do not go straight in.
-- **Never suggest the power-cable button.** The owner switches the Pi off and on by the cable, a hard power cut that probably corrupts Picapport's database (backlog Q3). Whenever the Pi needs to be switched off or restarted, say so and offer a clean shutdown or reboot over SSH (agree it first), so the owner never has to remember to ask.
+- **Every reboot and shutdown goes through the `pi-power` skill.** It checks what is running, stops Picapport cleanly first and holds the agreement gate (a double confirmation if it would interrupt a job). Never reboot or power off the Pi any other way. Whenever the Pi needs to be switched off or restarted, say so and offer it, so the owner never has to remember to ask.
+- **Never suggest the power-cable button while the Pi is running.** Background: the owner used to switch the Pi off and on by the cable, a hard power cut that probably corrupted Picapport's database (backlog Q3). The cable is only for after a finished `pi-power` shutdown, and to switch the Pi back on.
 - **Slideshow requests need no confirmation.** Playing or changing the slideshow and switching the screen through the photo API, when the owner asks for it, is everyday use: act first, then report (the `slideshow-control` skill). This covers only the photo API; anything else that changes the Pi still needs agreement first.
 - **Bookkeeping needs no review.** Updating the backlog, docs and similar notes to reflect what is known or decided is part of the job and needs no discussion.
 - **Investigate freely.** Read-only work (reading files and logs, `git status`, read-only SSH, screenshots) needs no discussion.
@@ -47,6 +48,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | `pi-access` | Reach the Pi over SSH, read its state and logs, see its screen |
 | `git-workflow` | Commit, branch, test a branch on the Pi, merge to `main`, push |
 | `apply-changes` | Get a change (or a branch, or a rollback) onto the Pi with `scripts/update.sh`, behind an agreement gate |
+| `pi-power` | Reboot or shut down the Pi cleanly with `scripts/pi-power.sh`: checks what is running, stops Picapport first, agreement gate |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 | `picapport-db` | **Draft (B04).** Diagnose and repair Picapport's database on copies: status, snapshot, repair playbook, case history |
 | `slideshow-control` | Show photos from plain words ("us in Barcelona"), change the slideshow ("slower"), switch the screen ("off for an hour"), keep the private word list, through the photo API |

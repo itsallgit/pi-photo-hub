@@ -7,7 +7,7 @@ description: Use when a change in this repo has to reach the Pi (new code, a sys
 
 `scripts/update.sh` is the one way a change reaches the Pi (hard rule 2). This skill is the gate around it: what to check, what to tell the owner, how to verify and undo. The script is the source of truth for the steps; read its header (`bash scripts/update.sh --help`) rather than trusting a copy of it here. **This changes the Pi**: agree it first (`CLAUDE.md`, "Working with the owner").
 
-**Every update ends with the app restarted the way a boot starts it** (owner decision, 2026-11-15): the script restarts `photo-api` and then starts `picapport-chromium`, the boot's own slideshow launcher, even if nothing changed. It never restarts `mount-hdd` (that would remount the photo HDD, hard rule 1) or Picapport (suspected to damage its database, backlog Q11), and it never reboots. The health-log cron entry and the logrotate config are part of the app and are always installed. Packages listed in `config/packages.txt` (for example `exiftool`) are installed if missing, install only: the script never upgrades or removes packages. To add a tool the project needs on the Pi, add it to that file (with a comment saying why) rather than running `apt` by hand. Kernel command-line settings in `config/kernel-cmdline.txt` are added the same way and need a reboot; the dry run and the script's "Needs a separate, agreed step" list say so, and the reboot (`sudo systemctl reboot`) is agreed with the owner like any other.
+**Every update ends with the app restarted the way a boot starts it** (owner decision, 2026-11-15): the script restarts `photo-api` and then starts `picapport-chromium`, the boot's own slideshow launcher, even if nothing changed. It never restarts `mount-hdd` (that would remount the photo HDD, hard rule 1) or Picapport (suspected to damage its database, backlog Q11), and it never reboots. The health-log cron entry and the logrotate config are part of the app and are always installed. Packages listed in `config/packages.txt` (for example `exiftool`) are installed if missing, install only: the script never upgrades or removes packages. To add a tool the project needs on the Pi, add it to that file (with a comment saying why) rather than running `apt` by hand. Kernel command-line settings in `config/kernel-cmdline.txt` are added the same way and need a reboot; the dry run and the script's "Needs a separate, agreed step" list say so, and the reboot goes through the `pi-power` skill (its own agreement gate).
 
 **Never** use `cleanup.sh` or `bootstrap.sh` for this, and never run `git pull`, `checkout`, `stash`, `reset` or `clean` on the Pi by hand.
 
@@ -31,7 +31,7 @@ The script prints the previous commit. Roll back with `update.sh --ref <that sha
 ## Do not
 
 - Run it without a dry run and the owner's agreement, or push work in progress to `main` to get it onto the Pi (use a branch and `--branch`).
-- Restart Picapport or `mount-hdd`, reboot, or touch `/mnt/photos` as part of an update. If a change needs a Picapport restart (`picapport.properties`, `picapport-wrapper.service`), the script says so; that restart is a separate step to agree.
+- Restart Picapport or `mount-hdd`, reboot (that is the `pi-power` skill, a separate step), or touch `/mnt/photos` as part of an update. If a change needs a Picapport restart (`picapport.properties`, `picapport-wrapper.service`), the script says so; that restart is a separate step to agree.
 - Treat a "verify" failure as done. Report it; nothing is rolled back automatically.
 
 ## Links
