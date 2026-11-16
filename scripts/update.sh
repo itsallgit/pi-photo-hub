@@ -128,6 +128,7 @@ if [ "$PHASE2" = 1 ]; then
   bash "$LIB/apply-units.sh"
   if [ -f "$LIB/apply-logging.sh" ]; then bash "$LIB/apply-logging.sh"; fi
   bash "$LIB/apply-extras.sh"
+  if [ -f "$LIB/apply-git-tidy.sh" ]; then bash "$LIB/apply-git-tidy.sh" || log "[WARN] branch tidy failed (harmless; see above)"; fi
 
   # --- restart the app, the way a boot starts it ---------------------------------------
   # Every update ends with the app restarted, whether or not it changed, so an update
@@ -170,8 +171,8 @@ if [ "$PHASE2" = 1 ]; then
     log "  - Picapport's init script changed: used at the next Picapport stop or start (not restarted)"; need=1; fi
   if grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" >/dev/null 2>&1; then
     log "  - bootstrap-managed files changed ($(grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" | tr '\n' ' ')): applied only by a rebuild (backlog B11)"; need=1; fi
-  if grep -qx 'scripts/mount-hdd.sh' "$CHANGED" 2>/dev/null; then
-    log "  - scripts/mount-hdd.sh changed: used at the next mount/boot"; need=1; fi
+  if grep -Eqx 'scripts/mount-hdd.sh|config/hdd.conf' "$CHANGED" 2>/dev/null; then
+    log "  - scripts/mount-hdd.sh or config/hdd.conf changed (which disk is the photo HDD): used at the next boot; check first with: bash scripts/mount-hdd.sh --check (then a reboot through the pi-power skill)"; need=1; fi
   [ "$need" = 0 ] && log "  (nothing)"
 
   # --- verify -------------------------------------------------------------------------

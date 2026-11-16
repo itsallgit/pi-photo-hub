@@ -12,7 +12,7 @@
 | Picapport | `http://<pi-ip>:8080/picapport` |
 | Play a search | `http://<pi-ip>:3000/api/slideshow?q=honeymoon&interval=30` (saved, replayed on boot) |
 | Replay last slideshow | `http://<pi-ip>:3000/api/slideshow` |
-| Photos HDD | auto-mounted at `/mnt/photos`; Picapport crawls it |
+| Photos HDD | auto-mounted at `/mnt/photos` (the disk pinned in `config/hdd.conf`; `scripts/mount-hdd.sh --check`); Picapport crawls it |
 | Get a change onto the Pi | `bash ~/pi-photo-hub/scripts/update.sh --dry-run`, then without `--dry-run` (see [Updating the Pi](#updating-the-pi)) |
 | Reboot / switch off | `bash ~/pi-photo-hub/scripts/pi-power.sh reboot` or `shutdown` (see [Rebooting and Shutting Down](#rebooting-and-shutting-down)). **Not the cable button while it runs.** |
 
@@ -182,7 +182,7 @@ The private word list and the other API state are only on the Pi's SD card (`/va
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
 - Update log: `/var/log/pi-photo-hub/update.log` (written by `scripts/update.sh`; rotated by `/etc/logrotate.d/pi-photo-hub` installed by every update)
-- HDD mount logs: `/var/log/pi-photo-hub/mount-hdd.log` (stale: last written September 2025; the script now logs to the journal, see `journalctl -u mount-hdd`)
+- HDD mount: `journalctl -u mount-hdd -b` (which disk, any wait). `/var/log/pi-photo-hub/mount-hdd.log` is a stale file from September 2025. Which disk is pinned: `bash ~/pi-photo-hub/scripts/mount-hdd.sh --check` (read-only)
 - API logs: `/var/log/photo-api/`
 - Picapport logs: `/opt/picapport/.picapport/logfiles/`
 - Health log (one line per minute): `/var/log/pi-photo-hub/health.log`; its screenshots (RAM): `/run/user/1000/pi-photo-hub-health/shots/` (see [Health Log](#health-log-diagnostics))

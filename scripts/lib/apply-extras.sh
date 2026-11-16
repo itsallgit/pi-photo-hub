@@ -97,6 +97,20 @@ log "vocabulary: installing/refreshing the nightly cron entry (scripts/refresh-v
 run bash "$SRC/scripts/install-vocabulary-cron.sh"
 note_changed "vocabulary-cron"
 
+# --- stale desktop autostart entry (backlog B12) ------------------------------------------------
+# An old ~/.config/autostart/picapport-chromium.desktop (from before the systemd units) opened
+# Chromium at http://localhost:80 at login, racing the real launcher (picapport-chromium.service).
+# Moved aside into the state directory (kept, so it can be put back), never deleted.
+AUTOSTART_FILE="${AUTOSTART_FILE:-/home/$OWNER/.config/autostart/picapport-chromium.desktop}"
+if [ -f "$AUTOSTART_FILE" ] && grep -Eq 'localhost:80([^0-9]|$)' "$AUTOSTART_FILE"; then
+  log "autostart: moving the stale $AUTOSTART_FILE (Chromium at localhost:80) aside to $STATE_DIR/ (from the next login/reboot)"
+  if [ "$(id -un)" = "$OWNER" ]; then mvu=(); else mvu=($SUDO -u "$OWNER"); fi
+  run "${mvu[@]}" mv "$AUTOSTART_FILE" "$STATE_DIR/removed-autostart-picapport-chromium.desktop"
+  note_changed "autostart"
+else
+  log "autostart: no stale entry"
+fi
+
 # --- hidden mouse pointer (owner, 2026-11-16) --------------------------------------------
 log "pointer: installing/refreshing the hidden pointer theme for $OWNER (desktop: from the next reboot)"
 if [ "$(id -un)" = "$OWNER" ]; then
