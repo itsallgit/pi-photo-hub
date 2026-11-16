@@ -97,6 +97,11 @@ log "vocabulary: installing/refreshing the nightly cron entry (scripts/refresh-v
 run bash "$SRC/scripts/install-vocabulary-cron.sh"
 note_changed "vocabulary-cron"
 
+# --- weekly database snapshot (backlog B25) ---------------------------------------------------
+log "database backup: installing/refreshing the weekly cron entry (picapport-db.sh scheduled, Sunday 04:30)"
+run bash "$SRC/scripts/install-db-backup-cron.sh"
+note_changed "db-backup-cron"
+
 # --- stale desktop autostart entry (backlog B12) ------------------------------------------------
 # An old ~/.config/autostart/picapport-chromium.desktop (from before the systemd units) opened
 # Chromium at http://localhost:80 at login, racing the real launcher (picapport-chromium.service).

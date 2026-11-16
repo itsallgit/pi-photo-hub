@@ -16,6 +16,14 @@
 #                                        start Picapport (rolls back by itself if it will not
 #                                        start) and the slideshow. --no-swap stops after the check
 #                                        and starts Picapport on the old database.
+#   picapport-db.sh snapshot --auto      the same, named snapshot-auto-<time> (what the weekly cron makes)
+#   picapport-db.sh prune [--keep N] [--dry-run]
+#                                        delete all but the newest N (default 4) AUTOMATIC snapshots;
+#                                        snapshots taken by hand are never pruned
+#   picapport-db.sh scheduled [--dry-run]
+#                                        what the weekly cron entry runs (Sunday 04:30,
+#                                        scripts/install-db-backup-cron.sh): skip if a database job or
+#                                        an update is running, else snapshot --auto, then prune
 #   picapport-db.sh restore <dir> [--dry-run]
 #                                        put a kept database back (<dir> contains db_3_0_39, e.g.
 #                                        <work>/repair-<time>/live-before); the current one is kept
@@ -197,7 +205,8 @@ cmd_snapshot() {
   local db="$DB_PARENT/$DB_NAME" ts dest
   guard_paths
   [ -d "$db" ] || die "database not found: $db"
-  ts="$(date +%Y%m%d-%H%M%S)"; dest="$WORK_DIR/snapshot-$ts"
+  ts="$(date +%Y%m%d-%H%M%S)"
+  if [ "${AUTO:-0}" = 1 ]; then dest="$WORK_DIR/snapshot-auto-$ts"; else dest="$WORK_DIR/snapshot-$ts"; fi
   need_space_mb $(( $(du -sk "$DB_PARENT" | cut -f1) * 3 / 1024 ))
   log "snapshot: $DB_PARENT ($(du -sh "$DB_PARENT" | cut -f1)) -> $dest"
   if [ "$DRY_RUN" = 1 ]; then
@@ -354,18 +363,57 @@ cmd_restore() {
 }
 
 # ---------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# Automatic snapshots (backlog B25): only snapshot-auto-* are ever pruned; snapshots taken by hand
+# (snapshot-<time>) are kept until the owner deletes them.
+cmd_prune() {
+  local n=0 s
+  log "prune: keeping the newest $KEEP automatic snapshots (manual snapshots are never pruned)"
+  while read -r s; do
+    [ -n "$s" ] || continue
+    n=$((n + 1)); [ "$n" -le "$KEEP" ] && continue
+    guard_paths "$s"
+    log "  deleting $s"
+    if [ "$DRY_RUN" != 1 ]; then chmod -R u+w "$s" && rm -r "$s"; fi
+  done < <(ls -1d "$WORK_DIR"/snapshot-auto-* 2>/dev/null | sort -r)
+  [ "$n" -gt "$KEEP" ] || log "  nothing to delete ($n automatic snapshot(s))"
+}
+
+# What the weekly cron entry runs (scripts/install-db-backup-cron.sh): skip if a database job or
+# an update is running, otherwise take an automatic snapshot and prune the old ones.
+cmd_scheduled() {
+  local busy
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/scripts/lib/project-jobs.sh"
+  busy="$(project_jobs | grep 'NOT safe' | grep -v 'picapport-db.sh scheduled' || true)"
+  if [ -n "$busy" ]; then
+    log "scheduled snapshot SKIPPED: a database job or an update is running:"
+    printf '%s\n' "$busy" | sed 's/^/    /' | while read -r l; do log "$l"; done
+    exit 0
+  fi
+  cmd_prune
+  AUTO=1 cmd_snapshot
+  cmd_prune
+}
+
 cmd="${1:-}"; [ $# -gt 0 ] && shift
-for a in "$@"; do
-  case "$a" in
+AUTO=0; KEEP="${KEEP:-4}"
+while [ $# -gt 0 ]; do
+  case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --no-swap) NO_SWAP=1 ;;
-    -*) echo "unknown option: $a" >&2; exit 2 ;;
-    *) ARG="$a" ;;
+    --auto) AUTO=1 ;;
+    --keep) KEEP="${2:?--keep needs a number}"; shift ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) ARG="$1" ;;
   esac
+  shift
 done
 case "$cmd" in
   status) cmd_status ;;
   snapshot) cmd_snapshot ;;
+  prune) cmd_prune ;;
+  scheduled) cmd_scheduled ;;
   repair) cmd_repair ;;
   restore) cmd_restore ;;
   -h|--help|"") usage ;;

@@ -29,6 +29,7 @@ Run OrientDB's own check on a **copy** (never the live database): `CHECK DATABAS
 | Step | Command | Changes | Status |
 |---|---|---|---|
 | Snapshot the live database | `picapport-db.sh snapshot` (`--dry-run` first) | Stops Picapport (about 1 min: it is killed after 60 s, see `docs/picapport-db.md`), copies `db/` (about 30 s for 696 MB) to a read-only snapshot in `/home/pi/picapport-db-work/`, starts Picapport (about 15 s) and the slideshow again; about 2 min in all. The live database is only read | **tested on the Pi** 2026-11-15 |
+| Automatic weekly snapshot (B25) | Cron, Sundays 04:30: `picapport-db.sh scheduled` (`--dry-run` to preview). Skips while a database job or an update runs; else `snapshot --auto` then `prune` (keeps the newest 4 `snapshot-auto-*`; manual snapshots are never pruned). `picapport-db.sh prune --keep N [--dry-run]` by hand | The same as a snapshot, unattended; deletes old automatic snapshots | tested on the Pi with stubs 2026-11-17; first real run Sunday 2026-11-22 04:30 |
 | Rebuild a broken index | `REBUILD INDEX <name>` in the OrientDB console, on a copy | Only the copy | **tested on a copy on the Pi** 2026-11-15 (cleared both damaged `idxfileName` pages in 25 s); not used alone, because a damaged map page also needs export/import |
 | Repair: export everything reachable, import into a fresh database, check it, swap it in | `picapport-db.sh repair` (`--dry-run` first; `--no-swap` to stop after the check). **Maintenance window: Picapport and the slideshow are down for 15 to 30 min.** Records behind a damaged map page are not exported; Picapport's crawler re-adds them from the photos | Stops Picapport; the live database is moved aside and kept (`<work>/repair-<time>/live-before`); a fresh one takes its place. Rolls back by itself if the new one is not clean or Picapport will not start on it | **tested on the Pi 2026-11-15** (17 min of downtime; fixed the live database; see the case history). An earlier import alongside a running Picapport froze the Pi, hence the stop and the cache cap |
 | Undo a swap | `picapport-db.sh restore <work>/repair-<time>/live-before` | Stops Picapport, puts the kept database back (the replaced one is kept too), starts it | tested on the PC with stubs only |
@@ -42,7 +43,7 @@ After a snapshot: the script reports the stop time, whether Picapport logged a c
 
 ## Undo
 
-A snapshot changes nothing on the live system. To delete one: `chmod -R u+w <snapshot> && rm -r <snapshot>` (ask the owner; snapshots are kept until they decide).
+A snapshot changes nothing on the live system. To delete one taken by hand: `chmod -R u+w <snapshot> && rm -r <snapshot>` (ask the owner; manual snapshots are kept until they decide). Automatic ones (`snapshot-auto-*`) are pruned by `scheduled`; stop the weekly run with `scripts/install-db-backup-cron.sh --remove` (a repo change to make it last, since `update.sh` reinstalls it).
 
 ## Do not
 
