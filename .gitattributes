@@ -6,4 +6,5 @@
 systemd/**        text eol=lf
 initd/**          text eol=lf
 config/**         text eol=lf
-api/*.js          text eol=lf
+api/**/*.js       text eol=lf
+*.py              text eol=lf

@@ -24,11 +24,11 @@ Someone who knows nothing about folders, tags, Picapport or query syntax, speaki
 
 | Knowledge | Source | Status |
 |---|---|---|
-| Searchable words: keywords, people, folder and place names | Built from the **photos themselves** (their metadata and folder names, principle 11) by our own scan, not from Picapport's keyword list, which is incomplete (28 of 55 keywords, 2026-11-16). Served to the agent by the photo API, so any client can use it | To design (phase 4, B29) |
+| Searchable words: keywords, people, folder and place names | Built from the **photos themselves** (their metadata and folder names, principle 11) by our own scan, not from Picapport's keyword list, which is incomplete (28 of 55 keywords, 2026-11-16). Served by the photo API (`GET /api/vocabulary`), rebuilt nightly | Built 2026-11-16 (B29) |
 | Places | The agent's own knowledge turns a place into a GPS box (`within:`), combined with folder and keyword words, because only about two thirds of photos have GPS | Proven query; skill to build |
 | Dates | The photo's own date: year, month, day words and year ranges | Proven |
-| Personal words ("us", "home") | A private word list, not in the public repo | Location to agree (phase 4) |
-| What is playing now, current settings | The photo API | To design (phase 4) |
+| Personal words ("us", "home") | A private word list on the Pi (`/var/lib/photo-api/words.json`, `GET`/`PUT /api/words`), created from the template `config/words.example.json`; never in the public repo (owner agreed 2026-11-16) | Built 2026-11-16 |
+| What is playing now, current settings | The photo API (`GET /api/status`) | Built 2026-11-16 |
 
 **Why a vocabulary matters:** if the agent knows the finite set of searchable words, it can map a vague request onto them. "Romantic photos of us" can become the two people plus a `sunset` tag, if such a tag exists. When the future AI tagging pipeline (L7) writes new keywords into the photos, the vocabulary grows by the next scan without changing the skill.
 

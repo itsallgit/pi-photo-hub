@@ -31,8 +31,9 @@ sudo systemctl disable picapport-chromium.service || true
 sudo systemctl disable photo-api.service || true
 sudo systemctl disable mount-hdd.service || true
 
-# Health log cron entry (must go before the repo directory is deleted below)
+# Health log and vocabulary cron entries (must go before the repo directory is deleted below)
 bash /home/pi/pi-photo-hub/scripts/install-health-log.sh --remove || true
+bash /home/pi/pi-photo-hub/scripts/install-vocabulary-cron.sh --remove || true
 
 # Kill stray Chromium
 pkill -9 chromium-browser || true

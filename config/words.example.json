@@ -1,0 +1,4 @@
+{
+  "_about": "Private word list for slideshow requests: what personal words such as 'us', 'home' or 'my parents' mean. Template only; the real list lives on the Pi in /var/lib/photo-api/words.json (created from this file by the photo API, read and changed with GET/PUT /api/words; never committed). Each entry: 'means' (plain description) and optionally 'query' (the Picapport query it stands for).",
+  "words": {}
+}
