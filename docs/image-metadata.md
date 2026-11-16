@@ -35,7 +35,7 @@ On the Pi, against Picapport on `localhost:8080` (no login needed today):
 | Camera make / model | EXIF `Make`, `Model` | Yes (Samsung, Apple, Canon, GoPro, ...) | Yes | `samsung`, `iphone`, `s23` | 2026-11-16 |
 | Software | EXIF `Software`, XMP `CreatorTool` | Yes | Yes | `photoshop`, `lightroom`, `snapseed` | 2026-11-16 |
 | Orientation | Image size | Yes | Yes | `$landscape`, `$portrait` | 2026-11-16 |
-| GPS position | EXIF GPS | 43,139 of 64,419 image files (67%) | Stored (`latitude`/`longitude` in `GetMetaData`); used by the web UI's map filter; no query word found (`$gps` gives 0) | **not searchable by text** (test set: GPS adds no word); map rectangle in the web UI untested | 2026-11-16 (test set) |
+| GPS position | EXIF GPS | 43,139 of 64,419 image files (67%) | Stored (`latitude`/`longitude` in `GetMetaData`); used by the web UI's map filter; no query word found (`$gps` gives 0) | **by area:** `within:"minLat,minLng,maxLat,maxLng"` (5 decimals, the form the web UI's map filter writes), combinable with words. Tested: Sydney `within:"-34.10000,150.90000,-33.60000,151.40000"` = 12,418; Barcelona `within:"41.30000,2.05000,41.47000,2.25000"` = 3,383, with `honeymoon` 2,203. GPS adds no word to `textSearch` | 2026-11-16 |
 | Keywords | XMP `dc:subject` (8,379 files), usually with Windows `XPKeywords` (4,891): what Windows Explorer's "Tags" box writes. IPTC `Keywords` on 364 files, always together with the others. **`dc:subject` alone is proven indexed** (a file with only `dc:subject` "Work, <name>" is found by `work`) | 8,643 indexed photos (`$nokeyword` matches 55,094). Mostly first names of family and friends (the two most used on about 3,300 and 2,400 photos), plus topics such as Work (674), Uni (580), Cooking (297), Plants, Digitised, and `LB` (1,941). The live list comes from the survey on the Pi, not from this public page | Yes (each word of a keyword separately) | a keyword word, e.g. `cooking`; `-$nokeyword` = has any keyword. **Keywords under 3 letters are never found: `LB` (1,941 photos) gives 0** | 2026-11-16 |
 | Keywords in other fields | Windows `XPKeywords` alone, XMP `MicrosoftPhoto:LastKeywordXMP` alone: **indexed**. IPTC `Keywords`, XMP `lr:HierarchicalSubject`, digiKam `TagsList`: **not indexed** | IPTC on 364 files, always with XMP too, so nothing is lost today | see "Field test" below | write tags to XMP `dc:subject` | 2026-11-16 (test set) |
 | People | Face regions (XMP `mwg-rs:RegionName`, Microsoft `RegionPersonDisplayName`) and `Iptc4xmpExt:PersonInImage`, 383 files, all in `PHOTOS/2025/...`; these also repeat the names as keywords (XMP, Windows, IPTC) | 672 indexed photos have a person (`$noperson` 63,065), the rest mostly one 2014 subfolder of photos from a friend's camera | Yes, each of `PersonInImage`, MWG face regions and Microsoft face regions on its own (test set) | a first name; `-$noperson` = has a person. A name query also matches the same word in folders and keywords | 2026-11-16 |
@@ -69,6 +69,7 @@ A photo with no date metadata gets the file's date and `$nodate`. The year match
 | `(a OR b) c` | OR is applied before AND; brackets are accepted and do not change this | `noosa OR croatia 2023` = 1,267 = (1,139 + 128) |
 | `~word` | fuzzy | `~wedding` |
 | `~~word` | sounds-like (phonetic) | `~~noosa` = 2,207 (vs 1,916) |
+| `within:"minLat,minLng,maxLat,maxLng"` | photos whose GPS position is inside the box (photos without GPS never match) | Noosa box = 579 of 1,916 `noosa` photos |
 | `@ll` | everything | 63,737 |
 | `$token` | special tokens: `$jpg`, `$landscape`, `$portrait`, `$square`, `$nokeyword`, `$noperson`, `$notitle`, `$nodesc`, `$nodate`, `$nothumb` (seen in `textSearch`; the positive forms such as `$keyword` give 0, so use `-$nokeyword`) | `$portrait` = 1,183 |
 | `"a b"` | **not** a phrase; gives 0 | avoid |
@@ -79,9 +80,16 @@ The words a query matches can come from any source at once: `croatia` matches 2,
 
 ## Tagging and naming standard
 
-**Draft for the owner to review (2026-11-16); not yet agreed.** Based only on what is proven above.
+**Reviewed by the owner 2026-11-16.** A guide that describes how the library is organised and tagged, generally followed, not a strict rule. Points 2 to 7 are what Picapport needs (proven above).
 
-1. **Folders carry the event.** `PHOTOS/YYYY.MM[.DD][ - YYYY.MM[.DD]] - Event Name`, with subfolders for parts of a trip (`2016 - Europe/2016.02 - Croatia - Dubrovnik`). Every word of 3+ letters in the path is searchable. Dates in folder names are not searchable as dates (`2024.09` is dropped); the photo's own date is (`2024 sep`).
+1. **Folders** (the convention on the HDD, read 2026-11-16), under `PHOTOS/`:
+   - **Year folders, the default home of every photo:** `YYYY/`. Up to about 2020 the photos sit directly in the year folder; from 2021 they are split into month subfolders `YYYY/YYYY.MM/` (for example `2025/2025.04`).
+   - **Notable events get their own folder at the top level**, next to the year folders, named by date and event: `YYYY.MM - Event`, or with the day `YYYY.MM.DD - Event` (`2024.09.14 - Our Wedding`). That is why one year appears several times at the top level.
+   - **Date ranges:** `start - end - Event`, each end in the same date form (`2023.09.04 - 2023.09.24 - Croatia and Serbia`, `2026.09 - 2026.10 - Honeymoon`).
+   - **Trips with several parts:** a parent `YYYY - Trip` (`2023 - Asiaventure`, `2016 - Europe`) or a dated range, with one subfolder per stop, usually `date[ - date] - Country - City` (`2023.03.29 - 2023.04.01 - Japan - Kyoto`); the honeymoon numbers its stops instead (`02 Spain - Barcelona`).
+   - **Undated collections:** `_Friends`, `_Parents`, `_Work`.
+   - For search: every word of 3+ letters at any level is findable (event, country, city); the dates in folder names are not (use the photo's own date). A photo copied into two folders (for example `_Friends` and `_Work`) is indexed twice and plays twice.
+
 2. **The date is the photo's EXIF `DateTimeOriginal`.** It gives year, month and day words. Scans and screenshots without it fall back to the file date (`$nodate` marks some of these).
 3. **Tags are XMP `dc:subject`** (proven), which Windows Explorer's "Tags" box writes together with `XPKeywords` (also indexed). **Not IPTC Keywords, Lightroom hierarchical keywords or digiKam tags: Picapport ignores them** (tested). Titles in XMP `dc:title`, descriptions in XMP `dc:description`; not IPTC caption or EXIF comments.
 4. **People are face regions plus `PersonInImage`**, as in the 2025 folders (proven); a name query also matches the same word anywhere else.
@@ -89,4 +97,4 @@ The words a query matches can come from any source at once: `croatia` matches 2,
 6. **JPEG for anything that should play.** HEIC and PNG are not indexed; the owner accepts that they are not shown (decided 2026-11-16). Video is a possible later addition (backlog L8).
 7. **No sidecars, nothing only in Picapport** (principle 11): no Picapport "MyTags", likes or ratings set in its web UI.
 
-Still open: searching by rating or by GPS area is not possible by text; whether the web UI's map or rating filter could be used by the API is for phase 3 (backlog B24).
+Still open: searching by rating is not possible by text (only sorting or the web UI, untested). GPS areas work with `within:` (found 2026-11-16).
