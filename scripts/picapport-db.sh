@@ -5,7 +5,8 @@
 #
 #   picapport-db.sh status               read-only: Picapport state, DB size, dirty flag, recent
 #                                        broken-page errors in Picapport's log, work-area contents
-#   picapport-db.sh snapshot [--dry-run] stop Picapport, copy the whole db/ folder to a new
+#   picapport-db.sh snapshot [--dry-run] stop Picapport, copy the whole db/ folder (plus Picapport settings and
+#                                        the photo API state in /var/lib/photo-api) to a new
 #                                        read-only snapshot under the work directory, start
 #                                        Picapport and the slideshow again (a few minutes)
 #   picapport-db.sh repair [--dry-run] [--no-swap]
@@ -39,6 +40,7 @@ PICAPPORT_HOME="${PICAPPORT_HOME:-/opt/picapport/.picapport}"
 DB_PARENT="$PICAPPORT_HOME/db"
 DB_NAME="${DB_NAME:-db_3_0_39}"
 WORK_DIR="${WORK_DIR:-/home/pi/picapport-db-work}"
+API_STATE="${API_STATE:-/var/lib/photo-api}"
 LOG_DIR="${LOG_DIR:-/var/log/pi-photo-hub}"
 SYSTEMCTL="${SYSTEMCTL:-systemctl}"
 JOURNALCTL="${JOURNALCTL:-journalctl}"
@@ -212,7 +214,8 @@ cmd_snapshot() {
   if [ "$DRY_RUN" = 1 ]; then
     log "DRY RUN. Would:"
     log "  1. stop Picapport (picapport-wrapper; slideshow stops; time it; check java exits)"
-    log "  2. cp -a $DB_PARENT $dest/db, compare every file, write SHA256SUMS, make it read-only"
+    log "  2. cp -a $DB_PARENT $dest/db, compare every file, write SHA256SUMS; copy Picapport's settings"
+    log "     to settings/ and $API_STATE to photo-api-state/ (with checksums); make it all read-only"
     log "  3. start Picapport, wait up to ${START_WAIT}s for :8080, relaunch the slideshow"
     log "  If anything fails after step 1, Picapport is started again before exiting."
     log "  Not touched: the live database (only read), the photo HDD, mount-hdd, photo-api."
@@ -225,8 +228,20 @@ cmd_snapshot() {
   cp -a "$DB_PARENT" "$dest/db"
   diff -rq "$DB_PARENT" "$dest/db" >/dev/null || die "the copy differs from the original"
   ( cd "$dest/db" && find . -type f -print0 | sort -z | xargs -0 sha256sum ) > "$dest/SHA256SUMS"
+  # Also the small things that are not rebuilt from the photos (B25): Picapport's settings (users,
+  # saved queries, keystore, properties; not the database, logs or upload temp) and the photo API
+  # state (saved slideshow, screen timer, the owner's private word list, vocabulary).
+  mkdir -p "$dest/settings"
+  ( cd "$PICAPPORT_HOME" && for s in *; do
+      case "$s" in db|logfiles|uploadtemp|PicApport.lck) ;; *) cp -a "$s" "$dest/settings/" ;; esac
+    done )
+  ( cd "$dest/settings" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum ) > "$dest/SHA256SUMS-settings"
+  if [ -d "$API_STATE" ]; then
+    cp -a "$API_STATE" "$dest/photo-api-state"
+    ( cd "$dest/photo-api-state" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum ) > "$dest/SHA256SUMS-state"
+  fi
   {
-    echo "snapshot of $DB_PARENT taken $(date '+%F %T')"
+    echo "snapshot of $DB_PARENT taken $(date '+%F %T'); also settings/ (Picapport settings) and photo-api-state/ ($API_STATE)"
     echo "picapport stop took $STOP_SECS s (killed: $STOP_KILLED)"
     echo "files $(find "$dest/db" -type f | wc -l), size $(du -sh "$dest/db" | cut -f1)"
   } > "$dest/INFO"
