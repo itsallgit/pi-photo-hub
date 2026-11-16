@@ -220,7 +220,10 @@ app.get("/api/slideshow", wrap(async (req, res) => {
     const err = checkSettings(next);
     if (err) return res.status(400).send(`Not played: ${err}`);
     const saved = await play(next);
-    await ensureScreenOn();
+    // A plain replay (what the boot launcher sends) leaves the screen as it is, so an
+    // "off until tomorrow" survives a reboot; a changed slideshow turns it on.
+    const changed = ["q", "interval", "sort"].some((k) => req.query[k] !== undefined);
+    if (changed) await ensureScreenOn();
     const url = picapport.slideshowUrl(saved);
     logger.info(`Playing slideshow (GET): ${url}`);
     res.status(200).send(`Playing slideshow with URL: ${url}`);
