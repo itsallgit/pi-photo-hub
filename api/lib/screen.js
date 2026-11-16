@@ -2,15 +2,15 @@
 // tested 2026-11-16, backlog B28).
 //
 // The desired state is kept in screen.json ({ off, offUntil }) so it survives a restart or reboot.
-// Limitation (tested 2026-11-16, B28): about 16 s after the screen goes dark, this monitor signals a
-// hot-plug and the desktop (labwc) switches the output back on, with wlr-randr and wlopm alike and
-// with or without Chromium and kanshi. A timed "off" turns the screen on when it expires.
+// About 16 s after the screen goes dark this monitor signals a hot-plug, and the desktop (labwc)
+// would switch it back on; config/kernel-cmdline.txt forces the HDMI screen connected so "off"
+// holds (B28, tested 2026-11-16). A timed "off" turns the screen on when it expires.
 const { execFile } = require("child_process");
 const config = require("./config");
 const { readJson, writeJson } = require("./state");
 
-// Re-applying "off" every N ms. Disabled (0) by default: this monitor signals a hot-plug about 16 s
-// after it goes dark and the desktop switches it back on, so re-applying would only flicker (B28).
+// Re-applying "off" every N ms. Disabled (0) by default; without the kernel setting it would only
+// make the screen flicker (B28).
 const ENFORCE_MS = Number(process.env.SCREEN_ENFORCE_MS || 0);
 let timer = null;
 let enforcer = null;
