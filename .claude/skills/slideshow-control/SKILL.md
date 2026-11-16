@@ -52,20 +52,21 @@ Never: `*` (the API refuses it), quotes for phrases (they do not work), `field:v
 
 ## Reply format (Markdown for the Paseo mobile app)
 
-Visual and short: **one heading** with an emoji that says what happened, settings as inline-code **chips**, contents as a short list with counts, and any question or offer in a **💬 quote** (a speech bubble). No tables. Numbers with thousands separators; dates and times in plain words. Always show every setting in effect, including defaults the owner did not mention. Fill in real values; the examples below show the shape.
+Visual and short: **one heading** with an emoji that says what happened, the photo count under it, contents as a short list with counts, a **Settings** section with inline-code **chips** (order, seconds per photo; mention the screen only when it is off or the request was about it), and any question or offer in a **💬 quote** (a speech bubble). No tables. Numbers with thousands separators; dates and times in plain words. Always show every setting in effect in the Settings section, including defaults the owner did not mention. Do not write "saved, comes back after a restart" (owner, 2026-11-17: everything is saved anyway). Fill in real values; the examples below show the shape.
 
 **Playing something new**
 
 ````markdown
 ### 🖼️ Now playing · Barcelona
-**4,252 photos** · saved, comes back after a restart
-
-`🔀 Random` `⏱️ 20 s` `🖥️ Screen on`
+**4,252 photos**
 
 **What's in it**
 - 💍 Honeymoon, Barcelona · 2,203
 - 🎓 Exchange 2015–16 · 1,180
 - 📍 Other photos taken in Barcelona · 869
+
+**Settings**
+`🔀 Random` `⏱️ 20 s`
 
 > 💬 This mixes your honeymoon and your exchange, ten years apart. Just the honeymoon, or only the two of you?
 
@@ -76,7 +77,10 @@ Visual and short: **one heading** with an emoji that says what happened, setting
 
 ````markdown
 ### ⏱️ Slower · one photo every 30 s
-Still **Honeymoon** · `🔀 Random` `⏱️ 30 s` · reshuffled
+Still **Honeymoon** · reshuffled
+
+**Settings**
+`🔀 Random` `⏱️ 30 s`
 ````
 
 **Screen**
@@ -91,7 +95,10 @@ Still **Honeymoon** · `🔀 Random` `⏱️ 30 s` · reshuffled
 
 ````markdown
 ### 🖼️ Playing now · Honeymoon
-**11,807 photos** · `🔀 Random` `⏱️ 20 s` `🖥️ Screen on` · since 10:49 pm
+**11,807 photos** · since 10:49 pm
+
+**Settings**
+`🔀 Random` `⏱️ 20 s`
 ````
 
 **Nothing found** (nothing was played)

@@ -37,6 +37,7 @@ Someone who knows nothing about folders, tags, Picapport or query syntax, speaki
 
 - **Regular screen schedule** (L9): a routine off/on period, part of the repo with defaults, changeable; default always on.
 - **History and suggestions** (L10): "what can you show us?" with suggestions from past slideshows.
+- **Our own slideshow page** (B32): the base for a landscape-only filter (B31), overlays and resuming without reshuffling.
 - **Overlays on the slideshow** (L11): show the current photo's date, country or city on screen, toggled or chosen by the person; needs an extension of Picapport's slideshow page (or its replacement, L3).
 - **AI tagging in the ingestion pipeline** (L7): richer keywords and people, written into the photos.
 - **Video** (L8). **Phone shortcut**: not needed for now, Paseo is the client; the earlier idea of a custom client app is dropped.
