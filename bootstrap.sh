@@ -88,6 +88,13 @@ run_with_spinner "sudo apt install -y curl unzip cron screen x11-xserver-utils" 
 # chromium-browser is installed later in chrome service if needed; keep it installed earlier
 run_with_spinner "sudo apt install -y chromium-browser" "Installing Chromium browser"
 
+# ---------- Project packages (config/packages.txt; same list update.sh installs) ----------
+banner "Installing project packages"
+PROJECT_PKGS="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$REPO_ROOT/config/packages.txt" 2>/dev/null | tr -s '[:space:]' ' ')"
+if [ -n "$PROJECT_PKGS" ]; then
+  run_with_spinner "sudo apt install -y --no-install-recommends $PROJECT_PKGS" "Installing $PROJECT_PKGS"
+fi
+
 # ---------- Install JRE ----------
 banner "Installing Java Runtime Environment (JRE)"
 if [ "$USE_LATEST" = true ]; then

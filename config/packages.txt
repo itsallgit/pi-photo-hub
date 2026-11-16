@@ -1,0 +1,8 @@
+# packages.txt - extra apt packages the project needs on the Pi, one per line.
+# Installed if missing by scripts/update.sh (scripts/lib/apply-packages.sh) and by bootstrap.sh.
+# Install only: update.sh never upgrades or removes packages (a full upgrade stays with a rebuild).
+# Lines starting with # and blank lines are ignored. Say why each package is here.
+
+# exiftool: read (and, through the project only, later write) photo metadata; backlog B24.
+# Never used with a write option against /mnt/photos by an agent (hard rule 1).
+libimage-exiftool-perl

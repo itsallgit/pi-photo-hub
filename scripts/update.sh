@@ -16,10 +16,11 @@
 #
 # What it does: preflight, git fetch, check out the target (fast-forward only, never a reset,
 # stash or rebase), then run the TARGET version's own copy of this script to apply it
-# (--phase2): sync installed systemd units, API dependencies, Picapport's properties file,
+# (--phase2): install missing packages from config/packages.txt (install only, never an
+# upgrade), sync installed systemd units, API dependencies, Picapport's properties file,
 # the logrotate config and the health-log cron entry; then RESTART THE APP the way a boot
 # starts it (photo-api, then the boot's slideshow launcher picapport-chromium), and verify.
-# It never runs apt, reboots, restarts mount-hdd (it would remount the photo HDD) or restarts
+# It never upgrades or removes packages, reboots, restarts mount-hdd (it would remount the photo HDD) or restarts
 # Picapport (suspected to damage its database, backlog Q11); it says when those are needed.
 set -euo pipefail
 
@@ -119,6 +120,7 @@ if [ "$PHASE2" = 1 ]; then
     if [ -f "$STATE_DIR/slideshow_url.txt" ]; then log "slideshow: keeping the saved slideshow"; fi
   fi
 
+  if [ -f "$LIB/apply-packages.sh" ]; then bash "$LIB/apply-packages.sh"; fi
   bash "$LIB/apply-units.sh"
   bash "$LIB/apply-extras.sh"
 
