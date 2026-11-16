@@ -87,4 +87,14 @@ How a change reaches the Pi. Procedure: the `apply-changes` skill and README "Up
 
 ## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code)
 
+## Picapport queries (probed read-only on the Pi, 2026-11-16)
+
+- **Counting without changing the screen.** `GET http://localhost:8080/picapport_json?cmd=RunQuery&query=<q>&sort=random` (no login needed today) returns JSON with `status` (`OK` or `NORESULT`) and `numPhotos`. This is the call the slideshow page itself makes. It does not touch Chromium or the saved slideshow. Each call returns a new `vid` (a server-side view id); whether these accumulate in memory is not known.
+- **Words are ANDed:** `noosa 2022` gave 863, fewer than `noosa` (1,916). **`OR` works:** `wedding OR noosa` gave 3,644 (= 1,728 + 1,916). **`-word` excludes:** `-noosa` gave 61,821 of 63,737. `|` does not work (0). `@ll` matches everything (63,737).
+- **Matching is by word, not phrase:** `our` and `our wedding` both gave 904 (the folder `2024.09.14 - Our Wedding`). Matching is case-insensitive (`honeymoon` finds `Honeymoon`).
+- **Dates:** `2024` gave 5,450; `2024.09` gave 0, so a folder-name date prefix is not matched as one word. Whether `2024` matches folder names, photo dates, or both is not known; Picapport's date syntax is not yet found.
+- **What the library carries** (2026-11-16): about 63,500 JPEGs plus PNG, HEIC and videos under `/mnt/photos/PHOTOS`, in 68 top-level folders named by year (`2019`) or by date and event (`2024.09.14 - Our Wedding`, `2026.09 - 2026.10 - Honeymoon`), plus `_Friends`, `_Parents`, `_Work`. Only 57 `.xmp` sidecars. Whether the photos carry keywords, people or GPS in their own metadata is not checked (no `exiftool` on the Pi).
+
+## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code)
+
 The slideshow page asks the server for data with JSON calls. If one fails, the page goes into an offline state and shows the dialog "Network Error. Info: Not connected. Verify Network."; it does not retry by itself. See backlog B03.
