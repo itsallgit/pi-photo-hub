@@ -95,6 +95,10 @@ if [ -n "$PROJECT_PKGS" ]; then
   run_with_spinner "sudo apt install -y --no-install-recommends $PROJECT_PKGS" "Installing $PROJECT_PKGS"
 fi
 
+# ---------- Kernel command line (config/kernel-cmdline.txt; same step update.sh runs) ----------
+banner "Kernel command-line settings"
+SRC="$REPO_ROOT" DRY_RUN=0 bash "$REPO_ROOT/scripts/lib/apply-boot.sh" || echo "[WARN] kernel command line not updated (non-fatal)"
+
 # ---------- Install JRE ----------
 banner "Installing Java Runtime Environment (JRE)"
 if [ "$USE_LATEST" = true ]; then

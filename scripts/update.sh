@@ -17,7 +17,9 @@
 # What it does: preflight, git fetch, check out the target (fast-forward only, never a reset,
 # stash or rebase), then run the TARGET version's own copy of this script to apply it
 # (--phase2): install missing packages from config/packages.txt (install only, never an
-# upgrade), sync installed systemd units, API dependencies, Picapport's properties file,
+# upgrade), add missing kernel command-line settings from config/kernel-cmdline.txt (used at the
+# next reboot; never reboots),
+# sync installed systemd units, API dependencies, Picapport's properties file,
 # the logrotate config and the health-log cron entry; then RESTART THE APP the way a boot
 # starts it (photo-api, then the boot's slideshow launcher picapport-chromium), and verify.
 # It never upgrades or removes packages, reboots, restarts mount-hdd (it would remount the photo HDD) or restarts
@@ -121,6 +123,7 @@ if [ "$PHASE2" = 1 ]; then
   fi
 
   if [ -f "$LIB/apply-packages.sh" ]; then bash "$LIB/apply-packages.sh"; fi
+  if [ -f "$LIB/apply-boot.sh" ]; then bash "$LIB/apply-boot.sh"; fi
   bash "$LIB/apply-units.sh"
   bash "$LIB/apply-extras.sh"
 
@@ -153,6 +156,8 @@ if [ "$PHASE2" = 1 ]; then
   echo
   log "Needs a separate, agreed step (NOT done by update.sh):"
   need=0
+  if grep -qx "boot-cmdline" "$UPDATE_CHANGED"; then
+    log "  - the kernel command line changed (config/kernel-cmdline.txt): takes effect at the next reboot (sudo systemctl reboot, agreed with the owner)"; need=1; fi
   if grep -qx 'picapport-properties' "$UPDATE_CHANGED"; then
     log "  - picapport.properties changed: it takes effect when Picapport restarts (not restarted; see backlog Q11)"; need=1; fi
   for u in mount-hdd.service picapport-wrapper.service; do

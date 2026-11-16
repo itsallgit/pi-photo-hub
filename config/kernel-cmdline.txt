@@ -1,0 +1,9 @@
+# kernel-cmdline.txt - settings the project needs on the kernel command line
+# (/boot/firmware/cmdline.txt), one per line. Added if missing by scripts/update.sh
+# (scripts/lib/apply-boot.sh) and bootstrap.sh; a setting with the same key but another value is
+# replaced; nothing else on the line is touched. Takes effect at the next reboot. Say why each is here.
+
+# Treat the HDMI monitor as always connected at 1920x1080, 60 Hz. The HP monitor signals a hot-plug
+# about 16 s after the screen is switched off, and the desktop then switches it back on (B28).
+# If the monitor is replaced with one of another resolution, change the mode here.
+video=HDMI-A-1:1920x1080@60D
