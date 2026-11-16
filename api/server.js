@@ -95,7 +95,8 @@ async function play(s) {
 // Starting or changing a slideshow turns the screen on (and cancels an "off" timer).
 async function ensureScreenOn() {
     try {
-        if ((await screen.isOn()) === false) {
+        const s = await screen.status();
+        if (s.wantedOff || s.on === false) {
             await screen.turnOn("slideshow started");
             return true;
         }

@@ -152,6 +152,7 @@ async function main() {
         const r = await api("GET", "/api/screen");
         assert.equal(r.status, 200);
         assert.equal(r.body.on, null);
+        assert.equal(r.body.wantedOff, false);
         assert.ok(r.body.error);
         assert.equal((await api("POST", "/api/screen", { on: "no" })).status, 400);
         assert.equal((await api("POST", "/api/screen", { on: false, minutes: 0 })).status, 400);
