@@ -11,7 +11,7 @@ Someone who knows nothing about folders, tags, Picapport or query syntax, speaki
 ## Agreed behaviour (owner, 2026-11-16)
 
 1. **Act first, then talk.** A clear request is carried out straight away: no confirmation, no clarifying question before playing.
-2. **Then a short reply** (Markdown that reads well in the Paseo mobile app): what it understood, what is included with counts per part, **every setting in effect including the defaults the person did not mention** (order, seconds per photo, saved), and how to change any of it.
+2. **Then a short, visual reply** (Markdown for the Paseo mobile app: an emoji heading, settings as small chips, the contents as a short list, questions in a 💬 quote; owner, 2026-11-17): what it understood, what is included with counts per part, **every setting in effect including the defaults the person did not mention** (order, seconds per photo, saved), and how to change any of it.
 3. **Then, optionally, a friendly follow-up.** When the request matched more than one thing, the agent says so and may offer something interesting, not as a rule but as encouragement to the agent: for example "this includes Barcelona on your honeymoon and on exchange, ten years apart; want only one, or just the photos of you two?" This is the place to experiment.
 4. **Nothing found: do not play.** Say so and suggest close matches.
 5. **Every slideshow started is saved**, so a restart or reboot plays the last one.

@@ -2,7 +2,8 @@
 # install-hidden-cursor.sh - hide the mouse pointer on the slideshow screen (owner, 2026-11-16).
 # Installs a blank pointer theme for user pi (every pointer name is a transparent 1x1 image) and
 # makes the desktop use it. Chromium gets the same theme from the photo API (CURSOR_THEME in
-# api/lib/config.js), so the pointer is hidden from the next slideshow launch; the desktop's own
+# api/lib/config.js) and the GTK pointer setting (which Chromium actually uses), so the pointer is
+# hidden from the next slideshow launch; the desktop's own
 # pointer is hidden from the next login/reboot. Safe to run repeatedly. Run as user pi.
 #   bash scripts/install-hidden-cursor.sh            install / refresh
 #   bash scripts/install-hidden-cursor.sh --remove   show the normal pointer again (after a reboot)
@@ -19,8 +20,33 @@ remove_env_line() {
   mv "$LABWC_ENV.tmp" "$LABWC_ENV"
 }
 
+# Chromium (and other GTK apps) take the pointer theme from the GTK setting, which overrides
+# XCURSOR_THEME: seen 2026-11-17, the PiXflat black hand stayed visible. So set it there too.
+GTK_INI="${GTK_INI:-$HOME/.config/gtk-3.0/settings.ini}"
+DEFAULT_THEME_DIR="$(dirname "$DIR")/default"
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+
+gtk_ini_set() { # $1 = theme name, or empty to remove the line
+  mkdir -p "$(dirname "$GTK_INI")"
+  [ -f "$GTK_INI" ] || printf '[Settings]\n' > "$GTK_INI"
+  grep -v '^gtk-cursor-theme-name=' "$GTK_INI" > "$GTK_INI.tmp" || true
+  mv "$GTK_INI.tmp" "$GTK_INI"
+  grep -q '^\[Settings\]' "$GTK_INI" || printf '[Settings]\n' >> "$GTK_INI"
+  if [ -n "$1" ]; then sed -i "/^\[Settings\]/a gtk-cursor-theme-name=$1" "$GTK_INI"; fi
+}
+
+gsettings_set() { # $1 = theme name, or empty to reset to the system default
+  command -v gsettings >/dev/null 2>&1 || return 0
+  [ -S "${DBUS_SESSION_BUS_ADDRESS#unix:path=}" ] || { echo "[WARN] no desktop session bus: GTK pointer setting not changed (re-run after login)"; return 0; }
+  if [ -n "$1" ]; then gsettings set org.gnome.desktop.interface cursor-theme "$1"
+  else gsettings reset org.gnome.desktop.interface cursor-theme; fi
+}
+
 if [ "${1:-}" = "--remove" ]; then
   remove_env_line
+  gtk_ini_set ""
+  gsettings_set ""
+  if grep -q "pi-photo-hub" "$DEFAULT_THEME_DIR/index.theme" 2>/dev/null; then rm -rf "$DEFAULT_THEME_DIR"; fi
   rm -rf "$DIR"
   echo "[INFO] Hidden pointer removed; the normal pointer returns after a reboot (Chromium: at its next launch)."
   exit 0
@@ -47,4 +73,11 @@ remove_env_line
 grep -v '^XCURSOR_THEME=' "$LABWC_ENV" > "$LABWC_ENV.tmp" || true
 mv "$LABWC_ENV.tmp" "$LABWC_ENV"
 { echo "$TAG"; echo "XCURSOR_THEME=$THEME"; } >> "$LABWC_ENV"
+# The GTK pointer setting (Chromium reads it) and the user's default pointer theme.
+gtk_ini_set "$THEME"
+gsettings_set "$THEME"
+if [ ! -e "$DEFAULT_THEME_DIR" ] || grep -q "pi-photo-hub" "$DEFAULT_THEME_DIR/index.theme" 2>/dev/null; then
+  mkdir -p "$DEFAULT_THEME_DIR"
+  printf '[Icon Theme]\nName=default\nComment=pi-photo-hub: hidden pointer\nInherits=%s\n' "$THEME" > "$DEFAULT_THEME_DIR/index.theme"
+fi
 echo "[INFO] Hidden pointer installed ($DIR, $(ls "$DIR/cursors" | wc -l) names); desktop: from the next reboot; slideshow: from its next launch."

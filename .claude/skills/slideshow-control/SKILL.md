@@ -50,24 +50,82 @@ Never: `*` (the API refuses it), quotes for phrases (they do not work), `field:v
 6. **Screen:** off `-d '{"on":false}'`; off for a while `-d '{"on":false,"minutes":60}'`; off until a time `-d '{"on":false,"until":"<ISO time>"}'` (get it with `date -d "tomorrow 07:00" -Iseconds`; the Pi and the owner are on Sydney time); on `-d '{"on":true}'`; all `POST $API/api/screen`. Starting a new slideshow turns the screen on.
 7. **Reply** in the format below, then optionally a follow-up.
 
-## Reply format (Markdown, short, reads well in the Paseo mobile app)
+## Reply format (Markdown for the Paseo mobile app)
 
-```
-**Now playing: <label>** · <total> photos
-Included: <part> (<count>), <part> (<count>)
-<order> · <seconds> s per photo · saved, plays again after a restart
-*Try: "<a narrower option>", "slower", "<another idea>"*
-```
+Visual and short: **one heading** with an emoji that says what happened, settings as inline-code **chips**, contents as a short list with counts, and any question or offer in a **💬 quote** (a speech bubble). No tables. Numbers with thousands separators; dates and times in plain words. Always show every setting in effect, including defaults the owner did not mention. Fill in real values; the examples below show the shape.
 
-Always state every setting in effect, including defaults the owner did not mention. For a settings change or the screen, one or two lines are enough ("Slowed down: one photo every 30 s, still Honeymoon, random order."). If an answer from the API shows something unexpected (an error, `played: false`), say so plainly.
+**Playing something new**
 
-**Follow-up (encouraged, not a rule):** when the request matched several things, say so after playing and offer something interesting, for example "this mixes Barcelona on your honeymoon and on exchange, ten years apart; only one, or just the two of you?". Keep it to one or two lines.
+````markdown
+### 🖼️ Now playing · Barcelona
+**4,252 photos** · saved, comes back after a restart
+
+`🔀 Random` `⏱️ 20 s` `🖥️ Screen on`
+
+**What's in it**
+- 💍 Honeymoon, Barcelona · 2,203
+- 🎓 Exchange 2015–16 · 1,180
+- 📍 Other photos taken in Barcelona · 869
+
+> 💬 This mixes your honeymoon and your exchange, ten years apart. Just the honeymoon, or only the two of you?
+
+*Try: "only the honeymoon" · "slower" · "smart random"*
+````
+
+**Changing a setting**
+
+````markdown
+### ⏱️ Slower · one photo every 30 s
+Still **Honeymoon** · `🔀 Random` `⏱️ 30 s` · reshuffled
+````
+
+**Screen**
+
+````markdown
+### 🌙 Screen off · until 7:00 tomorrow
+**Honeymoon** stays saved and shows again when the screen comes on. Say "turn it on" any time.
+````
+(☀️ for "Screen on".)
+
+**What's playing?**
+
+````markdown
+### 🖼️ Playing now · Honeymoon
+**11,807 photos** · `🔀 Random` `⏱️ 20 s` `🖥️ Screen on` · since 10:49 pm
+````
+
+**Nothing found** (nothing was played)
+
+````markdown
+### 🔍 Nothing found for "snow"
+Closest I can show:
+- 🏔️ Japan, Magome–Tsumago · 412
+- 🇳🇿 New Zealand 2019 · 230
+
+> 💬 Want one of these on the screen?
+````
+
+**Exploring** ("where did I go in Italy?", "what do we have from 2019?")
+
+````markdown
+### 🗺️ Italy in your photos
+- 🏛️ Rome · Europe trip, Jan 2016 · 320
+- 🛶 Venice · Europe trip, Jan 2016 · 180
+- 🍋 Amalfi Coast · Honeymoon, Sep 2026 · 1,140
+
+> 💬 Want any of these on the screen?
+````
+
+Pick emoji that fit the content (a ring for a wedding or honeymoon, a flag for a country); one per line at most. Keep the whole reply to about ten lines. The 💬 quote is for a question or an offer only, and is optional (see below).
+
+**Follow-up (encouraged, not a rule):** when the request matched several things, say so after playing and offer something interesting, for example two trips ten years apart, or "only the two of you". One or two lines, in the 💬 quote.
 
 ## Experience preferences (owned by the owner; change them here when asked)
 
 - Act first; never ask before playing a clear request. Ask only after playing, as a follow-up.
 - Default order: plain `random`. Smart Random (`randomsmart`, short runs of about 3 consecutive photos) only on request.
 - Default seconds per photo: keep the current setting (20 s as of 2026-11-16).
+- Replies use the visual format above: emoji heading, setting chips, 💬 quote for questions (owner, 2026-11-17).
 - The mouse pointer is hidden on the slideshow screen (built in; nothing to do).
 - "Tomorrow morning" for the screen means 07:00 (proposed default; change it if the owner says otherwise).
 
@@ -99,4 +157,4 @@ Before playing, keep the old `slideshow` from `GET /api/status`. To go back, POS
 
 ## Last verified
 
-2026-11-16: written with the API it uses; every call above was run against the Pi while building it (B24 phase 4/5). Not yet cold-tested in a fresh Paseo session.
+2026-11-17: cold-tested by the owner in fresh Paseo sessions: fast, good follow-up questions, answers exploring questions such as "where did I go in Italy?" (owner's words: "working very well"). Reply format then changed to the visual style above (not yet re-tested). 2026-11-16: every call above run against the Pi while building it.
