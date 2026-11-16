@@ -104,8 +104,8 @@ Chromium is started with `pkill -9 chromium` first, so any running browser is ki
 - The HDD is mounted read-write (L6). ~~`scripts/mount-hdd.sh` picked the first non-SD partition, so a second USB drive could be mounted instead.~~ Pinned by `config/hdd.conf` since B16 (2026-11-17).
 - The Pi's checkout collected stale branches and remote refs. `update.sh` now tidies them (`scripts/lib/apply-git-tidy.sh`): it prunes refs deleted on GitHub and runs `git branch -d` only on local branches that are merged and gone from GitHub (B22).
 - The update path (`scripts/update.sh`, B06) is in use on the Pi since 2026-11-15: tested there for a branch, `main`, a rollback with `--ref` and the return to `main`. Not yet tested: `--discard-local-changes`, `--reset-slideshow`, a change that needs `npm install`. (B06, B15)
-- `bootstrap.sh` does not yet use the shared install steps that `update.sh` uses (`scripts/lib/`); two code paths install units and config until bootstrap adopts them as part of the fresh-build test. (B11)
-- The bootstrap has not been run on a blank Pi since September 2025. (B11)
+- `bootstrap.sh` uses some of the shared install steps (`scripts/lib/apply-boot.sh`, `apply-logging.sh`, the cron and pointer installers) but still installs units and config with its own code, so a fresh build and an update can differ. To be revised when the project is next built on new hardware (owner, 2026-11-17; no fresh-build test is planned).
+- The bootstrap has not been run on a blank Pi since September 2025, and the steps added since (logging, backups, HDD pin, kernel command line) have only been tested through `update.sh`.
 
 ## Updating the Pi (`scripts/update.sh`)
 

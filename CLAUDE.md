@@ -64,7 +64,7 @@ The owner's PC is Windows 11. Two shells are available: PowerShell, and Git Bash
 Kept deliberately simple; the owner is the only maintainer. No git hooks.
 
 - **Commits:** Conventional Commits, `<type>(<scope>): <description>`, types `feat fix chore docs refactor test ci`. No `Co-Authored-By` lines and no AI attribution.
-- **`main` is what a fresh Pi builds.** It is intended to always work. (A fresh build has not been re-tested since September 2025, backlog B11, so treat this as the goal, not a guarantee.) A fresh Pi clones `main`.
+- **`main` is what a fresh Pi builds.** It is intended to always work. (A fresh build has not been re-tested since September 2025 and no test is planned; the owner will revise the build when it is next done on new hardware. Treat this as the goal, not a guarantee.) A fresh Pi clones `main`.
 - **Default:** small commits straight to `main`. One logical change per commit, including its docs and backlog updates (hard rule 3). Risky code goes on a short-lived branch and is tested on the Pi before a fast-forward merge to `main`; no pull request is needed (the owner's decision, overriding the global "use PRs for main" rule). The steps are in the `git-workflow` skill.
 - Never force-push or rebase. Never `git reset --hard` without the owner's explicit instruction.
 - The Pi pulls from GitHub, so a change reaches the Pi only after it is pushed.

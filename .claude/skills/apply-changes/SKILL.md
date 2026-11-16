@@ -36,7 +36,7 @@ The script prints the previous commit. Roll back with `update.sh --ref <that sha
 
 ## Links
 
-`scripts/update.sh`, `scripts/lib/`; README "Updating the Pi"; `docs/architecture.md` ("Updating the Pi"); backlog B06, B11, B15, B20.
+`scripts/update.sh`, `scripts/lib/`; README "Updating the Pi"; `docs/architecture.md` ("Updating the Pi"); backlog B06, B15, B20.
 
 ## Last verified
 

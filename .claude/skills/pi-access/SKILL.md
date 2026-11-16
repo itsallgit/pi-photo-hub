@@ -62,6 +62,14 @@ ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local 
 
 Shows the services, the slideshow (label, order, interval, screen), **project jobs running at this moment** (vocabulary refresh, metadata survey, database scripts, an update), the scheduled jobs (cron) and the last vocabulary refresh. Run it before anything disruptive (an update; `pi-power.sh` runs the same job check itself) and tell the owner what is running. It also shows when the Pi came up and the last clean reboot/shutdown. A running vocabulary refresh is safe to interrupt: it writes a new file and swaps it in only at the end (`docs/architecture.md`, "Vocabulary refresh"). A running `picapport-db.sh` or `update.sh` is not: wait for it.
 
+## Does the Pi match the repo? (read-only drift report)
+
+```
+ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local "bash ~/pi-photo-hub/scripts/verify.sh"
+```
+
+Compares installed units, config, kernel command line, packages, cron entries, pointer theme, state and log files, services and the pinned photo HDD with the checkout. `OK`, `DRIFT` or `INFO` per line; exit 1 on drift. Most drift is put right by `scripts/update.sh` (the `apply-changes` skill, agreed first). Report drift to the owner; do not fix it by hand on the Pi (hard rule 2).
+
 ## Reading logs (read-only)
 
 | What | Where |

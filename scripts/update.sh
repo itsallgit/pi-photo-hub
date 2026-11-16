@@ -170,7 +170,7 @@ if [ "$PHASE2" = 1 ]; then
   if grep -qx "initd:picapport" "$UPDATE_CHANGED"; then
     log "  - Picapport's init script changed: used at the next Picapport stop or start (not restarted)"; need=1; fi
   if grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" >/dev/null 2>&1; then
-    log "  - bootstrap-managed files changed ($(grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" | tr '\n' ' ')): applied only by a rebuild (backlog B11)"; need=1; fi
+    log "  - bootstrap-managed files changed ($(grep -E '^(picapport/|config/versions.conf|scripts/cleanup-picapport.sh|bootstrap.sh|cleanup.sh)' "$CHANGED" | tr '\n' ' ')): applied only by a rebuild (bootstrap.sh; untested since September 2025)"; need=1; fi
   if grep -Eqx 'scripts/mount-hdd.sh|config/hdd.conf' "$CHANGED" 2>/dev/null; then
     log "  - scripts/mount-hdd.sh or config/hdd.conf changed (which disk is the photo HDD): used at the next boot; check first with: bash scripts/mount-hdd.sh --check (then a reboot through the pi-power skill)"; need=1; fi
   [ "$need" = 0 ] && log "  (nothing)"

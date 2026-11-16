@@ -41,7 +41,7 @@ This repo-level rule (no pull request needed, fast-forward merge) overrides the 
 
 ## Links
 
-`CLAUDE.md` (commit format, hard rules), `docs/principles.md`, `docs/backlog.md` (B06, B11), the `apply-changes` skill.
+`CLAUDE.md` (commit format, hard rules), `docs/principles.md`, `docs/backlog.md` (B06), the `apply-changes` skill.
 
 ## Last verified
 

@@ -343,6 +343,8 @@ To get a change in this repo onto an installed Pi, use `scripts/update.sh`. It f
 
 The change must be **pushed to GitHub** first: the Pi pulls from there.
 
+**Does the Pi match the repo?** `bash ~/pi-photo-hub/scripts/verify.sh` (read-only drift report: units, config, kernel command line, packages, cron entries, services, the pinned HDD; exit 1 on drift). An update puts most drift right.
+
 ### Automated (from an agent session: the `apply-changes` skill)
 
 The skill runs a dry run, shows the plan, waits for the owner's agreement, runs the update and verifies. See `.claude/skills/apply-changes/SKILL.md`.
