@@ -179,7 +179,7 @@ Which fields Picapport indexes is tested with small JPEGs in a test folder on th
 bash ~/pi-photo-hub/scripts/metadata-testset.sh create   # one test JPEG per metadata field
 # Picapport indexes them at its next scan (a Picapport restart: sudo systemctl restart picapport-wrapper)
 bash ~/pi-photo-hub/scripts/metadata-testset.sh check    # found / NOT found per field
-bash ~/pi-photo-hub/scripts/metadata-testset.sh clean    # remove them so they never appear in slideshows
+bash ~/pi-photo-hub/scripts/metadata-testset.sh clean    # remove them; then restart Picapport again (or wait for its midnight scan) so they leave the index
 ```
 
 ## Health Log (diagnostics)

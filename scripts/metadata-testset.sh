@@ -84,7 +84,7 @@ case "${1:-}" in
     echo; for id in 20 21 22 23 24; do echo "zqf$id: $(words "zqf$id")"; done
     ;;
   clean)
-    rm -f "$DIR"/zqf*.jpg; echo "removed the test JPEGs from $DIR"
+    rm -f "$DIR"/zqf*.jpg; echo "removed the test JPEGs from $DIR. Picapport keeps them in its index until its next start (dropped about 2.5 min after it) or its midnight scan."
     ;;
   *) sed -n '2,17p' "$0"; exit 2 ;;
 esac
