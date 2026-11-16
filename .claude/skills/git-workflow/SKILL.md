@@ -11,7 +11,8 @@ The owner is the only maintainer, so this is kept simple. No git hooks. `main` i
 
 - **Format:** Conventional Commits, `<type>(<scope>): <description>`. Types: `feat fix chore docs refactor test ci`. No `Co-Authored-By` lines and no AI attribution.
 - **One logical change per commit, including its docs.** Script change, its skill, its README runbook, the relevant `docs/` page and `docs/backlog.md` go in the same commit (hard rule 3).
-- **Before you commit**, check the public-repo rules (principle 7): no passwords, keys or tokens; no full MAC addresses; nothing that identifies the owner's network beyond what is needed. `git diff --staged` and read it.
+- **Before you commit**, run `bash scripts/check.sh` (Git Bash; add `--base origin/main` on a branch) and fix every FAIL. It checks shell syntax, LF line endings and executable bits, a secret/MAC pattern scan, skill headers and the `CLAUDE.md` table, the API smoke test, and warns when code changed without docs or the backlog. Then check the public-repo rules (principle 7) yourself: no passwords, keys or tokens; no full MAC addresses; nothing that identifies the owner's network beyond what is needed. `git diff --staged` and read it.
+- A new script that runs directly needs the executable bit in git: `git add <file> && git update-index --chmod=+x <file>` (Windows git does not set it).
 - Git on this Windows PC warns "LF will be replaced by CRLF". That is normal (`core.autocrlf`); the repository stores LF, which the Pi needs.
 
 ## Default: straight to `main`

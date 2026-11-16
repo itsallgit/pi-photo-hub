@@ -91,3 +91,7 @@ Nobody can click on the Pi (no keyboard or mouse), and a dialog on screen is evi
 - Use `sudo` for anything that writes, or touch `/mnt/photos` except to read.
 - Disable SSH host-key checking.
 - Ask the owner to press anything on the Pi.
+
+## Last verified
+
+2026-11-17: used in every session since 2026-11-15 (state check, logs, screenshots, `whats-running.sh`). Cold-tested in B02 round 2 (2026-11-15): reaching the Pi from a simulated new PC, including the host-key steps.

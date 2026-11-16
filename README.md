@@ -373,6 +373,6 @@ git show origin/main:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@<pi-ip
 
 ### Development workflow
 
-1. Make the change on a branch for risky code (see the `git-workflow` skill), commit, `git push -u origin <branch>`.
+1. Make the change (on a branch for risky code; see the `git-workflow` skill), run `bash scripts/check.sh` (shell syntax, line endings, executable bits, secret scan, skills, API smoke test, docs-sync warning; read-only), commit, `git push -u origin <branch>`.
 2. Test it on the Pi with `update.sh --branch <branch>`.
 3. When it works, fast-forward `main`, push, and run `update.sh` (no arguments) on the Pi to get back onto `main`.
