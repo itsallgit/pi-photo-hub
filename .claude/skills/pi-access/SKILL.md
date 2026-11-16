@@ -68,8 +68,9 @@ Shows the services, the slideshow (label, order, interval, screen), **project jo
 |---|---|
 | Picapport | `/opt/picapport/.picapport/logfiles/picapport.NNN` (newest file with `ls -t`); `grep -c` for error classes such as `OPageIsBrokenException`, `OLockException`, `PicApportJsonServlet` |
 | Photo API | `journalctl -u photo-api -b --no-pager`, and `/var/log/photo-api/` |
-| Services | `journalctl -u <unit> -b --no-pager`. The journal is **volatile**: it is lost on every reboot (backlog B09). |
-| Health log | When installed (backlog B03): `/var/log/pi-photo-hub/` and the screenshot folder; see the README "Health Log" section |
+| Services, kernel | `journalctl -u <unit> -b --no-pager` (this boot); `-b -1` the previous boot, including its shutdown. Persistent since 2026-11-17 (B09), capped at 200 MB. |
+| Health log | `/var/log/pi-photo-hub/health.log` (one line a minute, kept across reboots) and the screenshots in `/run/user/1000/pi-photo-hub-health/shots/` (RAM, last 24 h); README "Health Log" |
+| Power | `/var/log/pi-photo-hub/power.log`: every reboot/shutdown made by `scripts/pi-power.sh` (the `pi-power` skill) |
 
 Picapport writes no access log that we have found (backlog Q9), so it does not record failed requests.
 

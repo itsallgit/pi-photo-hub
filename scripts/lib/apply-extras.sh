@@ -60,8 +60,14 @@ LR_DST="$LOGROTATE_DIR/pi-photo-hub"
 LOGROTATE_BIN="${LOGROTATE_BIN:-$(command -v logrotate 2>/dev/null || { [ -x /usr/sbin/logrotate ] && echo /usr/sbin/logrotate; } || true)}"
 if [ -n "$LOGROTATE_BIN" ]; then
   if [ "$DRY_RUN" != 1 ]; then
-    $SUDO "$LOGROTATE_BIN" -d "$SRC/config/logrotate-pi-photo-hub" >/dev/null 2>&1 \
-      || die "logrotate rejected config/logrotate-pi-photo-hub; nothing installed"
+    # logrotate silently ignores (and so "passes") a config file not owned by root, such as the
+    # checkout's copy: validate a root-owned temporary copy instead (found 2026-11-17, B09).
+    lr_tmp="$(mktemp)"
+    $SUDO install -m 644 "$SRC/config/logrotate-pi-photo-hub" "$lr_tmp"
+    if ! $SUDO "$LOGROTATE_BIN" -d "$lr_tmp" >/dev/null 2>&1; then
+      $SUDO rm -f "$lr_tmp"; die "logrotate rejected config/logrotate-pi-photo-hub; nothing installed"
+    fi
+    $SUDO rm -f "$lr_tmp"
   fi
   if sync_file "$SRC/config/logrotate-pi-photo-hub" "$LR_DST" "logrotate config"; then
     note_changed "logrotate"

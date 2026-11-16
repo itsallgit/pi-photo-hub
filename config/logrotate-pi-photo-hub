@@ -1,6 +1,10 @@
 # Installed to /etc/logrotate.d/pi-photo-hub by scripts/update.sh (on every update).
-# Covers update.log and picapport-db.log for now; backlog B09 extends this to the other logs.
-/var/log/pi-photo-hub/update.log /var/log/pi-photo-hub/picapport-db.log {
+# The project's own logs in /var/log/pi-photo-hub/ (logging standard, backlog B09). Not here:
+# the photo API's winston logs (/var/log/photo-api/, rotated by winston itself), the systemd
+# journal (persistent, capped by config/journald-pi-photo-hub.conf), Picapport's own log files.
+
+# Written by scripts run with sudo (update.sh, picapport-db.sh, pi-power.sh): small, kept 2 months.
+/var/log/pi-photo-hub/update.log /var/log/pi-photo-hub/picapport-db.log /var/log/pi-photo-hub/power.log {
     weekly
     rotate 8
     compress
@@ -8,4 +12,15 @@
     missingok
     notifempty
     create 0644 root root
+}
+
+# Written every minute by scripts/health-log.sh as user pi (about 0.5 MB a day): 4 weeks kept.
+/var/log/pi-photo-hub/health.log {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 pi pi
 }

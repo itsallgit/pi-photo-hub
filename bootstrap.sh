@@ -258,6 +258,11 @@ else
   echo "[WARN] Photo API systemd template missing: $PHOTO_API_SERVICE_SRC"
 fi
 
+# ---------- Logging standard (persistent journal, health log file, logrotate; backlog B09) ----------
+banner "Logging standard"
+SRC="$REPO_ROOT" DRY_RUN=0 bash "$REPO_ROOT/scripts/lib/apply-logging.sh" || echo "[WARN] logging standard not applied (non-fatal)"
+sudo install -m 644 "$REPO_ROOT/config/logrotate-pi-photo-hub" /etc/logrotate.d/pi-photo-hub || echo "[WARN] logrotate config not installed (non-fatal)"
+
 # ---------- Health log (cron, every minute) ----------
 banner "Installing health logger (cron)"
 bash "$REPO_ROOT/scripts/install-health-log.sh" || echo "[WARN] Health logger not installed (non-fatal)"

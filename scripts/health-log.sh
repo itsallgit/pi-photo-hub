@@ -6,9 +6,11 @@
 #   health-log.sh            take one snapshot (what cron runs)
 #   health-log.sh --status   show where the data is and the last few lines
 #
-# Data lives in RAM (/run/user/<uid>/pi-photo-hub-health) to avoid SD card wear.
-# It is lost on reboot/power loss by design. Log is capped at 5000 lines (~3.5 days),
-# screenshots at 288 (24 h, roughly 15 MB; estimate, not yet measured on the Pi).
+# The text log is kept on the SD card (/var/log/pi-photo-hub/health.log, created for pi by
+# scripts/lib/apply-logging.sh, rotated weekly by logrotate), so it survives a reboot or power
+# cut (backlog B09). If that file is not writable it falls back to RAM (lost on reboot, capped at
+# 5000 lines). Screenshots and the script's own state stay in RAM
+# (/run/user/<uid>/pi-photo-hub-health) to avoid SD card wear: 288 screenshots, 24 h.
 # Screenshots are PNG: this Pi's grim is built without JPEG support.
 
 set -u
@@ -16,7 +18,8 @@ set -u
 UID_NUM="$(id -u)"
 STATE_DIR="${HEALTH_DIR:-/run/user/$UID_NUM/pi-photo-hub-health}"
 [ -d "$(dirname "$STATE_DIR")" ] || STATE_DIR="/tmp/pi-photo-hub-health"
-LOG="$STATE_DIR/health.log"
+PERSIST_LOG="${HEALTH_LOG:-/var/log/pi-photo-hub/health.log}"
+if [ -w "$PERSIST_LOG" ]; then LOG="$PERSIST_LOG"; TRIM=0; else LOG="$STATE_DIR/health.log"; TRIM=1; fi
 SHOTS="$STATE_DIR/shots"
 PREV="$STATE_DIR/prev"
 PP_LOGDIR="/opt/picapport/.picapport/logfiles"
@@ -104,8 +107,8 @@ echo "ts=$ts up=$up gap=$gap pp=$pp_code pp_t=$pp_t api=$api_code" \
      "mem_avail_mb=${mem_avail:-0} swap_mb=${swap_used:-0} load=$load temp=$temp throttled=$throttled hdd=$hdd" \
      "chromium_procs=${chr_n:-0} chromium_rss_mb=${chr_rss:-0} conn_est=$conn_est conn_closewait=$conn_cw" >> "$LOG"
 
-# keep the log bounded
-if [ "$(wc -l < "$LOG")" -gt $((MAX_LINES + 500)) ]; then
+# keep the RAM log bounded (the SD-card log is rotated by logrotate)
+if [ "$TRIM" = 1 ] && [ "$(wc -l < "$LOG")" -gt $((MAX_LINES + 500)) ]; then
   tail -n "$MAX_LINES" "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 fi
 

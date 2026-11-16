@@ -19,8 +19,9 @@
 # (--phase2): install missing packages from config/packages.txt (install only, never an
 # upgrade), add missing kernel command-line settings from config/kernel-cmdline.txt (used at the
 # next reboot; never reboots),
-# sync installed systemd units, API dependencies, Picapport's properties file,
-# the logrotate config and the health-log cron entry; then RESTART THE APP the way a boot
+# sync installed systemd units, the logging standard (persistent journal, health log file),
+# API dependencies, Picapport's properties file, the logrotate config, the cron entries and the
+# hidden pointer; then RESTART THE APP the way a boot
 # starts it (photo-api, then the boot's slideshow launcher picapport-chromium), and verify.
 # It never upgrades or removes packages, reboots, restarts mount-hdd (it would remount the photo HDD) or restarts
 # Picapport (suspected to damage its database, backlog Q11); it says when those are needed.
@@ -125,6 +126,7 @@ if [ "$PHASE2" = 1 ]; then
   if [ -f "$LIB/apply-packages.sh" ]; then bash "$LIB/apply-packages.sh"; fi
   if [ -f "$LIB/apply-boot.sh" ]; then bash "$LIB/apply-boot.sh"; fi
   bash "$LIB/apply-units.sh"
+  if [ -f "$LIB/apply-logging.sh" ]; then bash "$LIB/apply-logging.sh"; fi
   bash "$LIB/apply-extras.sh"
 
   # --- restart the app, the way a boot starts it ---------------------------------------
