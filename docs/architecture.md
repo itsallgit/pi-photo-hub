@@ -58,7 +58,7 @@ Consequence for any fix: a repaired database will break again at the next stop o
 | `GET /api/test` | Returns "Testing". Health check. |
 | `GET /api/home` | Kills any Chromium and opens the Picapport home page in kiosk mode. |
 | `GET /api/slideshow` | With **no** query string: replays the saved slideshow URL from `/var/lib/photo-api/slideshow_url.txt`; if that file is missing, empty or unreadable it uses the default (`q=noimagesfound`, interval 30). With **any** query string: builds `http://localhost:8080/picapport#slideshow?sort=random&autostart=true&viewtime=<interval>&query=<q>`, saves it there (a failure to save is logged and the slideshow still opens), and opens it. A missing `q` becomes `noimagesfound` and a missing `interval` becomes 30, so for example `?interval=10` overwrites the saved slideshow with `noimagesfound` (B17). |
-| `GET /api/screen` | Toggles the monitor on/off with `vcgencmd display_power` (uses `sudo`). **Unverified** that this works under the current Wayland (labwc) desktop. |
+| `GET /api/screen` | Meant to toggle the monitor on/off with `vcgencmd display_power` (uses `sudo`). **Does not work** (tested 2026-11-16): it answers "Screen is OFF" every time and the HDMI output stays on (`vcgencmd` still reports `1`, kernel DPMS `On`), because under the KMS/Wayland desktop `vcgencmd` no longer controls the display. The working alternative is `wlr-randr` (below; fix tracked in B28). |
 
 Chromium is started with `pkill -9 chromium` first, so any running browser is killed. Flags include `--kiosk --start-fullscreen`.
 
@@ -94,6 +94,9 @@ What the photos carry, what Picapport indexes, and the query syntax are in [imag
 - `cmd=GetMetaData&vid=<vid>&index=<n>` (same cookie jar) returns one result's file name, dates, camera, GPS and `textSearch` (the indexed words).
 - A query containing `*` makes `picapport_json` fail with HTTP 500. Never send one.
 - Picapport's documented Web API (`/picapportapi/1.0/runQuery`, wiki 2019) answers 404 here; `picapport.properties` has no `webapi` settings. Whether enabling it would be better for the photo API than `picapport_json` is open (B24, phase 3).
+- **Folder queries:** `dirall:"<absolute folder path>"` matches a folder and everything below it (`dirall:"/mnt/photos/PHOTOS/2016 - Europe"` = 4,040, with `croatia` 1,355); `dir:"<path>"` matches only photos directly in that folder. More precise than folder words.
+- **Vocabulary from the index (2026-11-16):** `cmd=GetAllKeyWordChildren&idParent=0` returns Picapport's keyword tree, but it is **incomplete**: 28 entries, all of them real photo keywords (mostly names), while the photos carry 55 distinct keywords (topics such as work, uni and cooking are missing). `GetAutocompleteKeywords` fails ("KeywordTree root element not found"). `GetFoldersAsHtml` lists the roots; `GetTimeline` returns years and months as HTML. So the index cannot be the master list of searchable words; see backlog B29.
+- Other commands seen in the page code (not tested): `ScreenServerUpdate`, `updateSlide`, `startRemoteScreen` (a "remote screen" feature that might drive a running display without relaunching it), `GetRatingData`, `MapIndex`.
 
 ## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code, and tested 2026-11-16)
 
@@ -104,4 +107,4 @@ What the photos carry, what Picapport indexes, and the query syntax are in [imag
   - Date sorts play the result chronologically. `newestwithupdate` presumably adds new photos as they are indexed (untested).
 - **Duplicates.** A photo copied into two folders is indexed twice and plays twice (for example the same file in `_Friends` and `_Work`).
 - **Failures.** The page asks the server for data with JSON calls. If one fails, the page goes into an offline state and shows the dialog "Network Error. Info: Not connected. Verify Network."; it does not retry by itself. See backlog B03. A malformed query (for example containing `*`) produces the same server error that was seen in the old failures (`PicApportJsonServlet ... InvocationTargetException`, observed 2026-11-16 from test queries); whether that was the cause then is not known. Since the database repair (2026-11-15 22:01) Picapport has logged no other errors.
-- **Screen.** The monitor is on `HDMI-A-1`. `vcgencmd display_power` reports `1`; whether `vcgencmd display_power 0` (used by `/api/screen`) blanks the screen under the Wayland desktop is untested. `wlr-randr` is installed and lists the output, so `wlr-randr --output HDMI-A-1 --off`/`--on` is the Wayland-native alternative (untested).
+- **Screen.** The monitor is on `HDMI-A-1`. **`wlr-randr --output HDMI-A-1 --off` / `--on` works** (tested 2026-11-16 as user `pi` with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0`: kernel DPMS went `Off`, then `On`; the output came back at 1920x1080 and the slideshow kept playing full-screen in Chromium). `vcgencmd display_power 0`, which `/api/screen` uses, has no effect.

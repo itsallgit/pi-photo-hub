@@ -70,6 +70,7 @@ A photo with no date metadata gets the file's date and `$nodate`. The year match
 | `~word` | fuzzy | `~wedding` |
 | `~~word` | sounds-like (phonetic) | `~~noosa` = 2,207 (vs 1,916) |
 | `within:"minLat,minLng,maxLat,maxLng"` | photos whose GPS position is inside the box (photos without GPS never match) | Noosa box = 579 of 1,916 `noosa` photos |
+| `dirall:"<folder path>"` / `dir:"<folder path>"` | a folder with everything below it / only that folder (absolute path on the Pi) | `dirall:"/mnt/photos/PHOTOS/2016 - Europe"` = 4,040 |
 | `@ll` | everything | 63,737 |
 | `$token` | special tokens: `$jpg`, `$landscape`, `$portrait`, `$square`, `$nokeyword`, `$noperson`, `$notitle`, `$nodesc`, `$nodate`, `$nothumb` (seen in `textSearch`; the positive forms such as `$keyword` give 0, so use `-$nokeyword`) | `$portrait` = 1,183 |
 | `"a b"` | **not** a phrase; gives 0 | avoid |

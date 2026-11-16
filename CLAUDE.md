@@ -75,6 +75,7 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 | Network layout (router, Deco, Pi) | [docs/network.md](docs/network.md) |
 | Picapport database facts and repair history | [docs/picapport-db.md](docs/picapport-db.md) |
 | What the photos carry and what Picapport can find (capability map) | [docs/image-metadata.md](docs/image-metadata.md) |
+| How asking for a slideshow should feel (agreed experience) | [docs/slideshow-experience.md](docs/slideshow-experience.md) |
 | Hardware | [docs/hardware.md](docs/hardware.md) |
 | How to do things | `.claude/skills/` |
 | Runbooks for humans (install, SSH, DB fix, ...) | [README.md](README.md) |
