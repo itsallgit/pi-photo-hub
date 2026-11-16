@@ -2,14 +2,16 @@
 // tested 2026-11-16, backlog B28).
 //
 // The desired state is kept in screen.json ({ off, offUntil }) so it survives a restart or reboot.
-// Launching Chromium switches a disabled output back on (tested 2026-11-16, with wlr-randr and with
-// wlopm alike), so while the screen should be off the API re-checks every 10 seconds and switches
-// it off again. A timed "off" turns the screen on when it expires.
+// Limitation (tested 2026-11-16, B28): about 16 s after the screen goes dark, this monitor signals a
+// hot-plug and the desktop (labwc) switches the output back on, with wlr-randr and wlopm alike and
+// with or without Chromium and kanshi. A timed "off" turns the screen on when it expires.
 const { execFile } = require("child_process");
 const config = require("./config");
 const { readJson, writeJson } = require("./state");
 
-const ENFORCE_MS = Number(process.env.SCREEN_ENFORCE_MS || 10000);
+// Re-applying "off" every N ms. Disabled (0) by default: this monitor signals a hot-plug about 16 s
+// after it goes dark and the desktop switches it back on, so re-applying would only flicker (B28).
+const ENFORCE_MS = Number(process.env.SCREEN_ENFORCE_MS || 0);
 let timer = null;
 let enforcer = null;
 let logger = console;
@@ -58,23 +60,28 @@ function watch() {
     stopTimers();
     const { off, offUntil } = desired();
     if (!off) return;
-    enforcer = setInterval(async () => {
-        try {
-            const d = desired();
-            if (!d.off) return stopTimers();
-            if (d.offUntil && new Date(d.offUntil).getTime() <= Date.now()) return await turnOn("timer");
-            if (await isOn()) {
-                await set(false);
-                logger.info("Screen was switched on by something else while it should be off; switched off again");
+    if (ENFORCE_MS > 0) {
+        enforcer = setInterval(async () => {
+            try {
+                const d = desired();
+                if (!d.off) return stopTimers();
+                if (d.offUntil && new Date(d.offUntil).getTime() <= Date.now()) return await turnOn("timer");
+                if (await isOn()) {
+                    await set(false);
+                    logger.info("Screen was switched on by something else while it should be off; switched off again");
+                }
+            } catch (err) {
+                logger.warn(`Screen check failed: ${err.message}`);
             }
-        } catch (err) {
-            logger.warn(`Screen check failed: ${err.message}`);
-        }
-    }, ENFORCE_MS);
+        }, ENFORCE_MS);
+    }
     if (offUntil) {
         const ms = new Date(offUntil).getTime() - Date.now();
-        timer = setTimeout(() => turnOn("timer").catch((e) => logger.error(`Screen timer: ${e.message}`)),
-            Math.max(0, Math.min(ms, 24 * 3600 * 1000))); // longer waits are caught by the 10 s check
+        // setTimeout cannot wait longer than about 24.8 days; re-arm daily until it expires.
+        timer = setTimeout(() => {
+            if (new Date(offUntil).getTime() > Date.now()) return watch();
+            turnOn("timer").catch((e) => logger.error(`Screen timer: ${e.message}`));
+        }, Math.max(0, Math.min(ms, 24 * 3600 * 1000)));
     }
 }
 
