@@ -27,7 +27,11 @@ case "${1:-}" in
     case "$(realpath -m "$out")" in /mnt/photos*) echo "refusing to write under /mnt/photos" >&2; exit 1;; esac
     mkdir -p "$(dirname "$out")"
     nice -n 19 ionice -c3 exiftool -r -fast2 -q -q -T -f -charset filename=utf8 \
-      -ext jpg -ext jpeg -ext heic -ext png "${TAGS[@]}" "$dir" > "$out"
+      -ext jpg -ext jpeg -ext heic -ext png "${TAGS[@]}" "$dir" > "$out" && rc=0 || rc=$?
+    # exiftool exits 1 when any file cannot be read but still lists every file (seen 2026-11-17:
+    # the first nightly run stopped here). Only an empty result or another code is a failure.
+    if [ "$rc" -gt 1 ] || [ ! -s "$out" ]; then echo "exiftool failed (exit $rc), no usable output" >&2; exit 1; fi
+    if [ "$rc" = 1 ]; then echo "note: exiftool could not read some files (exit 1); they are listed with empty fields"; fi
     echo "wrote $(wc -l < "$out") lines to $out"
     ;;
   summary)
