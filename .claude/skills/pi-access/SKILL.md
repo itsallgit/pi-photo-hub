@@ -54,6 +54,14 @@ ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local 
 - **Picapport is on port 8080, not 80.**
 - Since 2026-11-15 the Pi's checkout is updated by `scripts/update.sh` (the `apply-changes` skill). Expected: clean apart from an untracked `api/package-lock.json`, possibly on a test branch rather than `main` (backlog B06). Report anything else; do not change it.
 
+## What is the Pi doing right now? (read-only)
+
+```
+ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local "bash ~/pi-photo-hub/scripts/whats-running.sh"
+```
+
+Shows the services, the slideshow (label, order, interval, screen), **project jobs running at this moment** (vocabulary refresh, metadata survey, database scripts, an update), the scheduled jobs (cron) and the last vocabulary refresh. Run it before anything disruptive (a reboot, a shutdown, an update) and tell the owner what is running. A running vocabulary refresh is safe to interrupt: it writes a new file and swaps it in only at the end (`docs/architecture.md`, "Vocabulary refresh"). A running `picapport-db.sh` or `update.sh` is not: wait for it.
+
 ## Reading logs (read-only)
 
 | What | Where |

@@ -101,6 +101,17 @@ How a change reaches the Pi. Procedure: the `apply-changes` skill and README "Up
 - **Restarting the app, not the Pi** (owner decision 2026-11-15, B20). An update is finished when the app is running again the way a boot starts it, so every update exercises the boot start path for the API and the slideshow. Not restarted: `mount-hdd` (hard rule 1) and Picapport (Q11, until its stop is shown to be clean, B10). No reboot after an update. The health-log cron entry and the logrotate config are part of the app and always installed.
 - **Testing the logic away from the Pi.** Paths and commands can be overridden by environment variables (`PI_REPO`, `STATE_DIR`, `LOG_DIR`, `UNIT_DIR`, `LOGROTATE_DIR`, `PICAPPORT_PROPS_DST`, `SYSTEMCTL`, `CURL`, `SUDO`, `APT_GET`, `DPKG_QUERY`; see `scripts/lib/common.sh`), which allows running it against a scratch clone with a stubbed `systemctl`. That tests the script logic only: it does **not** test `systemctl`, the real unit sync, `sudo`, file ownership or executable-bit handling (Windows git ignores modes), or Pi-specific behaviour.
 
+## Vocabulary refresh (interim, until the ingestion pipeline)
+
+What it is: a nightly, read-only scan that turns what the photos carry into the list of searchable words the `slideshow-control` skill uses (`GET /api/vocabulary`; backlog B29). It exists because Picapport's own keyword list is incomplete. It is **interim**: how new photos and new metadata reach the vocabulary is to be decided with the ingestion pipeline (L7, phase 3 of the plan), which may replace the full nightly scan with updates as photos arrive.
+
+- **When:** cron for user `pi`, every night at 03:30 (`scripts/install-vocabulary-cron.sh`, installed by `update.sh` and `bootstrap.sh`). By hand: `scripts/refresh-vocabulary.sh` (full) or `--build-only` (from the last scan, seconds).
+- **What it does:** `scripts/metadata-survey.sh scan` reads the metadata of every image under `/mnt/photos/PHOTOS` with `exiftool` (read-only; about 64,000 files) into `~/metadata-survey/survey.tsv.new`, then swaps it in as `survey.tsv`; `scripts/build-vocabulary.py` writes `/var/lib/photo-api/vocabulary.json`. Log of the last run: `~/metadata-survey/refresh.log`.
+- **Cost (measured 2026-11-17):** about 35 to 40 minutes; `exiftool` uses about three quarters of one of the four cores at the lowest CPU priority (`nice 19`) and reads the HDD in the idle I/O class, so the slideshow and Picapport go first; load about 1.2, temperature about 49 °C, memory about 1%. The HDD is read for the whole run.
+- **Safe to interrupt** (for example by a reboot): the new scan is only swapped in when complete; the previous vocabulary stays in use.
+- **Is it running?** `scripts/whats-running.sh` (the `pi-access` skill).
+- **Turn it off:** `bash scripts/install-vocabulary-cron.sh --remove` on the Pi (the API keeps serving the last vocabulary). `update.sh` re-installs it, so turning it off for good is a repo change.
+
 ## Picapport queries
 
 What the photos carry, what Picapport indexes, and the query syntax are in [image-metadata.md](image-metadata.md) (layer 1, principle 12). Interfaces found (read-only, 2026-11-16):

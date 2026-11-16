@@ -198,6 +198,8 @@ bash ~/pi-photo-hub/scripts/metadata-survey.sh summary   # per field: number of 
 
 Manual alternative for one photo: `exiftool -G1 -a -s "<photo path>"` (never with a write option).
 
+The same scan runs every night at 03:30 to rebuild the slideshow vocabulary (interim, see [docs/architecture.md](docs/architecture.md), "Vocabulary refresh"). To see whether it, or anything else, is running right now: `bash ~/pi-photo-hub/scripts/whats-running.sh`.
+
 Which fields Picapport indexes is tested with small JPEGs in a test folder on the SD card (`/home/pi/picapport-testset`, Picapport's second scan root), never on the HDD:
 
 ```bash
