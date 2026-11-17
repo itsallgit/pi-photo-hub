@@ -1,11 +1,13 @@
 ---
 name: slideshow-control
-description: Use when the owner asks to see photos ("show us Barcelona", "the wedding", "photos of us from last summer"), to change the slideshow ("slower", "every 30 seconds", "smart random", "what's playing?"), or to switch the screen ("turn it off", "off for an hour", "off until tomorrow", "turn it back on"). Turns plain words into photo API calls and replies in the agreed style. Changes the slideshow and screen through the photo API only; owner decision: no confirmation needed for these.
+description: Use when the owner asks to see photos ("show us Barcelona", "the wedding", "photos of us from last summer", "this day in past years", "something we haven't seen in a while"), to change or steer the slideshow ("slower", "every 30 seconds", "next", "go back", "pause", "guests mode", "show the date", "skip the upright ones", "what's playing?", "where was that?"), to mark a photo ("star this one", "that's a bad photo"), or to switch the screen ("turn it off", "off for an hour", "off until tomorrow", "turn it back on", "off every night"). Turns plain words into photo API calls and replies in the agreed style. Changes the slideshow and screen through the photo API only; owner decision: no confirmation needed for these.
 ---
 
 # Slideshow control
 
 Layer 3 of slideshow control (principle 12). The person asking knows nothing about folders, tags or query syntax. You translate, act, and report.
+
+**The slideshow layer (B32):** the Pi holds the one slideshow (order, position, settings) and every screen is a window onto it: the shelf screen, and the phone at `http://pi.local:3000/show` (tap for controls and full screen). What you change here shows everywhere at once. Full reference: `docs/architecture.md`, "Slideshow layer".
 
 **Agreement:** playing, changing and stopping the slideshow and switching the screen **through the photo API** is the owner's everyday use. Act first, no confirmation (owner decision, 2026-11-16; `docs/slideshow-experience.md`). Anything else that touches the Pi (SSH that writes, restarting services, reboots, Picapport) is **not** this skill: use `pi-access` / `apply-changes` with their agreement gates. Hard rule 1 applies: never change photos or their tags.
 
@@ -18,8 +20,9 @@ Layer 3 of slideshow control (principle 12). The person asking knows nothing abo
 
 ```bash
 curl -s $API/api/status       # what is playing: query, label, sort, interval; screen state
+curl -s $API/api/player       # now playing in detail: current photo (date, place, event, people), position, settings, preset
 curl -s $API/api/words        # the owner's personal words: "us", "home", ...
-curl -s $API/api/vocabulary   # keywords, people (with photo counts, searchable or not), folders (with a dirall: query), years
+curl -s $API/api/vocabulary   # keywords, people (with photo counts, searchable or not), folders (with a dirall: query), years, places (country, then city, with keys)
 ```
 
 The vocabulary is large (hundreds of folders): read it into the conversation once, or filter it, e.g. `curl -s $API/api/vocabulary | grep -i -o '"path":"[^"]*barcelona[^"]*"'`.
@@ -42,13 +45,25 @@ Never: `*` (the API refuses it), quotes for phrases (they do not work), `field:v
 2. **Count before playing:** each part and the whole, nothing changes on screen:
    `curl -s -G $API/api/count --data-urlencode "q=<part 1>" --data-urlencode "q=<part 2>" --data-urlencode "q=<whole query>"`
 3. **Nothing found (0):** do not play. Say so and suggest the closest things that do exist (with counts).
-4. **Play** (it is saved and plays again after a restart):
+4. **Play** (it is saved and resumes where it was after a restart):
    `curl -s -X POST $API/api/slideshow -H 'content-type: application/json' -d '{"query":"<query>","label":"<short name in the owner's words>"}'`
-   Settings not given (order, seconds per photo) are kept. If the same slideshow is already playing it is not reshuffled; add `"restart":true` only if the owner asks for a fresh shuffle.
-5. **Change settings only** ("slower", "every 30 seconds", "smart random", back to "random"):
-   `curl -s -X PATCH $API/api/slideshow -H 'content-type: application/json' -d '{"interval":30}'` (or `{"sort":"randomsmart"}`). A change reshuffles.
-6. **Screen:** off `-d '{"on":false}'`; off for a while `-d '{"on":false,"minutes":60}'`; off until a time `-d '{"on":false,"until":"<ISO time>"}'` (get it with `date -d "tomorrow 07:00" -Iseconds`; the Pi and the owner are on Sydney time); on `-d '{"on":true}'`; all `POST $API/api/screen`. Starting a new slideshow turns the screen on.
-7. **Reply** in the format below, then optionally a follow-up.
+   Settings not given (order, seconds per photo) are kept. If the same slideshow is already playing it is not restarted; add `"restart":true` only if the owner asks for a fresh shuffle. **`"preparing":true`** in the answer means a big slideshow is being listed (about 40 s for 12,000 photos the first time, seconds after); the old one plays until then: say "getting it ready".
+   **Places, dates and history** (from the photo API's own catalogue, not a Picapport word): `POST $API/api/player/source -d '{"source":{...,"label":"..."}}'` with `places` (keys from the vocabulary's `places`: `["IT"]` a country, `["ES/Barcelona"]` a city), `years` (`[2019]`), `onThisDay: true` ("this day/week in past years"), `notSeenDays: 90` ("something we haven't seen in a while"), and/or a `query`; all given parts must match. `GET $API/api/suggestions` gives counts for "this week in past years", "not seen in 90 days" and the events not seen for longest, for "what can you show us?".
+5. **Change settings** (no reshuffle; the current photo stays): `curl -s -X PATCH $API/api/slideshow -H 'content-type: application/json' -d '{"interval":30}'` still works for seconds and order (`{"sort":"randomsmart"}` is now **chapters**: short runs from one event with its name). Everything else with `PATCH $API/api/player/settings`:
+   | Owner says | Body |
+   |---|---|
+   | "don't move on by itself" / "play again" | `{"autoplay":false}` / `{"autoplay":true}` |
+   | "oldest first", "in order", "newest first", "chapters" | `{"order":"date-asc"}`, `"date-desc"`, `"chapters"`, `"random"` |
+   | "skip the upright ones" / "show them again" | `{"upright":"skip"}` / `{"upright":"fill"}` |
+   | "less movement", "no movement", "livelier" | `{"motion":"subtle"}`, `"off"`, `"lively"`; transitions `{"transition":"fade"}`, `"slide"`, `"zoom"`, `"dip"` |
+   | "show the date", "how long ago", "no text", "show where", "show who" | `{"overlay":{"date":"absolute"}}`, `{"overlay":{"date":"relative"}}`, `{"overlayStyle":4}` (hidden; 0 small bottom left, 1 strip, 2 large top right, 3 dark text), `{"overlay":{"place":true}}`, `{"overlay":{"people":true}}` |
+   | "title cards", "a clock", "dimmer" | `{"titleCards":true}`, `{"clock":true}`, `{"night":true}` |
+   | "show every burst photo" | `{"bursts":false}` (default on: one photo per burst) |
+   **Presets** (starting points; a change afterwards is kept): `POST $API/api/player/preset -d '{"name":"<ambient|present|guests|night>"}'`. Ambient: plays by itself, gentle. Present: the owner steps through, date order, title cards, date, place and event. Guests: livelier chapters, how long ago. Night: dimmer, slower, no text.
+6. **Steer what is playing** ("next", "go back three", "pause", "keep going", "jump to 2019"): `POST $API/api/player/next`, `/back` (body `{"steps":3}`), `/pause`, `/play`, `/jump` (`{"year":2019}` in a date order).
+7. **Mark a photo** ("star this one", "that's a bad one"): `POST $API/api/marks -d '{"mark":"star"}'` (or `"bad"`; without an id it is the photo on screen now). It only goes on a review list (`GET $API/api/marks`) for the owner's pipeline; nothing is written to the photo (hard rule 1). Say that.
+8. **Screen:** off `-d '{"on":false}'`; off for a while `-d '{"on":false,"minutes":60}'`; off until a time `-d '{"on":false,"until":"<ISO time>"}'` (get it with `date -d "tomorrow 07:00" -Iseconds`; the Pi and the owner are on Sydney time); on `-d '{"on":true}'`; all `POST $API/api/screen`. Starting a new slideshow turns the screen on. **Every night** ("off at midnight, on at 6"): `PUT $API/api/schedule -d '{"enabled":true,"off":"00:00","on":"06:00"}'` (`{"enabled":false}` to stop; off by default). Turning it on by hand at night is respected until the next night.
+9. **Reply** in the format below, then optionally a follow-up.
 
 ## Reply format (Markdown for the Paseo mobile app)
 
@@ -77,7 +92,7 @@ Visual and short: **one heading** with an emoji that says what happened, the pho
 
 ````markdown
 ### ⏱️ Slower · one photo every 30 s
-Still **Honeymoon** · reshuffled
+Still **Honeymoon** · same order, same photo
 
 **Settings**
 `🔀 Random` `⏱️ 30 s`
@@ -91,15 +106,19 @@ Still **Honeymoon** · reshuffled
 ````
 (☀️ for "Screen on".)
 
-**What's playing?**
+**What's playing?** / **"Where was that?"** (from `GET /api/player`: `current.info` and `current.thumb`)
 
 ````markdown
 ### 🖼️ Playing now · Honeymoon
-**11,807 photos** · since 10:49 pm
+**Vernazza, Italy** · 21 September 2026 (8 weeks ago) · Honeymoon › Cinque Terre
+![now](http://pi.local:3000/api/photo/<current.id>?size=thumb)
+Photo 1,204 of 6,931
 
 **Settings**
-`🔀 Random` `⏱️ 20 s`
+`🌿 Ambient` `🔀 Random` `⏱️ 20 s`
 ````
+
+The preview link works on the home network only (the phone in the house). Settings chips: the preset (and "changed" if `preset.changed` is not empty), the order, seconds; add others only when they are not the preset's (for example `🙈 no upright`, `🕰️ clock`).
 
 **Nothing found** (nothing was played)
 
@@ -130,7 +149,8 @@ Pick emoji that fit the content (a ring for a wedding or honeymoon, a flag for a
 ## Experience preferences (owned by the owner; change them here when asked)
 
 - Act first; never ask before playing a clear request. Ask only after playing, as a follow-up.
-- Default order: plain `random`. Smart Random (`randomsmart`, short runs of about 3 consecutive photos) only on request.
+- Default order: plain `random`. Chapters (the old Smart Random: short runs from one event) only on request.
+- Default preset: Ambient. Burst thinning on, upright photos shown with a blurred fill (the owner decides these on their checklist, M8).
 - Default seconds per photo: keep the current setting (20 s as of 2026-11-16).
 - Replies use the visual format above: emoji heading, setting chips, 💬 quote for questions (owner, 2026-11-17).
 - The mouse pointer is hidden on the slideshow screen (built in; nothing to do).
@@ -145,11 +165,11 @@ When the owner explains a personal word ("home means Lusty Bonar", "my parents a
 
 ## Verify
 
-The POST/PATCH answer has `"played":true` (or `"relaunched"`), and `GET /api/status` shows the new slideshow. If the owner says the screen looks wrong, use `pi-access` ("See what the screen shows").
+The POST/PATCH answer has `"played":true`, and `GET /api/player` shows the new slideshow (`status` `playing`; `preparing` while a big one is listed). If the owner says the screen looks wrong, use `pi-access` ("See what the screen shows").
 
 ## Undo
 
-Before playing, keep the old `slideshow` from `GET /api/status`. To go back, POST its `query`, `label`, `sort` and `interval`.
+Before playing, keep the old `source` and `settings` from `GET /api/player`. To go back, POST the source to `/api/player/source` (or the old `query` and `label` to `/api/slideshow`) and PATCH the settings back. If our page itself misbehaves, `PATCH /api/player/settings {"viewer":"picapport"}` puts Picapport's own slideshow page on the shelf (the old behaviour; `"layer"` to come back) and tell the owner.
 
 ## Do not
 
@@ -160,8 +180,8 @@ Before playing, keep the old `slideshow` from `GET /api/status`. To go back, POS
 
 ## Links
 
-`docs/slideshow-experience.md` (the agreed experience), `docs/image-metadata.md` (what can be found, query syntax), `docs/architecture.md` ("Photo API"), README "Controlling the Slideshow" (the same calls by hand), backlog B23, B24.
+`docs/slideshow-experience.md` (the agreed experience), `docs/image-metadata.md` (what can be found, query syntax), `docs/architecture.md` ("Photo API", "Slideshow layer"), the `button-board` skill, README "Controlling the Slideshow" (the same calls by hand), backlog B23, B24.
 
 ## Last verified
 
-2026-11-17: cold-tested by the owner in fresh Paseo sessions: fast, good follow-up questions, answers exploring questions such as "where did I go in Italy?" (owner's words: "working very well"). Reply format then changed to the visual style above (not yet re-tested). 2026-11-16: every call above run against the Pi while building it.
+2026-11-18: extended for the slideshow layer (B32): every new call run against the Pi during the build (not cold-tested in this form). 2026-11-17: cold-tested by the owner in fresh Paseo sessions: fast, good follow-up questions, answers exploring questions such as "where did I go in Italy?" (owner's words: "working very well"). Reply format then changed to the visual style above (not yet re-tested). 2026-11-16: every call above run against the Pi while building it.
