@@ -14,7 +14,7 @@ function router(logger) {
     r.post("/kiosk", async (req, res, next) => {
         try {
             const p = String((req.body || {}).path || "");
-            if (!/^\/[A-Za-z0-9/_.?=&%-]*$/.test(p)) return res.status(400).json({ error: "path must start with / and be a plain path" });
+            if (!/^\/[A-Za-z0-9/_.?=&%,+-]*$/.test(p)) return res.status(400).json({ error: "path must start with / and be a plain path" });
             const flags = [].concat((req.body || {}).flags || []).map(String);
             if (flags.some((f) => !/^--[a-z0-9-]+(=[A-Za-z0-9,_.:-]+)?$/.test(f))) return res.status(400).json({ error: "flags must look like --name or --name=value" });
             await browser.open(`http://localhost:${config.port}${p}`, logger, flags);
