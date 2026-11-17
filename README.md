@@ -119,6 +119,7 @@ This package sets up a Raspberry Pi 4 with Picapport and a Node.js API for photo
    * Disable screen blanking
       * `sudo raspi-config`
       * Display Options > Screen Blanking > Disable
+   * **Using a different photo HDD?** `config/hdd.conf` pins the current disk by its UUID. With another disk, the Pi will not mount it until you put that disk's UUID (or label) in `config/hdd.conf` and commit it. `lsblk -o NAME,LABEL,UUID,FSTYPE` shows the values.
 
 1. Trigger Fresh Bootstrap using Cleanup Script
 
