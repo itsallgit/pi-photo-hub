@@ -51,4 +51,4 @@ A reboot has nothing to undo. If the Pi does not come back within 5 minutes, say
 
 ## Last verified
 
-2026-11-17: script logic tested on the Pi in a scratch folder with stubbed `systemctl`/`pgrep` (dry run, refusal for safe and unsafe jobs, `--force`, clean reboot, java that will not stop, shutdown, lock, verify). Real reboot on the Pi: see the backlog (B10). Real shutdown: not yet done (needs the owner next to the Pi to switch it back on). Not yet cold-tested.
+2026-11-17: script logic tested on the Pi in a scratch folder with stubbed `systemctl`/`pgrep` (dry run, refusal for safe and unsafe jobs, `--force`, clean reboot, java that will not stop, shutdown, lock, verify). Real reboot on the Pi 2026-11-17 12:35: clean Picapport stop (3 s), back in about 45 s, slideshow playing by 12:38, `verify` OK (run it about 2 minutes after the boot: earlier, Picapport and Chromium are still starting). Live refusal during a vocabulary refresh (exit 3). Real shutdown: not yet done (needs the owner next to the Pi to switch it back on). Not yet cold-tested.
