@@ -16,6 +16,7 @@
   let shownId = null;
   let slideStarted = 0;
   let lastPos = null;
+  let overlayTimer = null;
   const listeners = [];
   const cache = new Map(); // photo id -> Promise<{ img, fill, w, h }>
   const serverNow = () => Date.now() + offset;
@@ -237,8 +238,12 @@
     slideStarted = Date.now();
     const cardLeft = showCard(cur, state);
     const slide = makeSlide(cur, loaded, state);
-    transitionIn(slide, state.settings.transition, back, first || cardLeft > 0);
-    renderOverlay(cur, state);
+    const immediate = first || cardLeft > 0;
+    transitionIn(slide, state.settings.transition, back, immediate);
+    // The words change halfway through the transition, when the new photo is mostly visible.
+    clearTimeout(overlayTimer);
+    const st2 = state;
+    overlayTimer = setTimeout(() => { if (shownId === cur.id) renderOverlay(cur, st2); }, immediate ? 0 : (TRANSITION_MS[st2.settings.transition] || 1500) / 2);
   }
 
   let es = null, connected = false, lostAt = 0;
