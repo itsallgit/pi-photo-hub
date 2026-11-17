@@ -316,6 +316,7 @@ async function setSource(src, { settings, preset } = {}) {
         s.startedAt = Date.now();
         s.elapsedAtPause = 0;
         savePlaylist();
+        library.setPrimaryQuery(src.query);
         history.startSlideshow(label, src);
         logger.info(`Playing ${label}: ${items.length} photos (${paths.length} in the source), ${s.settings.order}, ${s.settings.interval} s`);
         // wait briefly for the first image so viewers do not start on a blank
@@ -463,6 +464,7 @@ async function start({ log, notify, legacy }) {
         s.preparing = null;
         s.status = items.length ? "playing" : "empty";
         s.position = Math.min(s.position || 0, Math.max(0, items.length - 1));
+        library.setPrimaryQuery(s.source && s.source.query);
         // Resume: the same order, the same photo, restarted from its beginning (R2).
         s.startedAt = Date.now();
         if (!s.playing) s.elapsedAtPause = 0;

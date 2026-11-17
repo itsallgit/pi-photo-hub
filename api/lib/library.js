@@ -89,10 +89,25 @@ async function locateByFolder(p) {
 
 class NotInIndex extends Error {}
 
+// The query of the slideshow playing now: its listing (cached on disk) is the quickest way to learn
+// where its photos are after Picapport's session changed (RunQuery and 3 checks instead of a folder).
+let primary = null;
+function setPrimaryQuery(q) { primary = q || null; }
+let relisting = null;
+async function relearnPrimary() {
+    if (!primary) return;
+    if (!relisting) relisting = listQuery(primary).catch((e) => logger.warn(`Re-listing failed: ${e.message}`)).finally(() => { relisting = null; });
+    await relisting;
+}
+
 // Returns { vid, index, meta } for a path, checked against Picapport.
 async function locate(p) {
     for (let attempt = 0; attempt < 2; attempt++) {
         let loc = located.get(p);
+        if ((!loc || loc.session !== picapport.session()) && primary) {
+            await relearnPrimary();
+            loc = located.get(p);
+        }
         if (!loc || loc.session !== picapport.session()) {
             await locateByFolder(p);
             loc = located.get(p);
@@ -117,8 +132,9 @@ const SIZES = { screen: () => config.screenBox, thumb: () => config.thumbBox };
 const inflight = new Map();
 let imageSlots = 2; // Picapport resizes at most this many at once
 const waiting = [];
-async function slot(fn) {
-    if (imageSlots === 0) await new Promise((r) => waiting.push(r));
+// A viewer waiting for a photo goes before the look-ahead (urgent requests join the front).
+async function slot(fn, urgent) {
+    if (imageSlots === 0) await new Promise((r) => (urgent ? waiting.unshift(r) : waiting.push(r)));
     imageSlots--;
     try { return await fn(); } finally { imageSlots++; const next = waiting.shift(); if (next) next(); }
 }
@@ -129,7 +145,7 @@ function cacheFile(p, size) { return path.join(imagesDir(), `${photoId(p)}-${siz
 function cached(p, size) { return fs.existsSync(cacheFile(p, size)); }
 
 // Returns the cache file of a resized image, fetching it from Picapport if needed.
-async function image(p, size = "screen") {
+async function image(p, size = "screen", { urgent = false } = {}) {
     if (!SIZES[size]) throw new Error(`unknown size ${size}`);
     const file = cacheFile(p, size);
     if (fs.existsSync(file)) return file;
@@ -155,7 +171,7 @@ async function image(p, size = "screen") {
             fs.renameSync(tmp, file);
             noteWritten(buf.length);
             return file;
-        }).finally(() => inflight.delete(key)));
+        }, urgent).finally(() => inflight.delete(key)));
     }
     return inflight.get(key);
 }
@@ -203,5 +219,5 @@ function cacheStats() {
 }
 
 module.exports = {
-    setLogger, listQuery, locate, image, cached, touch, register, pathOf, photoId, metaCache, cacheStats, prune, NotInIndex,
+    setLogger, listQuery, setPrimaryQuery, locate, image, cached, touch, register, pathOf, photoId, metaCache, cacheStats, prune, NotInIndex,
 };

@@ -384,7 +384,7 @@ app.get("/api/photo/:id", wrap(async (req, res) => {
     if (!p) return res.status(404).json({ error: "unknown photo id" });
     const size = req.query.size === "thumb" ? "thumb" : "screen";
     try {
-        const file = await library.image(p, size);
+        const file = await library.image(p, size, { urgent: true });
         library.touch(file);
         res.set("cache-control", "private, max-age=86400");
         res.sendFile(file);
