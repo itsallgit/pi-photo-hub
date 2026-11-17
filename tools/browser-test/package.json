@@ -1,0 +1,8 @@
+{
+  "name": "pi-photo-hub-browser-test",
+  "private": true,
+  "description": "Dev-only headless browser tests of the slideshow page (/show) with the PC's own Chrome or Edge. Not installed on the Pi.",
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

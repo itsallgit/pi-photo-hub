@@ -6,3 +6,8 @@ api/node_modules/
 
 # npm writes a lock file on each machine (PC and Pi differ); not tracked
 api/package-lock.json
+
+# Dev-only browser test tools (tools/browser-test, npm install there)
+tools/browser-test/node_modules/
+tools/browser-test/package-lock.json
+tools/browser-test/shots/

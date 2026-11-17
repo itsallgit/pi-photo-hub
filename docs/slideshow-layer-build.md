@@ -105,8 +105,8 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M2.5 (2026-11-18; `node api/test/pi-check.js` against the Pi: lockstep of two viewers within 71 ms, resume at the same photo after the update's restart, honeymoon listed in 38 s (11,807 photos), uncached photo 2.9 s and thumbnail 1.3 s after giving viewers priority over the look-ahead (21 s before), node 83 MB; the shelf shows Picapport's page (viewer `picapport`, R21) until M3.3) Deploy; API tests from the PC against the Pi.
 
 ### M3: Shelf viewer (R8 display, R9, R10, R12, R13, R21)
-- [ ] M3.1 `/show`: lockstep with events, preloading, blurred fill, transitions, motion.
-- [ ] M3.2 Overlay with fields and style presets; relative dates; title and chapter cards; clock; night look.
+- [x] M3.1 (2026-11-18; `api/public/show.html`, `show.js`, `show.css`; browser test `tools/browser-test/run.js`: lockstep of shelf and phone, late joiner in step, fill only for photos that leave bars, each transition, no console errors) `/show`: lockstep with events, preloading, blurred fill, transitions, motion.
+- [x] M3.2 (2026-11-18; five overlay styles in `config/slideshow-presets.json`, the last hides it; relative dates "8 weeks ago", "3 years ago"; screenshots reviewed) Overlay with fields and style presets; relative dates; title and chapter cards; clock; night look.
 - [ ] M3.3 Kiosk opens `/show`; the fallback setting back to Picapport's page (R21).
 - [ ] M3.4 Deploy; screenshots across presets and orders; performance; a 30-minute run.
 
