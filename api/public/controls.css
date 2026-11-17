@@ -1,1 +1,52 @@
-/* controls.css - the phone controls layer (M4). */
+/* controls.css - the phone controls layer (R14). Shown on a tap, hidden again after a few seconds
+   without a touch, so a phone mirrored to the TV shows just the photo. */
+body { touch-action: none; } /* swipes are ours, not the browser's (else Chrome cancels the pointer) */
+#controls .pane, #controls .years { touch-action: pan-x pan-y; }
+#controls { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: 16px; color: #fff; }
+#controls > * { pointer-events: auto; }
+#controls .bar { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+#controls .top { top: 0; padding-top: max(10px, env(safe-area-inset-top)); background: linear-gradient(rgba(0,0,0,.75), rgba(0,0,0,0)); }
+#controls .bottom { bottom: 0; padding-bottom: max(14px, env(safe-area-inset-bottom)); background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.8)); flex-direction: column; align-items: stretch; }
+#controls .title { flex: 1; min-width: 0; }
+#controls .title .t1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#controls .title .t2 { font-size: 13px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#controls .info { font-size: 15px; line-height: 1.35; margin-bottom: 8px; text-shadow: 0 0 6px #000; }
+#controls .info .when { font-size: 18px; font-weight: 600; }
+#controls .info .muted { color: #ccc; }
+#controls .buttons { display: flex; justify-content: space-around; align-items: center; }
+#controls button { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); border-radius: 22px;
+  min-width: 44px; min-height: 44px; padding: 6px 14px; cursor: pointer; touch-action: manipulation; }
+#controls button.big { min-width: 64px; min-height: 56px; font-size: 22px; border-radius: 30px; }
+#controls button.on { background: #f5c518; color: #000; border-color: #f5c518; }
+#controls button.bad.on { background: #d9534f; color: #fff; border-color: #d9534f; }
+#controls button:active { transform: scale(.96); }
+#controls .chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.15); border-radius: 16px; padding: 4px 10px; margin: 3px; font-size: 14px; }
+
+/* the sheet: search, browse, settings */
+#controls .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; background: rgba(18,18,18,.97); border-radius: 16px 16px 0 0;
+  display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 24px rgba(0,0,0,.6); }
+@media (orientation: landscape) { #controls .sheet { left: auto; width: min(560px, 60vw); top: 0; max-height: none; border-radius: 0; } }
+#controls .tabs { display: flex; gap: 6px; padding: 10px 12px 6px; border-bottom: 1px solid #333; align-items: center; }
+#controls .tabs button { border-radius: 14px; padding: 4px 12px; min-height: 36px; }
+#controls .tabs .spacer { flex: 1; }
+#controls .pane { overflow-y: auto; padding: 10px 14px 18px; -webkit-overflow-scrolling: touch; }
+#controls h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #999; margin: 16px 0 6px; font-weight: 600; }
+#controls .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid #262626; }
+#controls .row label { flex: 1; }
+#controls .seg { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+#controls .seg button { min-height: 34px; padding: 3px 10px; font-size: 14px; border-radius: 12px; }
+#controls input[type=search] { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 10px; border: 1px solid #444; background: #222; color: #fff; }
+#controls .suggest { margin-top: 6px; }
+#controls .suggest button, #controls .list button { display: flex; width: 100%; justify-content: space-between; text-align: left; border-radius: 10px; margin: 3px 0; background: #222; border-color: #333; }
+#controls .suggest .kind, #controls .list .n { color: #999; font-size: 13px; }
+#controls .picked { margin: 8px 0; min-height: 10px; }
+#controls .picked .op { background: none; border: 1px dashed #666; min-width: 0; min-height: 28px; padding: 1px 8px; font-size: 12px; border-radius: 10px; }
+#controls .picked .x { background: none; border: none; min-width: 0; min-height: 0; padding: 0 2px; }
+#controls .play-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+#controls .play-row .count { color: #ccc; flex: 1; }
+#controls .years { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px; }
+#controls .years button { flex: 0 0 auto; border-radius: 12px; min-height: 40px; }
+#controls .sub { padding-left: 14px; }
+#controls .msg { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); background: rgba(0,0,0,.8); padding: 10px 16px; border-radius: 20px; font-size: 15px; pointer-events: none; }
+#controls .map { height: 55vh; border-radius: 10px; overflow: hidden; background: #222; }

@@ -30,11 +30,11 @@ const pathOf = (ph) => `${ph.folder}/${ph.file}`;
 
 function matches(ph, q) {
     q = q.trim();
-    let m;
-    if ((m = q.match(/^dir:"(.*)"$/))) return ph.folder === m[1];
-    if ((m = q.match(/^dirall:"(.*)"$/))) return ph.folder === m[1] || ph.folder.startsWith(m[1] + "/");
     const ors = q.split(/\s+OR\s+/);
     if (ors.length > 1) return ors.some((x) => matches(ph, x));
+    let m;
+    if ((m = q.match(/^dir:"([^"]*)"$/))) return ph.folder === m[1];
+    if ((m = q.match(/^dirall:"([^"]*)"$/))) return ph.folder === m[1] || ph.folder.startsWith(m[1] + "/");
     return q.toLowerCase().split(/\s+/).every((w) => pathOf(ph).toLowerCase().includes(w));
 }
 

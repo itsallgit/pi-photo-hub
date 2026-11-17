@@ -36,6 +36,13 @@ async function startStack() {
     pic = await fake.start(PIC_PORT);
     state = fs.mkdtempSync(path.join(os.tmpdir(), "photo-api-browser-"));
     fs.writeFileSync(path.join(state, "catalogue.json"), JSON.stringify(fake.catalogue(pic.library)));
+    fs.writeFileSync(path.join(state, "vocabulary.json"), JSON.stringify({
+        keywords: [{ word: "Cooking", photos: 3, searchable: true }], people: [{ word: "Alex", photos: 1, searchable: true }],
+        folders: ["2021.05 - Noosa", "2026.09 - 2026.10 - Honeymoon", "2026.09 - 2026.10 - Honeymoon/01 Singapore", "2026.09 - 2026.10 - Honeymoon/02 Cinque Terre", "_Friends"]
+            .map((f) => ({ path: f, query: `dirall:"${fake.ROOT}/${f}"`, photos: 5 })),
+        places: [{ country: "Italy", cc: "IT", key: "IT", photos: 8, cities: [{ city: "La Spezia", key: "IT/La Spezia", photos: 8 }] },
+            { country: "Australia", cc: "AU", key: "AU", photos: 12, cities: [{ city: "Noosa Heads", key: "AU/Noosa Heads", photos: 12 }] }],
+        years: { 2018: 4, 2021: 12, 2026: 18 } }));
     // start with the honeymoon folder, 20 s, as a saved slideshow
     fs.writeFileSync(path.join(state, "slideshow.json"), JSON.stringify({ query: "honeymoon", label: "Honeymoon", sort: "random", interval: 20 }));
     const node = JSON.stringify(process.execPath);
@@ -58,7 +65,7 @@ async function main() {
     async function open(url, viewport, name) {
         const page = await browser.newPage();
         await page.setViewport(viewport);
-        page.on("console", (m) => { if (m.type() === "error") errors.push(`${name}: ${m.text()}`); });
+        page.on("console", (m) => { if (m.type() === "error") errors.push(`${name}: ${m.text()}`); if (process.env.DEBUG_PAGE) console.log(`[${name}] ${m.text()}`); });
         page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
         await page.goto(BASE + url, { waitUntil: "load" });
         return page;
@@ -67,7 +74,7 @@ async function main() {
     const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
     let fails = 0;
     const ok = async (name, fn) => {
-        if (only && !name.includes(only)) return;
+        if (only && !name.includes(only) && !name.includes("shelf page")) return;
         try { await fn(); console.log(`ok   ${name}`); } catch (e) { fails++; console.log(`FAIL ${name}: ${e.message}`); }
     };
 
@@ -191,8 +198,117 @@ async function main() {
         await until(async () => (await api("GET", "/api/player")).source.query === "noosa", "noosa");
         await shot(shelf, "shelf-after-new-source");
     });
+    // ---------- the phone page (M4) ----------
+    await phone.bringToFront();
+    const tapCentre = async (page) => { const v = page.viewport(); await page.mouse.click(v.width / 2, v.height / 3); };
+    const visibleControls = (page) => page.evaluate(() => !document.getElementById("controls").classList.contains("hidden"));
+    const showControls = async (page) => { if (!(await visibleControls(page))) await tapCentre(page); await until(() => visibleControls(page), "the controls"); };
+    const clickText = (page, sel, re) => page.evaluate((sel, src) => { const r = new RegExp(src); const all = [...document.querySelectorAll(sel)]; const b = all.find((x) => r.test(x.textContent)); if (!b) throw new Error(`no ${src} in ${sel}: ${all.map((x) => x.textContent).join(" | ").slice(0, 400)}`); b.click(); }, sel, re.source);
+    const clickLabel = (page, label) => page.evaluate((l) => { const b = [...document.querySelectorAll("#controls button")].find((x) => x.getAttribute("aria-label") === l || x.textContent.trim() === l); if (!b) throw new Error(`no button ${l}`); b.click(); }, label);
+    await ok("phone: a tap shows the controls and asks for full screen", async () => {
+        await api("POST", "/api/player/source", { source: { query: "honeymoon", label: "Honeymoon" }, preset: "ambient" });
+        await until(async () => (await api("GET", "/api/player")).source.label === "Honeymoon", "honeymoon");
+        assert.equal(await visibleControls(phone), false);
+        await tapCentre(phone);
+        await until(() => visibleControls(phone), "the controls");
+        assert.equal(await phone.evaluate(() => !!document.fullscreenElement), true);
+        await sleep(800);
+        await shot(phone, "phone-controls");
+    });
+    await ok("phone: swipe left is next, swipe right is back", async () => {
+        await phone.evaluate(() => { window.SHOW_DEBUG = 1; });
+        const before = (await api("GET", "/api/player")).position;
+        const swipe = async (from, to) => { const t = phone.touchscreen; await t.touchStart(from, 400); await t.touchMove((from + to) / 2, 405); await t.touchMove(to, 410); await t.touchEnd(); };
+        await swipe(350, 60);
+        await until(async () => (await api("GET", "/api/player")).position === before + 1, "next after a swipe");
+        await swipe(60, 350);
+        await until(async () => (await api("GET", "/api/player")).position === before, "back after a swipe");
+    });
+    await ok("phone: pause, next and back buttons", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Pause");
+        await until(async () => (await api("GET", "/api/player")).paused, "paused");
+        await clickLabel(phone, "Play");
+        await until(async () => !(await api("GET", "/api/player")).paused, "playing");
+        const p = (await api("GET", "/api/player")).position;
+        await clickLabel(phone, "Next");
+        await until(async () => (await api("GET", "/api/player")).position === p + 1, "next");
+    });
+    await ok("phone: search: pick two words with OR, see the count, play", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Search");
+        await phone.waitForSelector("#controls input[type=search]");
+        await phone.type("#controls input[type=search]", "in cinq");
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .suggest button").length > 0), "suggestions");
+        await phone.evaluate(() => document.querySelector("#controls .suggest button").click());
+        await phone.type("#controls input[type=search]", "noosa");
+        await until(() => phone.evaluate(() => [...document.querySelectorAll("#controls .suggest button")].some((b) => /folder/.test(b.textContent))), "suggestions 2");
+        await phone.evaluate(() => [...document.querySelectorAll("#controls .suggest button")].find((b) => /folder/.test(b.textContent)).click());
+        await phone.evaluate(() => document.querySelector("#controls .picked .op").click()); // and -> or
+        await until(() => phone.evaluate(() => /photos/.test(document.querySelector("#controls .play-row .count").textContent)), "a count");
+        await shot(phone, "phone-search");
+        const count = await phone.evaluate(() => document.querySelector("#controls .play-row .count").textContent);
+        assert.equal(count, "20 photos");
+        await clickLabel(phone, "Play");
+        const v = await until(async () => { const x = await api("GET", "/api/player"); return x.source.label === "02 Cinque Terre or 2021.05 - Noosa" ? x : null; }, "the picked slideshow");
+        assert.match(v.source.query, /dirall:".*Cinque Terre" OR dirall:".*Noosa"/);
+    });
+    await ok("phone: browse places: country, then city, play", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Browse");
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .list button").length > 3), "the browse list");
+        await clickText(phone, "#controls .list button", /Italy/);
+        await clickText(phone, "#controls .list .sub button", /La Spezia/);
+        await until(async () => (await api("GET", "/api/player")).source.label === "La Spezia", "La Spezia playing");
+    });
+    await ok("phone: browse folders and years", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Browse");
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .list button").length > 3), "the browse list");
+        await clickText(phone, "#controls .list button", /Honeymoon/);
+        await shot(phone, "phone-browse");
+        await clickText(phone, "#controls .list .sub button", /Singapore/);
+        await until(async () => (await api("GET", "/api/player")).source.label === "01 Singapore", "Singapore playing");
+        await showControls(phone);
+        await clickLabel(phone, "Browse");
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .list button").length > 3), "the browse list");
+        await clickText(phone, "#controls .years button", /2018/);
+        await until(async () => (await api("GET", "/api/player")).source.label === "2018", "2018 playing");
+    });
+    await ok("phone: settings: a preset and a setting", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Settings");
+        await clickLabel(phone, "Present");
+        await until(async () => (await api("GET", "/api/player")).settings.preset === "present", "present");
+        await phone.evaluate(() => [...document.querySelectorAll("#controls .row")].find((r) => /Motion/.test(r.textContent)).querySelectorAll("button")[2].click());
+        await until(async () => (await api("GET", "/api/player")).settings.motion === "lively", "lively");
+        await shot(phone, "phone-settings");
+        await clickLabel(phone, "Close");
+    });
+    await ok("phone: mark this photo (star, then remove)", async () => {
+        await showControls(phone);
+        await clickLabel(phone, "Star");
+        await until(async () => (await api("GET", "/api/marks")).marks.length === 1, "a mark");
+        await until(() => phone.evaluate(() => document.querySelector("#controls button[aria-label=Star]").classList.contains("on")), "the star lit");
+        await clickLabel(phone, "Star");
+        await until(async () => (await api("GET", "/api/marks")).marks.length === 0, "the mark removed");
+    });
+    await ok("phone in landscape (mirrored to the TV): the photo fills, controls hide by themselves", async () => {
+        await phone.setViewport({ width: 915, height: 412, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6 });
+        await showControls(phone);
+        await sleep(600);
+        await shot(phone, "phone-landscape-controls");
+        await until(async () => !(await visibleControls(phone)), "the controls to hide", 9000);
+        await sleep(1700);
+        await shot(phone, "phone-landscape");
+    });
+    await ok("the shelf never shows the controls", async () => {
+        assert.equal(await shelf.evaluate(() => document.getElementById("controls").classList.contains("hidden") && document.getElementById("controls").children.length === 0), true);
+    });
+
     await ok("no errors in the page consoles", async () => {
-        assert.deepEqual(errors, []);
+        assert.deepEqual(errors, [], errors.join("
+"));
     });
 
     await browser.close();

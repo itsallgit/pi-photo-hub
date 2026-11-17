@@ -107,14 +107,14 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 ### M3: Shelf viewer (R8 display, R9, R10, R12, R13, R21)
 - [x] M3.1 (2026-11-18; `api/public/show.html`, `show.js`, `show.css`; browser test `tools/browser-test/run.js`: lockstep of shelf and phone, late joiner in step, fill only for photos that leave bars, each transition, no console errors) `/show`: lockstep with events, preloading, blurred fill, transitions, motion.
 - [x] M3.2 (2026-11-18; five overlay styles in `config/slideshow-presets.json`, the last hides it; relative dates "8 weeks ago", "3 years ago"; screenshots reviewed) Overlay with fields and style presets; relative dates; title and chapter cards; clock; night look.
-- [ ] M3.3 Kiosk opens `/show`; the fallback setting back to Picapport's page (R21).
+- [x] M3.3 (2026-11-18; the kiosk opens `/show?kiosk=1`; `viewer: picapport` opens Picapport's own page and `layer` comes back, smoke-tested and used on the Pi during M2) Kiosk opens `/show`; the fallback setting back to Picapport's page (R21).
 - [ ] M3.4 Deploy; screenshots across presets and orders; performance; a 30-minute run.
 
 ### M4: Phone page (R14, R20 UI)
-- [ ] M4.1 Controls layer: now playing, swipe, pause, back/next, full screen on tap, manifest.
-- [ ] M4.2 Presets and settings panel; overlay style cycling.
-- [ ] M4.3 Search with AND/OR word chips (from the vocabulary and the private word list); tag tree (people, keywords, country then city, years); folder browser; year strip.
-- [ ] M4.4 Mark this photo (star, bad photo) and the review list API (R20).
+- [x] M4.1 (2026-11-18; tap: controls and full screen; swipe; manifest and icons) Controls layer: now playing, swipe, pause, back/next, full screen on tap, manifest.
+- [x] M4.2 (2026-11-18) Presets and settings panel; overlay style cycling.
+- [x] M4.3 (2026-11-18; search with and/or picks over private words, keywords, people, places, folders, years; browse tree) Search with AND/OR word chips (from the vocabulary and the private word list); tag tree (people, keywords, country then city, years); folder browser; year strip.
+- [x] M4.4 (2026-11-18; star and bad photo on the bottom bar, `/api/marks`) Mark this photo (star, bad photo) and the review list API (R20).
 - [ ] M4.5 Headless tests in mobile emulation and landscape; deploy; test against the Pi with the shelf in lockstep.
 
 ### M5: Buttons (R17)
