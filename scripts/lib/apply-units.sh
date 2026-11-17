@@ -12,10 +12,13 @@ SRC="${SRC:?SRC (the source tree to apply) is required}"
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 changed=0
+# Units added to the project after the first builds: installed and enabled below when missing.
+NEW_UNITS="photo-buttons.service"
 while read -r rel name; do
   src="$SRC/$rel"; dst="$UNIT_DIR/$name"
   if [ ! -f "$src" ]; then log "unit $name: $rel not in the source tree, skipped"; continue; fi
   if [ ! -f "$dst" ]; then
+    case " $NEW_UNITS " in *" $name "*) continue ;; esac # installed below
     log "unit $name: not installed on this machine, skipped (bootstrap.sh installs units)"
     continue
   fi
@@ -31,8 +34,6 @@ systemd/picapport-wrapper.service picapport-wrapper.service
 systemd/photo-buttons.service photo-buttons.service
 LIST
 
-# Units added to the project after the first builds: installed and enabled when missing.
-NEW_UNITS="photo-buttons.service"
 for name in $NEW_UNITS; do
   src="$SRC/systemd/$name"; dst="$UNIT_DIR/$name"
   [ -f "$src" ] || continue
