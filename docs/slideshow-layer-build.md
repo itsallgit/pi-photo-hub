@@ -102,7 +102,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M2.2 (2026-11-18; `settings.js`, `config/slideshow-presets.json`; smoke: the older endpoints unchanged for callers) Settings and presets (R4); existing endpoints (`POST`/`PATCH`/`GET /api/slideshow`, `/api/status`) mapped onto the player, unchanged for their callers (R21).
 - [x] M2.3 (2026-11-18; `order.js`, `catalogue.js`, `history.js`; unit and smoke tests) Orders and filters: random, chapters, date; burst thinning; recent history pushed back; on this day; highlights; skip upright (R5 to R8, R19 history).
 - [x] M2.4 (2026-11-18; `library.js`: listing cache, folder lookup, image cache with a 2 GB cap, look-ahead of 2) Photo route and image cache (`/api/photo/...`), look-ahead.
-- [ ] M2.5 Deploy; API tests from the PC against the Pi.
+- [x] M2.5 (2026-11-18; `node api/test/pi-check.js` against the Pi: lockstep of two viewers within 71 ms, resume at the same photo after the update's restart, honeymoon listed in 38 s (11,807 photos), uncached photo 2.9 s and thumbnail 1.3 s after giving viewers priority over the look-ahead (21 s before), node 83 MB; the shelf shows Picapport's page (viewer `picapport`, R21) until M3.3) Deploy; API tests from the PC against the Pi.
 
 ### M3: Shelf viewer (R8 display, R9, R10, R12, R13, R21)
 - [ ] M3.1 `/show`: lockstep with events, preloading, blurred fill, transitions, motion.
