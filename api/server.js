@@ -11,6 +11,8 @@ const { readJson, writeJson, writeText } = require("./lib/state");
 const picapport = require("./lib/picapport");
 const browser = require("./lib/browser");
 const screen = require("./lib/screen");
+const dev = require("./lib/dev");
+const path = require("path");
 
 // -----------------------------
 // Logging
@@ -296,6 +298,10 @@ app.put("/api/words", wrap(async (req, res) => {
     logger.info(`Word list updated (${Object.keys(req.body.words).length} entries)`);
     res.json(readJson(config.files.words, { words: {} }));
 }));
+
+// Development tools (motion test, kiosk on a page of this API, test reports): lib/dev.js.
+app.use("/api/dev", dev.router(logger));
+app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
 
 app.use((req, res) => res.status(404).json({ error: `no route ${req.method} ${req.path}` }));
 

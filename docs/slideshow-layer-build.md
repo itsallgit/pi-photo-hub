@@ -87,7 +87,7 @@ IDs are used in the checklist. "Data later" means the feature is built now and f
 Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, commit). Tick in the same commit as the work. Each milestone ends deployed and checked on the Pi.
 
 ### M0: Spikes and branch (answers the unknowns before building)
-- [ ] M0.1 Create and push `feat/slideshow-layer`; record in the build log the saved slideshow to restore at the end of every session (`GET /api/status`).
+- [x] M0.1 Create and push `feat/slideshow-layer`; record in the build log the saved slideshow to restore at the end of every session (`GET /api/status`). (2026-11-18) **Saved slideshow to restore** (from `/var/lib/photo-api/slideshow.json` at 00:10 on 2026-11-18; it differs from the plan's entry, which said Cinque Terre, smart random, 20 s): label "Honeymoon", query `dirall:"/mnt/photos/PHOTOS/2026.09 - 2026.10 - Honeymoon"`, sort `random`, interval 5 s. Restore with `POST /api/slideshow` and that body.
 - [ ] M0.2 Picapport: does `lp` apply the rotate tag? How long does a `vid` stay valid, and across how many queries? How fast is mapping index to file path (`GetMetaData`) for 2,000 and 12,000 results? Record in `docs/architecture.md`; decide the playlist method.
 - [ ] M0.3 Motion test on the Pi: a throwaway test page (served by the branch's API) with pan and zoom, cross-fade and blurred fill at 1080p; measure smoothness (frame timing from the page), CPU and temperature. Decide the motion technique and its limits. Remove the test page or keep it as a dev tool.
 - [ ] M0.4 Full screen from a plain `http://` page on Android Chrome: confirm from documentation and the PC's mobile emulation; note that the owner's phone check is in the owner's checklist.

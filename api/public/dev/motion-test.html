@@ -1,0 +1,109 @@
+<!doctype html>
+<!-- Motion test (slideshow layer, M0.3). A development tool, not a viewer: plays sample photos with
+     pan and zoom, cross-fades and a blurred fill in several variants, measures frame timing per
+     variant and posts it to /api/dev/report. Open on the Pi with POST /api/dev/kiosk
+     {"path":"/dev/motion-test.html?q=<query>&secs=40"}. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion test</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  .slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.5s ease; }
+  .slide.on { opacity: 1; }
+  .fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .fill.cssblur { filter: blur(40px) brightness(0.6); transform: scale(1.15); }
+  canvas.fill { filter: brightness(0.6); }
+  .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; will-change: transform; }
+  #hud { position: absolute; left: 12px; bottom: 12px; color: #0f0; font: 20px monospace; background: rgba(0,0,0,.6); padding: 6px 10px; white-space: pre; z-index: 9; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">loading...</div>
+<script>
+const params = new URLSearchParams(location.search);
+const q = params.get("q") || "honeymoon";
+const secs = Number(params.get("secs") || 40);
+const stage = document.getElementById("stage");
+const hud = document.getElementById("hud");
+const variants = [
+  { name: "fade-only", motion: 0, fill: "none" },
+  { name: "kenburns-subtle", motion: 1, fill: "none" },
+  { name: "kenburns-subtle+cssblur", motion: 1, fill: "css" },
+  { name: "kenburns-subtle+canvasblur", motion: 1, fill: "canvas" },
+  { name: "kenburns-lively+canvasblur", motion: 2, fill: "canvas" },
+];
+let n = 0;
+async function loadImg(i) {
+  const img = new Image();
+  img.src = `/api/dev/sample/${i}?q=${encodeURIComponent(q)}`;
+  await img.decode();
+  return img;
+}
+function canvasBlur(img) {
+  const c = document.createElement("canvas");
+  c.width = 48; c.height = 27;
+  const ctx = c.getContext("2d");
+  ctx.filter = "blur(2px)";
+  const s = Math.max(48 / img.naturalWidth, 27 / img.naturalHeight);
+  const w = img.naturalWidth * s, h = img.naturalHeight * s;
+  ctx.drawImage(img, (48 - w) / 2, (27 - h) / 2, w, h);
+  c.className = "fill";
+  return c;
+}
+function show(img, v, dur) {
+  const slide = document.createElement("div");
+  slide.className = "slide";
+  if (v.fill === "css") { const b = img.cloneNode(); b.className = "fill cssblur"; slide.appendChild(b); }
+  if (v.fill === "canvas") slide.appendChild(canvasBlur(img));
+  const p = img.cloneNode(); p.className = "photo"; slide.appendChild(p);
+  stage.appendChild(slide);
+  if (v.motion) {
+    const amt = v.motion === 2 ? 0.15 : 0.06;
+    const dx = (Math.random() - 0.5) * amt * 100, dy = (Math.random() - 0.5) * amt * 60;
+    const zoomIn = Math.random() < 0.5;
+    const a = `scale(${zoomIn ? 1 : 1 + amt}) translate(0,0)`, b = `scale(${zoomIn ? 1 + amt : 1}) translate(${dx}px, ${dy}px)`;
+    p.animate([{ transform: a }, { transform: b }], { duration: dur + 2000, easing: "linear", fill: "forwards" });
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => slide.classList.add("on")));
+  const old = [...stage.children].slice(0, -1);
+  setTimeout(() => old.forEach((o) => o.remove()), 1800);
+}
+async function measure(ms) {
+  const deltas = [];
+  let last = performance.now();
+  const end = last + ms;
+  return new Promise((resolve) => {
+    function f(t) { deltas.push(t - last); last = t; if (t < end) requestAnimationFrame(f); else resolve(deltas); }
+    requestAnimationFrame(f);
+  });
+}
+function stats(d) {
+  const s = [...d].sort((a, b) => a - b);
+  const mean = d.reduce((a, b) => a + b, 0) / d.length;
+  return { frames: d.length, fps: +(1000 / mean).toFixed(1), p95ms: +s[Math.floor(s.length * 0.95)].toFixed(1),
+    maxms: +s[s.length - 1].toFixed(1), over34ms: d.filter((x) => x > 34).length };
+}
+(async () => {
+  const imgs = [];
+  for (let i = 0; i < 12; i++) imgs.push(await loadImg(i * 37 + 3));
+  const interval = 8000;
+  const results = [];
+  for (const v of variants) {
+    hud.textContent = `variant ${v.name}...`;
+    const timer = setInterval(() => show(imgs[n++ % imgs.length], v, interval), interval);
+    show(imgs[n++ % imgs.length], v, interval);
+    await new Promise((r) => setTimeout(r, 2000));
+    const st = stats(await measure(secs * 1000));
+    clearInterval(timer);
+    results.push({ variant: v.name, ...st });
+    hud.textContent = results.map((r) => `${r.variant}: ${r.fps} fps p95 ${r.p95ms} ms max ${r.maxms} >34ms ${r.over34ms}`).join("\n");
+    await fetch("/api/dev/report", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ test: "motion", variant: v.name, ...st, screen: `${screen.width}x${screen.height}@${devicePixelRatio}`, ua: navigator.userAgent }) });
+  }
+  hud.textContent += "\nDONE";
+})().catch((e) => { hud.textContent = "error: " + e.message; });
+</script>
+</body>
+</html>
