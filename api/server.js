@@ -558,7 +558,8 @@ const server = app.listen(config.port, () => {
                 const key = JSON.stringify(legacyView());
                 if (key !== lastQuerySaved) { lastQuerySaved = key; saveLegacy(); }
             }
-            if (what === "settings" && kioskShowing && kioskShowing !== kioskUrl()) openKiosk().catch((e) => logger.warn(`Kiosk: ${e.message}`));
+            // The viewer setting changed, or (with Picapport's page as the viewer) the query did.
+            if (["settings", "source"].includes(what) && kioskShowing && kioskShowing !== kioskUrl()) openKiosk().catch((e) => logger.warn(`Kiosk: ${e.message}`));
         },
     }).catch((e) => logger.error(`Player start failed: ${e.stack || e.message}`));
 });
