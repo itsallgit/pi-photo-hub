@@ -151,6 +151,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 | When | Session summary | Pi state | Next |
 |---|---|---|---|
 | 2026-11-18 | Plan written and agreed. Nothing built. | `main` at the plan's commit; saved slideshow "Cinque Terre" (honeymoon folder), smart random, 20 s | M0.1 |
+| 2026-11-18 00:10 to 09:45 | Session 1: M0 to M7 built, tested and deployed (spikes, catalogue and places, player engine, shelf page, phone controls, buttons, schedule/history/skill, map). Fixes on the way: native Wayland Chromium for smooth motion; viewer images before look-ahead (21 s to 3 s); fallback kiosk follows a new source; phone swipe needs `touch-action: none`; stray text, overlay under the controls. Two slips corrected: the PC's `api/package-lock.json` and `__pycache__` were committed by mistake (now ignored), and one diagnostic `git merge --ff-only` was run by hand on the Pi's checkout (it aborted and changed nothing; not repeated). The nightly refresh at 03:30 built the catalogue (63,307 photos, 15,783 upright, 42,512 with a place). M8 started: fallback and back, resume after a restart, both OK on the Pi. | `feat/slideshow-layer` at the latest commit; Honeymoon (dirall), random, 5 s, Ambient (interval changed), our page on the shelf; `photo-buttons` active; schedule off | M8.1: 2-hour soak, then the evidence table, M8.2 docs, M8.3 report |
 
 ## How to resume
 
