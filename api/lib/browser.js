@@ -24,6 +24,7 @@ async function open(url, logger, extraFlags = []) {
         ...process.env,
         DISPLAY: process.env.DISPLAY || ":0",
         XAUTHORITY: process.env.XAUTHORITY || "/home/pi/.Xauthority",
+        ...config.waylandEnv, // needed for --ozone-platform=wayland
         HOME: "/home/pi",
         USER: "pi",
         ...(config.cursorTheme ? { XCURSOR_THEME: config.cursorTheme } : {}),
