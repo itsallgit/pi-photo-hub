@@ -111,14 +111,16 @@ if [ "$PHASE2" = 1 ]; then
   fi
 
   if [ "$RESET_SLIDESHOW" = 1 ]; then
-    if [ -f "$STATE_DIR/slideshow_url.txt" ]; then
-      log "slideshow: --reset-slideshow, moving the saved slideshow aside (the API will use its default)"
-      if [ "$DRY_RUN" != 1 ]; then
-        mv "$STATE_DIR/slideshow_url.txt" "$STATE_DIR/slideshow_url.txt.reset-$(date +%Y%m%d-%H%M%S)"
+    reset_any=0
+    # The saved slideshow (older form) and the slideshow layer's now-playing state and order.
+    for f in slideshow_url.txt slideshow.json player.json playlist.json; do
+      if [ -f "$STATE_DIR/$f" ]; then
+        reset_any=1
+        log "slideshow: --reset-slideshow, moving $f aside (the API will use its default)"
+        if [ "$DRY_RUN" != 1 ]; then mv "$STATE_DIR/$f" "$STATE_DIR/$f.reset-$(date +%Y%m%d-%H%M%S)"; fi
       fi
-    else
-      log "slideshow: nothing saved, nothing to reset"
-    fi
+    done
+    [ "$reset_any" = 1 ] || log "slideshow: nothing saved, nothing to reset"
   else
     if [ -f "$STATE_DIR/slideshow_url.txt" ]; then log "slideshow: keeping the saved slideshow"; fi
   fi
@@ -145,6 +147,10 @@ if [ "$PHASE2" = 1 ]; then
   else
     log "restart the app: restarting photo-api (this also closes the slideshow)"
     $SUDO "$SYSTEMCTL" restart photo-api.service
+    if [ -f "$UNIT_DIR/photo-buttons.service" ]; then
+      log "restart the app: restarting photo-buttons (the button board)"
+      $SUDO "$SYSTEMCTL" restart photo-buttons.service || log "[WARN] photo-buttons did not restart"
+    fi
     if [ -f "$UNIT_DIR/picapport-chromium.service" ]; then
       log "restart the app: starting picapport-chromium (the boot's slideshow launcher; waits up to 120 s for Picapport and the API)"
       if timeout 200 $SUDO "$SYSTEMCTL" start picapport-chromium.service; then launcher_rc=ok; else launcher_rc=failed; fi
@@ -183,7 +189,7 @@ if [ "$PHASE2" = 1 ]; then
   echo
   log "Verify:"
   problems=0
-  for u in mount-hdd photo-api picapport-wrapper; do
+  for u in mount-hdd photo-api picapport-wrapper $( [ -f "$UNIT_DIR/photo-buttons.service" ] && echo photo-buttons ); do
     s="$($SYSTEMCTL is-active "$u" 2>/dev/null || true)"; log "  $u: $s"
     [ "$s" = active ] || problems=1
   done

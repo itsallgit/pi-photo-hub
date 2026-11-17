@@ -9,3 +9,7 @@ libimage-exiftool-perl
 
 # python3-pil: scripts/metadata-testset.sh makes its small test JPEGs with it (B24).
 python3-pil
+
+# python3-evdev: the button board service reads the board directly and takes it exclusively
+# (scripts/photo-buttons.py, slideshow layer R17).
+python3-evdev

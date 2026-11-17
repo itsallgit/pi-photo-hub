@@ -258,6 +258,13 @@ else
   echo "[WARN] Photo API systemd template missing: $PHOTO_API_SERVICE_SRC"
 fi
 
+# ---------- Button board service (slideshow layer R17; needs python3-evdev from config/packages.txt) ----------
+if [ -f "$REPO_ROOT/systemd/photo-buttons.service" ]; then
+  sudo install -m 644 "$REPO_ROOT/systemd/photo-buttons.service" /etc/systemd/system/photo-buttons.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable photo-buttons.service
+fi
+
 # ---------- Logging standard (persistent journal, health log file, logrotate; backlog B09) ----------
 banner "Logging standard"
 SRC="$REPO_ROOT" DRY_RUN=0 bash "$REPO_ROOT/scripts/lib/apply-logging.sh" || echo "[WARN] logging standard not applied (non-fatal)"

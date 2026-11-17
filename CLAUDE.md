@@ -51,6 +51,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | `pi-power` | Reboot or shut down the Pi cleanly with `scripts/pi-power.sh`: checks what is running, stops Picapport first, agreement gate |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 | `picapport-db` | **Draft (B04).** Diagnose and repair Picapport's database on copies: status, snapshot, repair playbook, case history |
+| `button-board` | Check the button board, learn what it sends, change what a key does, test with a virtual board |
 | `slideshow-control` | Show photos from plain words ("us in Barcelona"), change the slideshow ("slower"), switch the screen ("off for an hour"), keep the private word list, through the photo API |
 
 More skills are planned (backlog B18). Each is written together with the script or procedure it describes, so it never documents something untested.

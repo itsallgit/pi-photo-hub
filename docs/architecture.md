@@ -181,6 +181,10 @@ One page for every screen (`api/public/`: `show.html`, `show.js`, `show.css`, `c
 
 Tests: `tools/browser-test/run.js` (dev-only, puppeteer-core with the PC's Chrome, against the fake Picapport; `--pi http://pi.local:3000` runs a second viewer against the real Pi).
 
+### Buttons (M5, R17)
+
+`photo-buttons.service` (user `pi`, `SupplementaryGroups=input`, so no reboot or login change is needed) runs `scripts/photo-buttons.py` with `python3-evdev` (`config/packages.txt`). Every 5 s it looks for the board: the device named in `config/buttons.json` (`device.vendor`/`product` in hex, or `name`), else any USB input device that can send a mapped key. It takes the board with `EVIOCGRAB`, so Chromium and the desktop never see its keys, and calls the photo API for each input (`config/buttons.json`: `press`, optional `long` after `long_press_ms`, 700 ms; auto-repeat ignored). The first map: KEY1 (F13) back, KEY2 (F14) pause/play and long screen off/on, KEY3 (F15) next and long star, knob left (F16) slower, press (F17) next overlay style, right (F18) faster; the multimedia keys (previous, play/pause, next, volume down/mute/up) the same. `--learn` prints what a board sends; `scripts/test/buttons-virtual.py` (root, on the Pi) tests the running service with a temporary virtual USB board. Installed and enabled by `update.sh` when missing (`scripts/lib/apply-units.sh`, `NEW_UNITS`) and by `bootstrap.sh`; restarted with the app by every update; checked by `verify.sh`.
+
 ### Full screen on the phone (M0.4)
 
 `Element.requestFullscreen()` is not one of the features restricted to secure contexts (MDN, "Features restricted to secure contexts"; checked 2026-11-18); it needs a user gesture (transient activation). So the phone page asks for full screen on a tap over plain `http://`. Installing the page as an app (PWA) needs HTTPS in Chrome (web.dev "install criteria"), so the manifest is included for later but installation is not expected over `http://` (R14 says HTTPS only if full screen proves impossible without it). The owner checks on the real phone (owner's checklist); the PC's mobile emulation test is part of M4.5.

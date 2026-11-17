@@ -1,0 +1,21 @@
+{
+  "_about": "Button board mapping (slideshow layer R17, backlog L1), read by scripts/photo-buttons.py (photo-buttons.service). Each input is a key name as the board sends it (find them with: photo-buttons.py --learn). Program the board (Windows tool, README 'Button board') so that KEY1..KEY3 send F13, F14, F15 and the knob sends F16 (turn left), F17 (press), F18 (turn right): keys nothing else uses. Its multimedia keys (previous, play/pause, next, volume, mute) are mapped the same way, in case it sends those. 'press' fires on a short press, 'long' when held for long_press_ms. Changes reach the Pi with update.sh.",
+  "device": { "vendor": null, "product": null, "name": null },
+  "api": "http://localhost:3000",
+  "long_press_ms": 700,
+  "map": {
+    "KEY_F13": { "press": { "method": "POST", "path": "/api/player/back" } },
+    "KEY_F14": { "press": { "method": "POST", "path": "/api/player/toggle" }, "long": { "method": "POST", "path": "/api/screen/toggle" } },
+    "KEY_F15": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/marks", "body": { "mark": "star", "by": "button" } } },
+    "KEY_F16": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": 1 } } },
+    "KEY_F17": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "overlayStyle" } } },
+    "KEY_F18": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": -1 } } },
+
+    "KEY_PREVIOUSSONG": { "press": { "method": "POST", "path": "/api/player/back" } },
+    "KEY_PLAYPAUSE": { "press": { "method": "POST", "path": "/api/player/toggle" }, "long": { "method": "POST", "path": "/api/screen/toggle" } },
+    "KEY_NEXTSONG": { "press": { "method": "POST", "path": "/api/player/next" } },
+    "KEY_VOLUMEDOWN": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": 1 } } },
+    "KEY_MUTE": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "overlayStyle" } } },
+    "KEY_VOLUMEUP": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": -1 } } }
+  }
+}

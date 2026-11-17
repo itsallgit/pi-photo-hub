@@ -69,7 +69,7 @@ Start with the owner: understand what the slideshow layer is for, explore the op
 
 | ID | Item | Notes |
 |---|---|---|
-| L1 | Knob-and-three-buttons board connected to the Pi | **Planned in B32 (2026-11-18), R17, milestone M5:** the board is a USB "3 key + knob" keyboard (6 inputs); a Pi service reads it exclusively and calls the photo API. Needs decisions on the board, its interface and the functions. Candidates: clean shutdown, next slideshow, screen on/off. Discuss the objective with the owner before building anything. |
+| L1 | Knob-and-three-buttons board connected to the Pi | **Built in B32 (2026-11-18, branch `feat/slideshow-layer`):** `photo-buttons.service`, `config/buttons.json`, the `button-board` skill, README "Button board"; tested on the Pi with a virtual board; the real board is in the owner's checklist (program it to F13 to F18, plug it in). **Planned in B32 (2026-11-18), R17, milestone M5:** the board is a USB "3 key + knob" keyboard (6 inputs); a Pi service reads it exclusively and calls the photo API. Needs decisions on the board, its interface and the functions. Candidates: clean shutdown, next slideshow, screen on/off. Discuss the objective with the owner before building anything. |
 | L2 | Improve image tagging and slideshow query logic, as its own skill(s) | Owner-led plan. Not designed. Do not solution until the owner asks. |
 | L3 | Replace Picapport and/or the Node.js server with a custom solution | Deferred by the owner. |
 | L4 | Reserve the Pi's address in the Deco app | **Manual step for the owner.** No static IP is configured on the router or the Deco today. |

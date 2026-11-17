@@ -1,0 +1,15 @@
+[Unit]
+Description=Pi Photo Hub button board (reads the board, calls the photo API; slideshow layer R17)
+After=photo-api.service
+
+[Service]
+Type=simple
+User=pi
+# Read /dev/input/event* without a reboot or a group change for the login session.
+SupplementaryGroups=input
+ExecStart=/usr/bin/python3 -u /home/pi/pi-photo-hub/scripts/photo-buttons.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

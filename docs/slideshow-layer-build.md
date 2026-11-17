@@ -118,7 +118,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [ ] M4.5 Headless tests in mobile emulation and landscape; deploy; test against the Pi with the shelf in lockstep.
 
 ### M5: Buttons (R17)
-- [ ] M5.1 `photo-buttons` service, `config/buttons.json`, long-press handling, learn helper; package `python3-evdev`; unit tests with recorded events.
+- [x] M5.1 (2026-11-18; `scripts/photo-buttons.py`, `config/buttons.json`, `systemd/photo-buttons.service` installed by `update.sh` when missing; 7 unit tests with recorded presses in `scripts/test/test_buttons.py`) `photo-buttons` service, `config/buttons.json`, long-press handling, learn helper; package `python3-evdev`; unit tests with recorded events.
 - [ ] M5.2 Deploy; test on the Pi with a temporary virtual input device; confirm Chromium receives nothing. New skill or a section in `slideshow-control` for the buttons (B18: `button-board`), README runbook including how the owner programs the board.
 
 ### M6: Schedule, history, Paseo (R16, R18, R19)

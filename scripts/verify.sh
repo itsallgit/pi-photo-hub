@@ -33,15 +33,16 @@ same systemd/mount-hdd.service /etc/systemd/system/mount-hdd.service "unit mount
 same systemd/picapport-wrapper.service /etc/systemd/system/picapport-wrapper.service "unit picapport-wrapper"
 same systemd/photo-api.service.template /etc/systemd/system/photo-api.service "unit photo-api"
 same systemd/picapport-chromium.service.template /etc/systemd/system/picapport-chromium.service "unit picapport-chromium"
+same systemd/photo-buttons.service /etc/systemd/system/photo-buttons.service "unit photo-buttons"
 same initd/picapport /etc/init.d/picapport "init script picapport"
 same config/picapport.properties /opt/picapport/.picapport/picapport.properties "picapport.properties"
 same config/logrotate-pi-photo-hub /etc/logrotate.d/pi-photo-hub "logrotate config"
 same config/journald-pi-photo-hub.conf /etc/systemd/journald.conf.d/pi-photo-hub.conf "journald config"
-for u in mount-hdd picapport-wrapper photo-api picapport-chromium; do
+for u in mount-hdd picapport-wrapper photo-api picapport-chromium photo-buttons; do
   e="$(systemctl is-enabled "$u" 2>/dev/null || true)"
   [ "$e" = enabled ] && ok "unit $u enabled" || dr "unit $u is '$e', not enabled"
 done
-for s in mount-hdd picapport-wrapper photo-api; do
+for s in mount-hdd picapport-wrapper photo-api photo-buttons; do
   a="$(systemctl is-active "$s" 2>/dev/null || true)"
   [ "$a" = active ] && ok "service $s active" || dr "service $s is '$a'"
 done

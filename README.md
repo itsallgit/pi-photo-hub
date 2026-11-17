@@ -195,6 +195,14 @@ The mouse pointer is hidden on the slideshow screen: `scripts/install-hidden-cur
 
 The private word list and the other API state are only on the Pi's SD card (`/var/lib/photo-api/`); back them up with the Picapport database (backlog B25).
 
+## Button board
+
+A USB "3 key + knob" keypad in front of the shelf (slideshow layer R17). The Pi's `photo-buttons` service reads it and calls the photo API; nothing else on the Pi sees its keys. What each input does is in `config/buttons.json` (first map: KEY1 back, KEY2 pause/play and hold for screen off/on, KEY3 next and hold to star the photo, knob slower/faster, knob press changes the overlay style).
+
+**Program the board (once, on a Windows PC, owner):** install its settings tool (`MINI KeyBoard.exe`, from the QR code in the manual or `szxiaozi.com`), plug the board into the PC, and set KEY1 = F13, KEY2 = F14, KEY3 = F15, knob left = F16, knob press = F17, knob right = F18 (keys nothing else uses), download the setting into the board, and optionally set the LED mode to 0 (off). Then plug it into the Pi. If the tool cannot send F13 to F18, set the multimedia keys instead (previous, play/pause, next, volume down, mute, volume up for the same six inputs); those are mapped too.
+
+**Check it (automated: the `button-board` skill):** `journalctl -u photo-buttons -n 30 --no-pager` shows "board found ... taken exclusively" and one line per press. **Find out what a board sends** (manual): `sudo systemctl stop photo-buttons; python3 ~/pi-photo-hub/scripts/photo-buttons.py --learn 60; sudo systemctl start photo-buttons`, then press each key. **Test without the board:** `sudo python3 ~/pi-photo-hub/scripts/test/buttons-virtual.py`. **Change a key:** edit `config/buttons.json`, check with `python3 scripts/photo-buttons.py --check`, commit and update the Pi.
+
 ## Logs
 
 - Bootstrap logs: `/var/log/pi-photo-hub/bootstrap.log`
