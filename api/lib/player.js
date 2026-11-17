@@ -26,8 +26,8 @@ let s = null; // persisted state (player.json)
 let paths = []; // the source's photos (playlist.json)
 let items = []; // the order: [{ p, c? }] (playlist.json)
 let timer = null;
-let buildToken = 0;
-let moveToken = 0;
+let buildSeq = 0;
+let moveSeq = 0;
 
 // ---------------------------------------------------------------------------------------------
 // Persistence
@@ -196,7 +196,7 @@ async function waitForImage(p) {
 // Move by `steps` (negative = back). Automatic moves wait (bounded) for the next image.
 async function step(steps, { auto = false } = {}) {
     if (!items.length) return view();
-    const token = ++moveToken;
+    const mine = ++moveSeq;
     let target = s.position + steps;
     if (target >= items.length) {
         // End of the order: a new round with a new seed (recently shown photos go last).
@@ -212,7 +212,7 @@ async function step(steps, { auto = false } = {}) {
         clearTimer();
         for (let tries = 0; tries < 5 && items[target]; tries++) {
             const ok = await waitForImage(items[target].p);
-            if (token !== moveToken) return view(); // someone moved meanwhile
+            if (mine !== moveSeq) return view(); // someone moved meanwhile
             if (ok) break;
             if (target >= items.length) target = 0;
         }
@@ -284,17 +284,17 @@ async function setSource(src, { settings, preset } = {}) {
         if (r.error) throw Object.assign(new Error(r.error), { status: 400 });
         nextSettings = settingsLib.merge(nextSettings, r.value);
     }
-    const token = ++buildToken;
+    const mine = ++buildSeq;
     const label = describeSource(src);
     s.preparing = { label, done: 0, total: null };
     changed("preparing");
     try {
         const list = await resolveSource(src, (done, total) => {
-            if (token !== buildToken) return;
+            if (mine !== buildSeq) return;
             s.preparing = { label, done, total };
             onChange("preparing");
         });
-        if (token !== buildToken) return { superseded: true };
+        if (mine !== buildSeq) return { superseded: true };
         if (!list.length) {
             s.preparing = null;
             s.lastError = `Nothing to play for ${label}`;
@@ -320,14 +320,14 @@ async function setSource(src, { settings, preset } = {}) {
         logger.info(`Playing ${label}: ${items.length} photos (${paths.length} in the source), ${s.settings.order}, ${s.settings.interval} s`);
         // wait briefly for the first image so viewers do not start on a blank
         await Promise.race([library.image(items[0].p, "screen").catch(() => {}), new Promise((r) => setTimeout(r, 8000))]);
-        if (token !== buildToken) return { superseded: true };
+        if (mine !== buildSeq) return { superseded: true };
         s.startedAt = Date.now();
         showing();
         changed("source");
         schedule();
         return { count: items.length };
     } catch (e) {
-        if (token === buildToken) {
+        if (mine === buildSeq) {
             s.preparing = null;
             s.lastError = e.message;
             changed("error");

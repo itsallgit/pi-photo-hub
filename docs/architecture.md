@@ -175,7 +175,7 @@ Inside the photo API (`api/`); no new service. Modules in `api/lib/`:
 
 ## Known design issues (tracked in the backlog)
 
-- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06: the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on `main`); the Pi's checkout is now clean apart from an untracked `api/package-lock.json`.
+- ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06: the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on `main`); the Pi's checkout is now clean (`api/package-lock.json`, written by `npm install`, is in `.gitignore` since the slideshow layer branch).
 - Restarting `photo-api` by hand (outside `update.sh`) kills the slideshow and nothing relaunches it; start `picapport-chromium` or call `/api/slideshow` afterwards. (B20)
 - Picapport's database is repeatedly corrupted (`OPageIsBrokenException`); a manual recovery procedure is in the README. (B03, B04)
 - ~~journald was `Storage=volatile`, so service logs were lost on every reboot.~~ Fixed in B09 (2026-11-17): persistent journal, capped at 200 MB.

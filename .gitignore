@@ -3,3 +3,6 @@
 
 # Installed Node packages (created by `npm install` in api/)
 api/node_modules/
+
+# npm writes a lock file on each machine (PC and Pi differ); not tracked
+api/package-lock.json
