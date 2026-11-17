@@ -27,11 +27,11 @@ Connect as in the `pi-access` skill (`ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode
    Only after a second, explicit yes to those consequences, add `--force`.
 4. **Run it** without `--dry-run`, with the same `--reason`. Allow up to 6 minutes for the Picapport stop (do not wrap it in a shorter timeout). Exit 1 with "java process is still running" means it did **not** power off and started Picapport again: report it, do not retry blindly.
 5. **After a reboot:** wait about 90 s, then retry `ssh ... true` every 15 s for up to 5 minutes. Then wait about 2 more minutes (the slideshow launcher waits up to 120 s for Picapport) and verify (below).
-6. **After a shutdown:** retry `ping -n 1 pi.local` until it stops answering, then wait 15 s more. Tell the owner: "The Pi has shut down. You can switch it off at the cable now. To start it again, switch the cable off and on." Verify after the next start.
+6. **After a shutdown:** retry `ping -n 1 pi.local` until it stops answering, then wait 15 s more. Tell the owner: "The Pi has shut down. To start it again, press the cable button twice: the first press cuts the power (nothing visible happens, the Pi is already halted), the second turns it back on. To leave it off, press once." (Observed by the owner 2026-11-17: after a software shutdown the cable switch is still in its on position, so a single press only switches it off.) Verify after the next start.
 
 ## Verify
 
-`bash ~/pi-photo-hub/scripts/pi-power.sh verify` (read-only) reports: whether this boot followed a `pi-power` reboot/shutdown (or a power cut), whether Picapport's previous run ended with "shutdown completed", the HDD's "not properly unmounted" message at this boot (0 expected, Q11), the previous boot's journal lines about the HDD unmount, the services, HTTP codes and Chromium; it ends `VERIFY: OK` or `VERIFY: PROBLEM`. Then take a screenshot (`pi-access`) to see the slideshow. Tell the owner the result, including anything odd.
+`bash ~/pi-photo-hub/scripts/pi-power.sh verify` (read-only) reports: whether this boot followed a `pi-power` reboot/shutdown (or a power cut), whether Picapport's previous run ended with "shutdown completed", the HDD's "not properly unmounted" message at this boot (1 is expected: an old dirty flag the owner has left as is, Q11), the previous boot's journal lines about the HDD unmount, the services, HTTP codes and Chromium; it ends `VERIFY: OK` or `VERIFY: PROBLEM`. Then take a screenshot (`pi-access`) to see the slideshow. Tell the owner the result, including anything odd.
 
 ## Undo
 

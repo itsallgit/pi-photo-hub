@@ -19,8 +19,8 @@
 #      (allowed by hard rule 1; this script never mounts or unmounts it by hand).
 # --dry-run does steps 1 and shows the plan; it changes nothing.
 #
-# After "shutdown" the Pi is halted but still powered: switch it off at the cable once it has
-# stopped answering; switching the cable off and on again starts it.
+# After "shutdown" the Pi is halted but still powered (the cable switch is still on): once it has
+# stopped answering, press the cable button once to cut power, and again to start it.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -89,7 +89,7 @@ cmd_power() { # cmd_power reboot|shutdown
     if [ "$action" = reboot ]; then
       say "  3. systemctl reboot: the Pi is back in about 1-2 minutes; the slideshow starts by itself"
     else
-      say "  3. systemctl poweroff: the Pi halts; then switch it off at the cable (and off/on again to start it)"
+      say "  3. systemctl poweroff: the Pi halts; then press the cable button once to cut power, twice to start it again"
     fi
     say "DRY RUN finished: nothing was changed."
     exit 0
@@ -128,7 +128,7 @@ cmd_power() { # cmd_power reboot|shutdown
     say "rebooting now (back in about 1-2 minutes; the SSH connection will drop)"
     $SUDO "$SYSTEMCTL" --no-block reboot
   else
-    say "shutting down now. When the Pi stops answering (about 30 s), it is safe to switch it off at the cable."
+    say "shutting down now. When the Pi stops answering (about 30 s), it is safe to use the cable button: one press cuts power, a second press starts the Pi again."
     $SUDO "$SYSTEMCTL" --no-block poweroff
   fi
 }
@@ -159,7 +159,7 @@ cmd_verify() { # read-only
     fi
   fi
   dirty="$($JOURNALCTL -k -b --no-pager 2>/dev/null | grep -c 'not properly unmounted' || true)"
-  echo "photo HDD at this boot: 'Volume was not properly unmounted' messages: ${dirty:-0} (0 expected after a clean reboot or shutdown; backlog Q11)"
+  echo "photo HDD at this boot: 'Volume was not properly unmounted' messages: ${dirty:-0} (expected: an old dirty flag on the HDD from earlier power cuts, left as is by the owner; backlog Q11)"
   if $JOURNALCTL -b -1 -n 1 --no-pager >/dev/null 2>&1; then
     echo "previous boot's journal: kept. Its photo-HDD unmount at shutdown:"
     $JOURNALCTL -b -1 --no-pager 2>/dev/null | grep -E 'mnt-photos|/mnt/photos|exFAT|sda1' | tail -n 5 | cut -c1-200 | sed 's/^/    /' || true

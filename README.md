@@ -333,7 +333,7 @@ bash ~/pi-photo-hub/scripts/pi-power.sh verify                 # after it is bac
 ```
 
 - Exit code 3 means it refused because jobs are running. Wait for them (`bash ~/pi-photo-hub/scripts/whats-running.sh`), or add `--force` if you accept interrupting them. A vocabulary refresh is safe to interrupt; a database script or an update is not.
-- **After `shutdown`:** wait until the Pi stops answering (`ping pi.local`, about 30 s). Then it is safe to switch it off at the cable. To start it again, switch the cable off and on.
+- **After `shutdown`:** wait until the Pi stops answering (`ping pi.local`, about 30 s). Then it is safe to use the cable button. The switch is still in its on position, so **one press switches the power off, and a second press starts the Pi** (observed 2026-11-17). To start it again, press twice.
 - If Picapport will not stop, the script does not power off. It starts Picapport again and exits with an error.
 
 ## Updating the Pi
