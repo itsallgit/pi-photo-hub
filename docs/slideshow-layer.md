@@ -1,6 +1,6 @@
 # Slideshow layer: requirements and design (B32, Phase 2)
 
-**Status: interview complete; plan agreed 2026-11-18; not yet built.** This page records what the owner said, the agreed goal and core model, findings and the ideas. **The requirements (R1 to R21), the delivery plan, the build mandate and the progress checklist are in [slideshow-layer-build.md](slideshow-layer-build.md).** A later session builds from these two pages, not from chat history.
+**Status: v1 built 2026-11-18 on the branch `feat/slideshow-layer` and running on the Pi; the owner tries it (checklist in the plan) and says "go" before the merge to `main`.** Technical facts and decisions: [architecture.md](architecture.md), "Slideshow layer". This page records what the owner said, the agreed goal and core model, findings and the ideas. **The requirements (R1 to R21), the delivery plan, the build mandate and the progress checklist are in [slideshow-layer-build.md](slideshow-layer-build.md).** A later session builds from these two pages, not from chat history.
 
 Related: [slideshow-experience.md](slideshow-experience.md) (how asking for photos feels, agreed 2026-11-16), [architecture.md](architecture.md) ("Photo API", "Picapport slideshow behaviour"), [principles.md](principles.md) (11: metadata lives in the photos; 12: the photo API is the only control route), backlog B32, B31, B26, L1, L9, L10, L11.
 
@@ -133,9 +133,9 @@ The remaining ones are answered by the build (milestone M0 in the plan) or by th
 - ~~A great evening; buttons' purpose; calm or show; the board; TV mirrored or its own~~ answered in round 2. ~~Phone page form; which screen the phone controls; upright and date defaults; autoplay in present~~ answered in round 3.
 - ~~Lockstep; search; PWA~~ answered in round 4.
 - ~~Owner's ratings of the ideas~~: all wants (round 6).
-- Verify: does Chrome on Android allow full screen (the Fullscreen API, on a tap) from a plain `http://` page? Is HTTPS needed only for installing the PWA?
-- Place names (country, city) for grouping and overlays: the photos carry GPS (about two thirds), not place names. Turning GPS into names needs a lookup (offline data on the Pi is possible). To design.
-- The board's default key codes (not in the manual).
+- ~~Full screen from plain `http://`~~: allowed on a tap (documentation, M0.4); the owner checks on the phone. HTTPS only for installing the app.
+- ~~Place names~~: built (offline GeoNames list, M1).
+- The board's default key codes (not in the manual): the learn helper shows them when the board is plugged in (owner's checklist); F13 to F18 and the multimedia keys are both mapped.
 
 ## Round 6 (2026-11-18): ratings and the plan
 

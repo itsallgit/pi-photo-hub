@@ -6,8 +6,9 @@ Verified from the repo and from the running Pi on 2026-11-15, unless a line says
 
 1. The photo HDD is mounted at `/mnt/photos`.
 2. Picapport (headless) crawls `/mnt/photos`, builds an index (database) and serves a web UI and slideshow on port 8080.
-3. `photo-api` (Node/Express, port 3000) opens Chromium in kiosk mode on a Picapport slideshow URL, so the slideshow appears on the monitor.
-4. On boot, a oneshot service waits for both servers and asks `photo-api` to replay the last slideshow.
+3. `photo-api` (Node/Express, port 3000) holds the one slideshow (the slideshow layer, B32: order, position, settings) and serves the page that shows it (`/show`); it opens Chromium in kiosk mode on that page (or on Picapport's own slideshow page with the fallback setting). Picapport supplies search results and resized images only. Any browser on the home network (the phone, the TV through the mirrored phone) can open `/show` and follow the same slideshow.
+4. On boot, a oneshot service waits for both servers and asks `photo-api` to show the slideshow; it resumes where it was.
+5. `photo-buttons` reads the USB button board and calls the photo API.
 
 Per the owner: Picapport's default indexing already supports queries based on the file path structure, and the Node API only builds the slideshow URL from the query it is given. Agents have not verified query behaviour.
 
@@ -26,7 +27,11 @@ Per the owner: Picapport's default indexing already supports queries based on th
 | Picapport logs | `/opt/picapport/.picapport/logfiles/` (rotated by Picapport) | | |
 | Picapport service | init.d script `/etc/init.d/picapport` (autostart disabled) controlled by systemd unit `picapport-wrapper.service` (self-heals with `Restart=on-failure`) | `initd/picapport`, `systemd/picapport-wrapper.service` | |
 | Photo API | `/home/pi/pi-photo-hub/api/server.js`, unit `photo-api.service`, `node` at `/opt/node/bin/node` | `api/`, `systemd/photo-api.service.template` | `pi` |
-| Photo API state (runtime) | `/var/lib/photo-api/`: `slideshow.json` (saved slideshow; `slideshow_url.txt` kept for rollbacks), `screen.json`, `words.json` (private word list), `vocabulary.json` (see "Photo API"), in a directory systemd creates for `photo-api` (`StateDirectory=photo-api` in the unit; the API reads `STATE_DIRECTORY`, falling back to `/var/lib/photo-api`). Outside the repo checkout (principle 5). | `systemd/photo-api.service.template`, `api/server.js` | `pi` |
+| Slideshow page | served by the photo API at `/show` (`api/public/`); the kiosk opens `/show?kiosk=1` | `api/public/` | |
+| Photo API cache | `/var/cache/photo-api/` (`CacheDirectory=photo-api`): resized images (2 GB cap) and listed query results; disposable | `systemd/photo-api.service.template`, `api/lib/library.js` | `pi` |
+| Button board service | unit `photo-buttons.service` runs `scripts/photo-buttons.py` (python3-evdev); mapping `config/buttons.json` | `systemd/photo-buttons.service`, `scripts/lib/apply-units.sh` (installs it when missing), `bootstrap.sh` | `pi` (group `input`) |
+| Offline place list | `~/metadata-survey/places/` (GeoNames `cities1000.txt`, `countryInfo.txt`, `SOURCE.txt`), downloaded once by `scripts/fetch-places.sh` | `scripts/fetch-places.sh`, `scripts/refresh-vocabulary.sh` | `pi` |
+| Photo API state (runtime) | `/var/lib/photo-api/`: `player.json` and `playlist.json` (the slideshow layer's now-playing state and order), `history.json`, `marks.json` (review list), `schedule.json`, `catalogue.json` (built nightly), `slideshow.json` (saved slideshow in the older form; `slideshow_url.txt` kept for rollbacks), `screen.json`, `words.json` (private word list), `vocabulary.json` (see "Photo API"), in a directory systemd creates for `photo-api` (`StateDirectory=photo-api` in the unit; the API reads `STATE_DIRECTORY`, falling back to `/var/lib/photo-api`). Outside the repo checkout (principle 5). | `systemd/photo-api.service.template`, `api/server.js` | `pi` |
 | Project logs (logging standard, B09) | `/var/log/pi-photo-hub/`: `update.log`, `picapport-db.log`, `power.log` (root), `health.log` (one line a minute, user `pi`), `bootstrap.log`; rotated weekly by `/etc/logrotate.d/pi-photo-hub`. Health-log screenshots stay in RAM (`/run/user/1000/pi-photo-hub-health/shots/`) | `scripts/update.sh`, `scripts/lib/apply-logging.sh`, `config/logrotate-pi-photo-hub` | |
 | System journal | persistent (`/var/log/journal/`), capped at 200 MB and 2 GB kept free, by `/etc/systemd/journald.conf.d/pi-photo-hub.conf` (overrides `Storage=volatile` in `journald.conf`); applied 2026-11-17 | `config/journald-pi-photo-hub.conf`, `scripts/lib/apply-logging.sh` | |
 | API logs | `/var/log/photo-api/` (winston daily rotate, 7 days, 10 MB, zipped) | `api/server.js` | |
@@ -185,6 +190,15 @@ Tests: `tools/browser-test/run.js` (dev-only, puppeteer-core with the PC's Chrom
 ### Buttons (M5, R17)
 
 `photo-buttons.service` (user `pi`, `SupplementaryGroups=input`, so no reboot or login change is needed) runs `scripts/photo-buttons.py` with `python3-evdev` (`config/packages.txt`). Every 5 s it looks for the board: the device named in `config/buttons.json` (`device.vendor`/`product` in hex, or `name`), else any USB input device that can send a mapped key. It takes the board with `EVIOCGRAB`, so Chromium and the desktop never see its keys, and calls the photo API for each input (`config/buttons.json`: `press`, optional `long` after `long_press_ms`, 700 ms; auto-repeat ignored). The first map: KEY1 (F13) back, KEY2 (F14) pause/play and long screen off/on, KEY3 (F15) next and long star, knob left (F16) slower, press (F17) next overlay style, right (F18) faster; the multimedia keys (previous, play/pause, next, volume down/mute/up) the same. `--learn` prints what a board sends; `scripts/test/buttons-virtual.py` (root, on the Pi) tests the running service with a temporary virtual USB board. Installed and enabled by `update.sh` when missing (`scripts/lib/apply-units.sh`, `NEW_UNITS`) and by `bootstrap.sh`; restarted with the app by every update; checked by `verify.sh`.
+
+### Known limits (v1)
+
+- The order is made when a slideshow starts (or a setting that changes the order is changed): photos added to the library later, and a newer catalogue (upright, places, dates), apply to orders made after the nightly build. A photo Picapport does not have is skipped when the look-ahead reaches it (a viewer may ask for it once: one 404).
+- Burst thinning is strong on phone photos: the honeymoon folder goes from 11,807 to 6,931 photos. It is a setting (owner's checklist).
+- The first listing of a large query takes about 3 ms a photo (40 s for 12,000; about 3 minutes for the whole library); later it is reused from the cache. The old slideshow keeps playing meanwhile.
+- Picapport still resizes every new photo (about 2 s at 1080p); with a 5 s interval that is a new photo from Picapport every 5 s (load 3 to 4 on the Pi, measured).
+- Full screen on the phone is the browser's own (a tap); installing the page as an app needs HTTPS, not set up.
+- The map's tiles come from OpenStreetMap over the internet (positions only).
 
 ### Full screen on the phone (M0.4)
 
