@@ -12,9 +12,30 @@
 PROJECT_JOBS_SAFE='refresh-vocabulary|metadata-survey|exiftool|metadata-testset'
 PROJECT_JOBS_UNSAFE='picapport-db\.sh|update\.sh'
 
+# The caller is not a job: neither its parents (for example the `bash -c "...update.sh...;
+# pi-power.sh"` line of one SSH call) nor its own forked subshells, which carry the same command
+# line. A process is skipped if it is an ancestor of the caller, or the caller is its ancestor.
+project_jobs_chain() { # project_jobs_chain <pid>: the pid and all its ancestors, one per line
+  local p="$1"
+  while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null; do
+    echo "$p"
+    p="$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null)"
+  done
+}
+
+project_jobs_related() { # true if <pid> is the caller, an ancestor of it, or a descendant of it
+  local me="$$"
+  project_jobs_chain "$me" | grep -qx "$1" && return 0
+  project_jobs_chain "$1" | grep -qx "$me"
+}
+
 project_jobs() {
-  local line
+  local line pid
   ${PGREP:-pgrep} -af "$PROJECT_JOBS_SAFE|$PROJECT_JOBS_UNSAFE" 2>/dev/null \
+    | while IFS= read -r line; do
+        pid="${line%% *}"
+        project_jobs_related "$pid" || echo "$line"
+      done \
     | grep -v -e pgrep -e whats-running -e pi-power \
     | cut -c1-140 \
     | while IFS= read -r line; do
