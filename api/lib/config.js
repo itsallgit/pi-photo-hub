@@ -11,6 +11,8 @@ module.exports = {
     logDir: process.env.PHOTO_API_LOG_DIR || "/var/log/photo-api",
     picapportUrl: process.env.PICAPPORT_URL || "http://localhost:8080",
     chromiumBin: process.env.CHROMIUM_BIN || "/usr/bin/chromium-browser",
+    // Extra Chromium flags, space-separated (CHROMIUM_FLAGS_EXTRA). Default: decided in the motion test (M0.3).
+    chromiumFlags: (process.env.CHROMIUM_FLAGS_EXTRA ?? "").split(" ").filter(Boolean),
     browserCheckCmd: process.env.BROWSER_CHECK_CMD || "pgrep chromium",
     browserKillCmd: process.env.BROWSER_KILL_CMD || "pkill -9 chromium || true",
     // Pointer theme for Chromium: the blank theme hides the mouse pointer on the slideshow

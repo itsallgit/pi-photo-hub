@@ -14,11 +14,12 @@ async function isRunning() {
     }
 }
 
-async function open(url, logger) {
+// extraFlags: more Chromium flags (the dev kiosk route uses it for experiments; checked there).
+async function open(url, logger, extraFlags = []) {
     logger.info("Closing any running Chromium instances...");
     await exec(config.browserKillCmd);
     const flags = ["--no-first-run", "--disable-restore-session-state", "--disable-session-crashed-bubble",
-        "--disable-infobars", "--start-fullscreen", "--kiosk"];
+        "--disable-infobars", "--start-fullscreen", "--kiosk", ...config.chromiumFlags, ...extraFlags];
     const env = {
         ...process.env,
         DISPLAY: process.env.DISPLAY || ":0",
