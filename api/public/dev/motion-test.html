@@ -33,7 +33,9 @@ const variants = [
   { name: "kenburns-subtle+cssblur", motion: 1, fill: "css" },
   { name: "kenburns-subtle+canvasblur", motion: 1, fill: "canvas" },
   { name: "kenburns-lively+canvasblur", motion: 2, fill: "canvas" },
-];
+  { name: "kenburns-subtle+imgblur", motion: 1, fill: "img" },
+  { name: "kenburns-lively+imgblur", motion: 2, fill: "img" },
+].filter((v) => !params.get("only") || params.get("only").split(",").includes(v.name));
 let n = 0;
 async function loadImg(i) {
   const img = new Image();
@@ -57,6 +59,7 @@ function show(img, v, dur) {
   slide.className = "slide";
   if (v.fill === "css") { const b = img.cloneNode(); b.className = "fill cssblur"; slide.appendChild(b); }
   if (v.fill === "canvas") slide.appendChild(canvasBlur(img));
+  if (v.fill === "img") { const b = new Image(); b.src = canvasBlur(img).toDataURL("image/jpeg", 0.8); b.className = "fill"; b.style.filter = "brightness(0.6)"; slide.appendChild(b); }
   const p = img.cloneNode(); p.className = "photo"; slide.appendChild(p);
   stage.appendChild(slide);
   if (v.motion) {
