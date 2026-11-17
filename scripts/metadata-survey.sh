@@ -13,11 +13,16 @@ TAGS=(-Directory -FileName -FileType -EXIF:DateTimeOriginal -GPSLatitude -Make -
   -XPKeywords -XPTitle -XPComment -XPSubject -IPTC:Keywords -IPTC:Caption-Abstract -IPTC:ObjectName
   -XMP-dc:Subject -XMP-dc:Title -XMP-dc:Description -XMP:Rating -XMP-microsoft:LastKeywordXMP
   -XMP-iptcExt:PersonInImage -XMP-MP:RegionPersonDisplayName -XMP-mwg-rs:RegionName
-  -XMP-lr:HierarchicalSubject -XMP-digiKam:TagsList -EXIF:UserComment -EXIF:ImageDescription)
+  -XMP-lr:HierarchicalSubject -XMP-digiKam:TagsList -EXIF:UserComment -EXIF:ImageDescription
+  -EXIF:Orientation# -File:ImageWidth -File:ImageHeight -Composite:GPSLatitude# -Composite:GPSLongitude#)
 NAMES=(Directory FileName FileType DateTimeOriginal GPSLatitude Make Model Software XPKeywords XPTitle
   XPComment XPSubject IPTC:Keywords IPTC:Caption IPTC:ObjectName XMP-dc:Subject XMP-dc:Title
   XMP-dc:Description XMP:Rating MS:LastKeywordXMP PersonInImage MP:RegionPersonDisplayName
-  MWG:RegionName lr:HierarchicalSubject digiKam:TagsList EXIF:UserComment EXIF:ImageDescription)
+  MWG:RegionName lr:HierarchicalSubject digiKam:TagsList EXIF:UserComment EXIF:ImageDescription
+  Orientation ImageWidth ImageHeight GPSLat GPSLon)
+# Columns 28 to 32 (added 2026-11-18 for the slideshow layer, B32): the rotate tag as a number
+# (1 normal, 6 and 8 turned a quarter, 3 upside down), the stored pixel size, and GPS as signed
+# decimal degrees. Older surveys have 27 columns; build-vocabulary.py reads both.
 DEFAULT_OUT="$HOME/metadata-survey/survey.tsv"
 
 case "${1:-}" in
@@ -41,7 +46,7 @@ case "${1:-}" in
       n=$(awk -F'\t' -v c="$c" '$c!="-" && $c!=""' "$f" | wc -l)
       [ "$n" -eq 0 ] && continue
       printf '%-28s %6s   ' "${NAMES[$((c-1))]}" "$n"
-      if [ "$c" -ge 9 ]; then
+      if [ "$c" -ge 9 ] && [ "$c" -le 27 ] || [ "$c" = 28 ]; then
         awk -F'\t' -v c="$c" '$c!="-" && $c!=""{print $c}' "$f" | tr ',;' '\n\n' | sed 's/^ *//' \
           | sort | uniq -c | sort -rn | head -8 | awk '{c=$1;$1="";printf "%s(%s) ",substr($0,2),c}'
       fi

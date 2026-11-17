@@ -8,7 +8,8 @@
 # Checks: shell syntax of every script (and shellcheck if installed); committed shell scripts have
 # LF line endings and the executable bit; no private keys, tokens, passwords or full MAC addresses
 # in tracked or changed files; every skill has a valid header and is listed in CLAUDE.md; the
-# photo API smoke test (if node and api/node_modules are present); docs-sync: a changed script,
+# photo API smoke test (if node and api/node_modules are present); the Python tests in scripts/test;
+# docs-sync: a changed script,
 # unit, config or API file without any change to README.md, docs/ or a skill is reported (a
 # reminder of hard rule 3, not proof). Exit 1 if any FAIL; WARN does not fail.
 set -uo pipefail
@@ -78,6 +79,16 @@ if command -v node >/dev/null 2>&1 && [ -d api/node_modules ]; then
   rm -f /tmp/check-api.$$
 else
   echo "SKIP  photo API smoke test (needs node and api/node_modules: cd api && npm install)"
+fi
+
+# --- Python tests (scripts/test: vocabulary, catalogue, places) ---------------------------------------
+py=""
+for c in python3 python; do if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(sys.version_info < (3, 7))' 2>/dev/null; then py="$c"; break; fi; done
+if [ -n "$py" ]; then
+  if "$py" -m unittest discover -s scripts/test >/tmp/check-py.$$ 2>&1; then ok "Python tests ($(grep -o 'Ran [0-9]* tests' /tmp/check-py.$$))"; else fail "Python tests: $(tail -3 /tmp/check-py.$$ | tr '\n' ' ')"; fi
+  rm -f /tmp/check-py.$$
+else
+  echo "SKIP  Python tests (no python3)"
 fi
 
 # --- docs-sync (hard rule 3) ------------------------------------------------------------------------

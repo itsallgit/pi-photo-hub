@@ -93,8 +93,8 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M0.4 (2026-11-18; documentation: not secure-context restricted, needs a tap; emulation check in M4.5) Full screen from a plain `http://` page on Android Chrome: confirm from documentation and the PC's mobile emulation; note that the owner's phone check is in the owner's checklist.
 
 ### M1: Catalogue and places (R8 data, R11)
-- [ ] M1.1 Scan: add the rotate tag, pixel size and GPS longitude to `metadata-survey.sh` (read-only, hard rule 1 comment kept); tests with a fixture.
-- [ ] M1.2 Place list: repo script to fetch the pinned GeoNames file onto the Pi; offline nearest-city lookup in `build-vocabulary.py`; catalogue file and places in the vocabulary; Python tests.
+- [x] M1.1 (2026-11-18; fixture test `scripts/test/test_vocabulary.py`, run by `check.sh`) Scan: add the rotate tag, pixel size and GPS longitude to `metadata-survey.sh` (read-only, hard rule 1 comment kept); tests with a fixture.
+- [x] M1.2 (2026-11-18; `scripts/fetch-places.sh`, `scripts/places.py`, catalogue in `build-vocabulary.py --catalogue`; 6 Python tests. Decision: GeoNames changes the file daily, so instead of a pinned checksum the download is checked for its shape and its sha256 recorded, see the script) Place list: repo script to fetch the pinned GeoNames file onto the Pi; offline nearest-city lookup in `build-vocabulary.py`; catalogue file and places in the vocabulary; Python tests.
 - [ ] M1.3 Deploy; run the full scan on the Pi; check counts (upright, with place) and the vocabulary's places. Docs: architecture "Vocabulary refresh", README, `image-metadata.md`.
 
 ### M2: Player engine (R1 to R8, R12 data, R19, R21 compatibility)
