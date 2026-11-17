@@ -122,9 +122,9 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M5.2 (2026-11-18; `scripts/test/buttons-virtual.py` on the Pi with the running service: board taken exclusively, KEY1/KEY3 back/next, KEY2 pause/play and long screen off/on, knob slower/faster/overlay style, F5 did not reach Chromium (the shelf's event stream stayed connected); `button-board` skill, README "Button board") Deploy; test on the Pi with a temporary virtual input device; confirm Chromium receives nothing. New skill or a section in `slideshow-control` for the buttons (B18: `button-board`), README runbook including how the owner programs the board.
 
 ### M6: Schedule, history, Paseo (R16, R18, R19)
-- [ ] M6.1 Screen schedule (off by default), API, survives restarts, works with one-off timers (B28).
-- [ ] M6.2 History and suggestions API ("not seen in a while").
-- [ ] M6.3 `slideshow-control` skill: what's playing with preview, controls, presets, overlays, orders, search sources, marks, schedule, history; `docs/slideshow-experience.md` updated.
+- [x] M6.1 (2026-11-18; on the Pi: a schedule 09:36 off, 09:39 on switched the screen off on time, stayed off through an API restart without firing twice, came back on at 09:39; disabled again, the default) Screen schedule (off by default), API, survives restarts, works with one-off timers (B28).
+- [x] M6.2 (2026-11-18; on the Pi: history kept from 01:04 overnight, 6,118 photos; suggestions: 57,189 of 63,307 not seen in 90 days, 318 this week in past years; sources onThisDay, notSeenDays, places, years played) History and suggestions API ("not seen in a while").
+- [x] M6.3 (2026-11-18; `slideshow-control` skill and `docs/slideshow-experience.md`; each new call run against the Pi during M2 to M6) `slideshow-control` skill: what's playing with preview, controls, presets, overlays, orders, search sources, marks, schedule, history; `docs/slideshow-experience.md` updated.
 
 ### M7: Map (R15, stretch)
 - [x] M7.1 (2026-11-18; `api/public/map.js`, vendored Leaflet 1.9.4, browser test with the tiles stubbed; on the Pi with M4.5) Map panel on the phone page (vendored Leaflet, OpenStreetMap tiles fetched by the phone), points from the catalogue, pick an area to play (`within:`).

@@ -50,6 +50,8 @@ async function count(query, sort = "random") {
 async function metadata(vid, index) {
     const json = await call(`/picapport_json?cmd=GetMetaData&vid=${vid}&index=${index}`, { timeout: 30000 });
     if (json.status === "ACCESSDENIED") throw lost("Picapport session lost");
+    // NORESULT: the result is gone or the index is out of range (the index changed); look it up again.
+    if (json.status === "NORESULT") throw lost(`GetMetaData status ${json.status}`);
     if (json.status !== "OK") throw new Error(`GetMetaData status ${json.status}`);
     return json;
 }
