@@ -37,8 +37,9 @@
 
   // ---------- showing and hiding ----------
   function visible() { return !root.classList.contains("hidden"); }
-  function show() { root.classList.remove("hidden"); poke(); }
-  function hide() { if (sheet) return; root.classList.add("hidden"); }
+  // While the controls show, the on-photo words step aside (the controls show the same and more).
+  function show() { root.classList.remove("hidden"); document.body.classList.add("controls-on"); poke(); }
+  function hide() { if (sheet) return; root.classList.add("hidden"); document.body.classList.remove("controls-on"); }
   function poke() { clearTimeout(hideTimer); if (!sheet) hideTimer = setTimeout(hide, 6000); }
   async function fullscreen() {
     if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
@@ -323,7 +324,7 @@
     if (!st) return;
     const active = document.activeElement && document.activeElement.tagName === "INPUT" ? document.activeElement : null;
     const scroll = root.querySelector(".pane") ? root.querySelector(".pane").scrollTop : 0;
-    root.replaceChildren(...renderBars(), sheet ? renderSheet() : null);
+    root.replaceChildren(...renderBars(), ...(sheet ? [renderSheet()] : []));
     const pane = root.querySelector(".pane");
     if (pane) pane.scrollTop = scroll;
     if (active) { const i = root.querySelector("input[type=search]"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }

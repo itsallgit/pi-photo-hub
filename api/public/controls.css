@@ -46,7 +46,8 @@ body { touch-action: none; } /* swipes are ours, not the browser's (else Chrome 
 #controls .play-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 #controls .play-row .count { color: #ccc; flex: 1; }
 #controls .years { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px; }
-#controls .years button { flex: 0 0 auto; border-radius: 12px; min-height: 40px; }
+#controls .list .years button, #controls .years button { flex: 0 0 auto; display: inline-flex; width: auto; gap: 6px; border-radius: 12px; min-height: 40px; margin: 0; }
+body.controls-on #overlay, body.controls-on #clock { opacity: 0; }
 #controls .sub { padding-left: 14px; }
 #controls .msg { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); background: rgba(0,0,0,.8); padding: 10px 16px; border-radius: 20px; font-size: 15px; pointer-events: none; }
 #controls .map { height: 55vh; border-radius: 10px; overflow: hidden; background: #222; }

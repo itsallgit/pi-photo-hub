@@ -115,11 +115,11 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M4.2 (2026-11-18) Presets and settings panel; overlay style cycling.
 - [x] M4.3 (2026-11-18; search with and/or picks over private words, keywords, people, places, folders, years; browse tree) Search with AND/OR word chips (from the vocabulary and the private word list); tag tree (people, keywords, country then city, years); folder browser; year strip.
 - [x] M4.4 (2026-11-18; star and bad photo on the bottom bar, `/api/marks`) Mark this photo (star, bad photo) and the review list API (R20).
-- [ ] M4.5 Headless tests in mobile emulation and landscape; deploy; test against the Pi with the shelf in lockstep.
+- [x] M4.5 (2026-11-18; 22 browser tests on the PC including mobile emulation and landscape; against the Pi: a phone-emulated viewer tapped Next and the shelf and phone moved together, browse showed the real vocabulary (28 countries), the map 43,139 photos with GPS; fixed from the screenshots: a stray "null", the overlay under the controls, the years strip) Headless tests in mobile emulation and landscape; deploy; test against the Pi with the shelf in lockstep.
 
 ### M5: Buttons (R17)
 - [x] M5.1 (2026-11-18; `scripts/photo-buttons.py`, `config/buttons.json`, `systemd/photo-buttons.service` installed by `update.sh` when missing; 7 unit tests with recorded presses in `scripts/test/test_buttons.py`) `photo-buttons` service, `config/buttons.json`, long-press handling, learn helper; package `python3-evdev`; unit tests with recorded events.
-- [ ] M5.2 Deploy; test on the Pi with a temporary virtual input device; confirm Chromium receives nothing. New skill or a section in `slideshow-control` for the buttons (B18: `button-board`), README runbook including how the owner programs the board.
+- [x] M5.2 (2026-11-18; `scripts/test/buttons-virtual.py` on the Pi with the running service: board taken exclusively, KEY1/KEY3 back/next, KEY2 pause/play and long screen off/on, knob slower/faster/overlay style, F5 did not reach Chromium (the shelf's event stream stayed connected); `button-board` skill, README "Button board") Deploy; test on the Pi with a temporary virtual input device; confirm Chromium receives nothing. New skill or a section in `slideshow-control` for the buttons (B18: `button-board`), README runbook including how the owner programs the board.
 
 ### M6: Schedule, history, Paseo (R16, R18, R19)
 - [ ] M6.1 Screen schedule (off by default), API, survives restarts, works with one-off timers (B28).

@@ -92,6 +92,32 @@ async function main() {
             await sleep(2000);
             await shot(page, "pi-second-viewer");
         });
+        await ok("pi: the phone page: tap, full screen, next from the phone moves the shelf, map loads (tiles stubbed)", async () => {
+            const phone = await open("/show", { width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6 }, "pi-phone");
+            await phone.setRequestInterception(true);
+            phone.on("request", (r) => (r.url().includes("tile.openstreetmap.org") ? r.respond({ status: 200, contentType: "image/png", body: fake.png(8, 8, [200, 210, 220]) }) : r.continue()));
+            await until(async () => (await shownId(phone)) === (await api("GET", "/api/player")).current.id, "the phone on the current photo", 20000);
+            await phone.mouse.click(206, 300);
+            await until(() => phone.evaluate(() => !document.getElementById("controls").classList.contains("hidden")), "controls");
+            assert.equal(await phone.evaluate(() => !!document.fullscreenElement), true);
+            const p0 = (await api("GET", "/api/player")).position;
+            await phone.evaluate(() => document.querySelector('#controls button[aria-label="Next"]').click());
+            const v = await until(async () => { const x = await api("GET", "/api/player"); return x.position !== p0 ? x : null; }, "the Pi moved on");
+            await until(async () => (await shownId(phone)) === v.current.id, "the phone on the new photo", 20000);
+            const status = await api("GET", "/api/status");
+            assert.ok(status.viewers.some((x) => x.role === "shelf"), "the shelf viewer is connected");
+            await sleep(1500);
+            await shot(phone, "pi-phone-controls");
+            await phone.evaluate(() => [...document.querySelectorAll("#controls button")].find((b) => b.getAttribute("aria-label") === "Browse").click());
+            await until(() => phone.evaluate(() => document.querySelectorAll("#controls .list button").length > 10), "the browse list from the real vocabulary", 15000);
+            await shot(phone, "pi-phone-browse");
+            await phone.evaluate(() => [...document.querySelectorAll("#controls .tabs button")].find((b) => b.textContent === "Map").click());
+            await until(() => phone.evaluate(() => !!window.L && /photos here/.test((document.querySelector("#controls .play-row .count") || {}).textContent || "")), "the map", 20000);
+            await sleep(800);
+            await shot(phone, "pi-phone-map");
+            console.log(`     map: ${await phone.evaluate(() => document.querySelector("#controls .play-row .count").textContent)}`);
+            await phone.close();
+        });
         await browser.close();
         process.exit(fails ? 1 : 0);
     }
