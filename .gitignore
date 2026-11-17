@@ -11,3 +11,6 @@ api/package-lock.json
 tools/browser-test/node_modules/
 tools/browser-test/package-lock.json
 tools/browser-test/shots/
+
+# Python bytecode (tests on the PC)
+__pycache__/
