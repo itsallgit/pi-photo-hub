@@ -1,0 +1,58 @@
+{
+  "_about": "Slideshow layer settings (B32, R4): the defaults and the named presets. A preset is a starting point: applying it sets these values on top of the defaults; changing a setting afterwards keeps the change. Current values live on the Pi in /var/lib/photo-api/player.json. Setting reference: docs/architecture.md, 'Slideshow layer'.",
+  "defaults": {
+    "autoplay": true,
+    "interval": 20,
+    "order": "random",
+    "chapterLength": 6,
+    "bursts": true,
+    "recentDays": 14,
+    "highlights": true,
+    "upright": "fill",
+    "motion": "subtle",
+    "transition": "fade",
+    "overlay": { "date": "relative", "place": true, "event": false, "people": false },
+    "overlayStyle": 0,
+    "titleCards": false,
+    "clock": false,
+    "night": false,
+    "viewer": "layer"
+  },
+  "presets": {
+    "ambient": {
+      "label": "Ambient",
+      "about": "Background: plays by itself, gentle motion, a small date and place",
+      "settings": { "autoplay": true, "interval": 20, "order": "random", "motion": "subtle", "transition": "fade",
+        "overlay": { "date": "relative", "place": true, "event": false, "people": false }, "overlayStyle": 0,
+        "titleCards": false, "night": false }
+    },
+    "present": {
+      "label": "Present",
+      "about": "Showing a trip: you step through, date order, title cards, date, place and event shown",
+      "settings": { "autoplay": false, "order": "date-asc", "motion": "subtle", "transition": "fade",
+        "overlay": { "date": "absolute", "place": true, "event": true, "people": true }, "overlayStyle": 1,
+        "titleCards": true, "night": false }
+    },
+    "guests": {
+      "label": "Guests",
+      "about": "Livelier: chapters from different events, faster, more motion, how long ago",
+      "settings": { "autoplay": true, "interval": 12, "order": "chapters", "motion": "lively", "transition": "zoom",
+        "overlay": { "date": "relative", "place": false, "event": true, "people": true }, "overlayStyle": 1,
+        "titleCards": true, "night": false }
+    },
+    "night": {
+      "label": "Night",
+      "about": "Evening: dimmer and slower, nothing written on screen",
+      "settings": { "autoplay": true, "interval": 40, "order": "random", "motion": "subtle", "transition": "fade",
+        "overlay": { "date": "off", "place": false, "event": false, "people": false },
+        "titleCards": false, "night": true }
+    }
+  },
+  "overlayStyles": [
+    { "name": "small, bottom left", "position": "bottom-left", "backing": "shadow", "text": "light", "size": "small" },
+    { "name": "strip along the bottom", "position": "bottom", "backing": "strip", "text": "light", "size": "large" },
+    { "name": "large, top right", "position": "top-right", "backing": "shadow", "text": "light", "size": "large" },
+    { "name": "dark text, bottom right", "position": "bottom-right", "backing": "none", "text": "dark", "size": "small" },
+    { "name": "hidden", "position": "none", "backing": "none", "text": "light", "size": "small" }
+  ]
+}

@@ -8,6 +8,8 @@ User=pi
 WorkingDirectory=/home/pi/pi-photo-hub/api
 ExecStart=/opt/node/bin/node /home/pi/pi-photo-hub/api/server.js
 StateDirectory=photo-api
+# Disposable cache: resized photos and listed query results (slideshow layer, B32)
+CacheDirectory=photo-api
 Restart=always
 RestartSec=5
 

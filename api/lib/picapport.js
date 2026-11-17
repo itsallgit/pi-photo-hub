@@ -31,6 +31,8 @@ async function call(path, { timeout = 120000, raw = false } = {}) {
 }
 
 class SessionLost extends Error {}
+function lost(msg) { cookie = ""; return new SessionLost(msg); } // the next call starts a new session
+function session() { return cookie; }
 
 // Run a query; returns { vid, count }. count 0 for no result.
 async function runQuery(query, sort = "random") {
@@ -47,7 +49,7 @@ async function count(query, sort = "random") {
 // One result's metadata: { fileName, creationDate, width, height, rating, textSearch, ... }.
 async function metadata(vid, index) {
     const json = await call(`/picapport_json?cmd=GetMetaData&vid=${vid}&index=${index}`, { timeout: 30000 });
-    if (json.status === "ACCESSDENIED") throw new SessionLost("Picapport session lost");
+    if (json.status === "ACCESSDENIED") throw lost("Picapport session lost");
     if (json.status !== "OK") throw new Error(`GetMetaData status ${json.status}`);
     return json;
 }
@@ -73,10 +75,10 @@ async function filePaths(vid, total, { concurrency = 8, onProgress } = {}) {
 // photos come back taller than wide; tested 2026-11-18). Returns a Buffer.
 async function image(vid, index, cx, cy) {
     const res = await call(`/lp?vid=${vid}&index=${index}&cx=${cx}&cy=${cy}`, { raw: true, timeout: 60000 });
-    if (res.status === 205 || res.status === 403) throw new SessionLost("Picapport session lost");
+    if (res.status === 205 || res.status === 403) throw lost("Picapport session lost");
     if (!res.ok) throw new Error(`Picapport image HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 100) throw new SessionLost("Picapport returned no image");
+    if (buf.length < 100) throw lost("Picapport returned no image");
     return buf;
 }
 
@@ -107,5 +109,5 @@ const STABLE_SORT = "nameascending";
 
 module.exports = {
     validateQuery, runQuery, count, metadata, filePaths, image, isUp, slideshowUrl, parseSlideshowUrl,
-    SessionLost, STABLE_SORT,
+    SessionLost, STABLE_SORT, session,
 };

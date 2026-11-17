@@ -126,6 +126,49 @@ CPU about 15 to 20% of the whole Pi during motion, temperature 47 to 50 °C, no 
 
 **Decisions:** Chromium runs with `--ozone-platform=wayland` (config `CHROMIUM_FLAGS_EXTRA`, default in `api/lib/config.js`; it also needs `XDG_RUNTIME_DIR` and `WAYLAND_DISPLAY`, which `browser.js` now passes). Motion is a CSS transform animated with the Web Animations API (compositor only); transitions animate only opacity and transform; the blurred fill is a tiny blurred copy (made once per photo while preloading, not at the cross-fade) stretched and dimmed, never a CSS `filter: blur` on a full-screen layer. Lively motion moves at most 15% and subtle 6%. The test page is kept as a dev tool (`POST /api/dev/kiosk {"path":"/dev/motion-test.html?q=<query>&secs=40","flags":[...]}`, results at `GET /api/dev/report`). Whether the hidden pointer (B30) stays hidden under native Wayland is checked by looking at the screen (owner's checklist).
 
+### How it is built (M2)
+
+Inside the photo API (`api/`); no new service. Modules in `api/lib/`:
+
+| Module | Does |
+|---|---|
+| `player.js` | The now-playing state: source (what plays), settings, the order (made from a saved seed), position, playing/paused, when the photo started. Moves on by itself (a timer on the Pi, not in the viewers) after `interval` seconds (1.5 times for a rated photo with highlights on; plus 4 s when a title card shows), waiting up to 20 s for the next image to be ready. Saves `player.json` on every change and `playlist.json` (the source's photos and the order) when the order changes; at start it resumes the same order at the same photo (R2). At the end of the order it makes a new one with a new seed. |
+| `order.js` | Pure functions: random (seeded shuffle), chapters (runs of `chapterLength` photos from one event, events shuffled, a title card at each run), date ascending or descending (a card at each change of event); skip upright; burst thinning (photos in one folder taken at most 5 s apart: the middle one, or a rated one, stays); highlights (rated photos twice per round); recently shown photos (within `recentDays`) last. |
+| `library.js` | Lists a Picapport query's photos (cached per query in `/var/cache/photo-api/results/`, reused when the count and three spot checks match), finds a photo's index for its image (from a listing, else by listing its own folder with `dir:"<folder>"`), checks it with `GetMetaData`, fetches `lp` at 1920x1080 (screen) or 480x480 (thumbnail) and caches it in `/var/cache/photo-api/images/` (2 GB cap, least recently used removed first). At most two image requests to Picapport at once. A photo Picapport does not have is dropped from the order. |
+| `catalogue.js` | Loads `/var/lib/photo-api/catalogue.json` (reloaded when it changes): date, upright, place, rating, people per path; sources from it (places, years, this week in past years, map box); event names from folders ("2021.05 - Noosa" is "Noosa"; a subfolder is "Honeymoon › Singapore - Round 1"). |
+| `settings.js` | Checks settings, presets (`config/slideshow-presets.json`), maps Picapport's sort names onto orders. |
+| `events.js` | `GET /api/events`: Server-Sent Events; every change sends the whole now-playing view to every viewer. |
+| `history.js`, `marks.js`, `schedule.js` | R19, R20, R18 (below). |
+
+**A photo is identified by its file path** everywhere; viewers get a short id (`sha1(path)`, 20 hex characters) and load `/api/photo/<id>`.
+
+**Sources** (`POST /api/player/source`, body `{ source, settings?, preset? }`; all parts given must match): `query` (a Picapport query, as the skill uses), `places` (keys from `/api/vocabulary` `places`: `"IT"` or `"IT/La Spezia"`), `years` (`[2019]`), `onThisDay` (taken within 3 days of today's date in earlier years), `notSeenDays` (not shown for that many days, from the history), `box` (`[minLat, minLon, maxLat, maxLon]`, the map), `label`. Without a query, the catalogue's photos are the base. The old slideshow keeps playing until the new order is ready (a 12,000-photo query takes about 40 s the first time, seconds after).
+
+**Settings** (`PATCH /api/player/settings`; defaults and presets in `config/slideshow-presets.json`): `autoplay`, `interval` (3 to 3600 s), `order` (`random`, `chapters`, `date-asc`, `date-desc`), `chapterLength`, `bursts`, `recentDays`, `highlights`, `upright` (`fill`, `skip`), `motion` (`off`, `subtle`, `lively`), `transition` (`fade`, `slide`, `zoom`, `dip`), `overlay` (`date`: `off`/`absolute`/`relative`, `place`, `event`, `people`), `overlayStyle` (index into the styles in the presets file; the last is "hidden"), `titleCards`, `clock`, `night`, `viewer` (`layer`, or `picapport` for Picapport's own page, R21). Changing the order or a filter rebuilds the order with the same seed and keeps the current photo. Presets (`POST /api/player/preset {name}`): `ambient`, `present`, `guests`, `night`; a change afterwards is kept, and the view says which settings differ from the preset.
+
+**Endpoints added:**
+
+| Endpoint | Behaviour |
+|---|---|
+| `GET /api/events?role=<shelf/phone>` | Server-Sent Events, event `state` with the view below, on connect and on every change. |
+| `GET /api/player` | The view: `status` (`playing`, `preparing`, `empty`), `preparing` progress, `playing`, `paused`, `position`, `count`, `startedAt`, `elapsed`, `duration` (ms), `current`, `next` (2), `prev` (each `{ id, url, thumb, info: { date, place, city, country, event, people, rating, upright, marks, file }, card }`), `source`, `settings`, `preset`, `serverTime`. |
+| `POST /api/player/next`, `/back` | Body `{ steps? }` (1 to 1000). |
+| `POST /api/player/pause`, `/play`, `/toggle` | "Play" while autoplay is off turns autoplay on. |
+| `POST /api/player/jump` | `{ position }` or `{ year }` (the first photo of that year or later in the current order). |
+| `POST /api/player/source` | Start a slideshow (above). 422 if nothing matches. |
+| `PATCH /api/player/settings`, `POST /api/player/preset` | Above. |
+| `POST /api/player/nudge` | `{ setting, by? }`: `interval` one step up or down (3, 5, 8, 10, 12, 15, 20, 25, 30, 40, 60, 90, 120, 180, 300 s), `overlayStyle` next, `motion`/`transition`/`order` next value, `clock`/`night`/`bursts`/`titleCards`/`highlights`/`autoplay` on or off. For the buttons. |
+| `GET /api/presets` | Presets, overlay styles, defaults, orders. |
+| `GET /api/photo/<id>[?size=thumb]`, `GET /api/photo/<id>/info` | The image (cached) and what is known about it. |
+| `GET/POST/DELETE /api/marks` | The review list (R20): `{ mark: "star" or "bad", id? or path? }` (no id: the current photo). |
+| `GET /api/history`, `GET /api/suggestions?days=` | R19. |
+| `GET/PUT /api/schedule` | R18: `{ enabled, off: "HH:MM", on: "HH:MM" }`. |
+| `POST /api/screen/toggle` | Screen off if on, on if off. |
+| `GET /api/map/points` | `[[lat, lon, photos]]` on a 0.01 degree grid (R15). |
+| `GET /show` | The slideshow page (M3). |
+
+**The older endpoints keep working** (R21): `POST /api/slideshow` starts a query source (sort names mapped onto orders: `randomsmart` is chapters, the date and name sorts are date orders) and returns at once with `preparing: true` while a big result is listed; the same query, sort and interval is not restarted; `PATCH /api/slideshow` changes settings without restarting (`relaunched` is now always `false`; the current photo stays); `GET /api/slideshow` without parameters shows the slideshow on the screen (the kiosk opens `/show`, or Picapport's page with `viewer: picapport`) and resumes; `/api/status` keeps its `slideshow` field and adds `player`, `settings`, `schedule`, `viewers`, `catalogue`, `imageCache`. `slideshow.json` and `slideshow_url.txt` are still written for a query slideshow, so a rollback to an older version replays it.
+
 ### Full screen on the phone (M0.4)
 
 `Element.requestFullscreen()` is not one of the features restricted to secure contexts (MDN, "Features restricted to secure contexts"; checked 2026-11-18); it needs a user gesture (transient activation). So the phone page asks for full screen on a tap over plain `http://`. Installing the page as an app (PWA) needs HTTPS in Chrome (web.dev "install criteria"), so the manifest is included for later but installation is not expected over `http://` (R14 says HTTPS only if full screen proves impossible without it). The owner checks on the real phone (owner's checklist); the PC's mobile emulation test is part of M4.5.

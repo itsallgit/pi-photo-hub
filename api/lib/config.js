@@ -4,10 +4,18 @@ const path = require("path");
 
 // systemd may pass several directories, separated like PATH (":" on Linux).
 const stateDir = (process.env.STATE_DIRECTORY || "/var/lib/photo-api").split(path.delimiter)[0];
+// Disposable cache (resized images, listed query results): CacheDirectory=photo-api in the unit.
+const cacheDir = (process.env.CACHE_DIRECTORY || "/var/cache/photo-api").split(path.delimiter)[0];
 
 module.exports = {
     port: Number(process.env.PORT || 3000),
     stateDir,
+    cacheDir,
+    // Image cache size cap in MB (resized photos on the SD card; oldest removed first).
+    imageCacheMb: Number(process.env.IMAGE_CACHE_MB || 2000),
+    // Screen-sized images are fetched from Picapport at this box (it rotates upright photos).
+    screenBox: [1920, 1080],
+    thumbBox: [480, 480],
     logDir: process.env.PHOTO_API_LOG_DIR || "/var/log/photo-api",
     picapportUrl: process.env.PICAPPORT_URL || "http://localhost:8080",
     chromiumBin: process.env.CHROMIUM_BIN || "/usr/bin/chromium-browser",
@@ -32,7 +40,15 @@ module.exports = {
         screen: path.join(stateDir, "screen.json"),
         words: path.join(stateDir, "words.json"),
         vocabulary: path.join(stateDir, "vocabulary.json"),
+        catalogue: path.join(stateDir, "catalogue.json"),
+        player: path.join(stateDir, "player.json"), // now playing: source, settings, position
+        playlist: path.join(stateDir, "playlist.json"), // the current order of photos
+        history: path.join(stateDir, "history.json"), // photos and slideshows shown (R19)
+        marks: path.join(stateDir, "marks.json"), // review list: star / bad photo (R20)
+        schedule: path.join(stateDir, "schedule.json"), // daily screen off/on (R18)
     },
+    presetsFile: process.env.PRESETS_FILE || path.join(__dirname, "..", "..", "config", "slideshow-presets.json"),
+    buttonsFile: process.env.BUTTONS_FILE || path.join(__dirname, "..", "..", "config", "buttons.json"),
     wordsTemplate: process.env.WORDS_TEMPLATE || path.join(__dirname, "..", "..", "config", "words.example.json"),
     defaults: { query: "noimagesfound", sort: "random", interval: 20 },
     sorts: ["random", "randomsmart", "datetimeascending", "datetimedescending", "importdatetimedescending",

@@ -170,10 +170,26 @@ curl -s -X POST $API/api/screen -H 'content-type: application/json' -d '{"on":fa
 curl -s -X POST $API/api/screen -H 'content-type: application/json' -d '{"on":true}'
 curl -s $API/api/vocabulary | head -c 2000                       # searchable keywords, people, folders
 curl -s $API/api/words                                           # private word list (lives only on the Pi)
-curl -s $API/api/slideshow                                       # replay the saved slideshow (what the boot does)
+curl -s $API/api/slideshow                                       # show the slideshow on the screen (what the boot does; it resumes, no reshuffle)
 ```
 
-Manual alternative on the Pi, without the API: the screen with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --off` (or `--on`). The vocabulary is rebuilt nightly at 03:30; by hand: `bash ~/pi-photo-hub/scripts/refresh-vocabulary.sh` (about 40 minutes) or `--build-only` (seconds, from the last scan).
+**The slideshow layer (B32; on the branch `feat/slideshow-layer` until the owner says "go").** The Pi now holds the one slideshow itself (order, position, settings) and every screen is a window onto it: the shelf screen and any browser at `http://pi.local:3000/show`. The calls above keep working; the new ones (full list in `docs/architecture.md`, "Slideshow layer"):
+
+```bash
+curl -s $API/api/player                                          # now playing: photo, date, place, event, next photos, settings
+curl -s -X POST $API/api/player/next                             # next photo (also: back, pause, play, toggle)
+curl -s -X POST $API/api/player/back -H 'content-type: application/json' -d '{"steps":3}'
+curl -s -X POST $API/api/player/preset -H 'content-type: application/json' -d '{"name":"present"}'  # ambient, present, guests, night
+curl -s -X PATCH $API/api/player/settings -H 'content-type: application/json' -d '{"upright":"skip","motion":"lively"}'
+curl -s -X POST $API/api/player/source -H 'content-type: application/json' \
+     -d '{"source":{"places":["IT"],"label":"Italy"}}'          # also: query, years, onThisDay, notSeenDays, box
+curl -s -X POST $API/api/marks -H 'content-type: application/json' -d '{"mark":"star"}'  # review list only; never written to a photo
+curl -s -X PATCH $API/api/player/settings -H 'content-type: application/json' -d '{"viewer":"picapport"}'  # fallback: Picapport's own page ("layer" to come back)
+```
+
+State on the Pi: `/var/lib/photo-api/player.json` (now playing, settings) and `playlist.json` (the order), `history.json`, `marks.json`, `schedule.json`, `catalogue.json` (built nightly with the vocabulary). Disposable cache: `/var/cache/photo-api/` (resized photos, capped at 2 GB, and listed query results); deleting it is safe. Defaults and presets: `config/slideshow-presets.json`.
+
+Manual alternative on the Pi, without the API: the screen with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --off` (or `--on`). The vocabulary and the photo catalogue are rebuilt nightly at 03:30; by hand: `bash ~/pi-photo-hub/scripts/refresh-vocabulary.sh` (about 40 minutes) or `--build-only` (seconds, from the last scan). Place names (country, city) come from GPS with an offline list from GeoNames (place data © GeoNames, https://www.geonames.org, licensed CC BY 4.0), downloaded once by `scripts/fetch-places.sh` into `~/metadata-survey/places/` (`--refresh` to download it again).
 
 The mouse pointer is hidden on the slideshow screen: `scripts/install-hidden-cursor.sh` (run by every update and by bootstrap) installs a blank pointer theme for `pi` and sets it for the desktop (from the next reboot); the API starts Chromium with it. To show the pointer again: `bash ~/pi-photo-hub/scripts/install-hidden-cursor.sh --remove`, set `CURSOR_THEME=` (empty) for `photo-api`, and reboot.
 

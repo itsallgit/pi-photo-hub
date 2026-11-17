@@ -98,10 +98,10 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [ ] M1.3 Deploy; run the full scan on the Pi; check counts (upright, with place) and the vocabulary's places. Docs: architecture "Vocabulary refresh", README, `image-metadata.md`.
 
 ### M2: Player engine (R1 to R8, R12 data, R19, R21 compatibility)
-- [ ] M2.1 Now-playing state, seeded order, persistence, resume (R2); controls (R3); the event stream (R1).
-- [ ] M2.2 Settings and presets (R4); existing endpoints (`POST`/`PATCH`/`GET /api/slideshow`, `/api/status`) mapped onto the player, unchanged for their callers (R21).
-- [ ] M2.3 Orders and filters: random, chapters, date; burst thinning; recent history pushed back; on this day; highlights; skip upright (R5 to R8, R19 history).
-- [ ] M2.4 Photo route and image cache (`/api/photo/...`), look-ahead.
+- [x] M2.1 (2026-11-18; `api/lib/player.js`, `events.js`; smoke: lockstep, resume after a restart, controls) Now-playing state, seeded order, persistence, resume (R2); controls (R3); the event stream (R1).
+- [x] M2.2 (2026-11-18; `settings.js`, `config/slideshow-presets.json`; smoke: the older endpoints unchanged for callers) Settings and presets (R4); existing endpoints (`POST`/`PATCH`/`GET /api/slideshow`, `/api/status`) mapped onto the player, unchanged for their callers (R21).
+- [x] M2.3 (2026-11-18; `order.js`, `catalogue.js`, `history.js`; unit and smoke tests) Orders and filters: random, chapters, date; burst thinning; recent history pushed back; on this day; highlights; skip upright (R5 to R8, R19 history).
+- [x] M2.4 (2026-11-18; `library.js`: listing cache, folder lookup, image cache with a 2 GB cap, look-ahead of 2) Photo route and image cache (`/api/photo/...`), look-ahead.
 - [ ] M2.5 Deploy; API tests from the PC against the Pi.
 
 ### M3: Shelf viewer (R8 display, R9, R10, R12, R13, R21)
