@@ -94,6 +94,42 @@ Chromium is started with `pkill -9 chromium` first, so any running browser is ki
 
 **Restarting `photo-api` takes the slideshow off the screen** (observed on the Pi, 2026-11-15). Chromium is spawned by the API, so it runs inside `photo-api.service`'s cgroup (`KillMode=control-group`) and is killed when `photo-api` stops or restarts; the screen then shows the bare desktop. Nothing brings it back by itself: the API does not open Chromium when it starts, and `picapport-chromium.service` does **not** re-run (it is an inactive oneshot, and `PartOf=` only passes a restart on to units that are active). A `GET /api/slideshow` (no query string) brings the saved slideshow back. Since B20, `scripts/update.sh` restarts `photo-api` and then starts `picapport-chromium` itself on every update. (B06, B20)
 
+## Slideshow layer (B32, being built on `feat/slideshow-layer`)
+
+Requirements and plan: [slideshow-layer.md](slideshow-layer.md), [slideshow-layer-build.md](slideshow-layer-build.md). This section holds the technical facts and decisions; it grows with each milestone.
+
+### Picapport as the slideshow layer's source (M0.2, measured on the Pi 2026-11-18)
+
+- **Sessions.** Every `picapport_json` and `lp` call needs the session cookie (`JSESSIONID`) of the session that ran the query: without it `GetMetaData` answers `ACCESSDENIED` and `lp` answers HTTP 205 with no body. Anonymous sessions are created by the first call. A session and its `vid` were still valid after 60 further queries and after 30 minutes idle. The adapter (`api/lib/picapport.js`) keeps one session; when it is lost, the result is queried again.
+- **Index to file path.** `GetMetaData&vid=&index=` takes about 3 ms per photo with 8 requests in parallel from Node on the Pi (1 at a time: about 12 ms): 1,916 results in 8.6 s, 11,807 in 36 s, so the whole library (about 63,000) in about 3 minutes.
+- **`nameascending` is deterministic** (two runs gave the same order), so a result listed in that order can be listed again after a restart and checked against the saved list.
+- **`lp` applies the EXIF rotate tag** to the pixels and strips EXIF: an upright phone photo (stored 4000x2252 with orientation 6) comes back 1081x1920 for `cx=1920&cy=1080` (it fits the stored size into the box, then rotates, so upright photos come back taller than the box), and `cx=0&cy=0` gives 2252x4000. So a browser never rotates our images a second time, and "is it upright?" is simply height > width of what `lp` returns. Time: 1.6 to 2.2 s for 1920x1080, 0.9 to 1.3 s for 960x540 (Pillow on the Pi, reading the file itself, took 0.8 to 0.9 s; not used: Picapport stays the image source behind the adapter, principle 12).
+
+**Decision: how the playlist is built.** The player runs the query with `nameascending`, lists every result's file path (background job, progress reported; the previous slideshow keeps playing meanwhile; the list is cached in `/var/cache/photo-api/results/` per query and photo count), then makes the order itself from the paths and the catalogue (seed, burst thinning, upright, history, chapters, highlights) and saves it in `/var/lib/photo-api/`. A photo is identified by its file path everywhere (order, history, marks, catalogue). To fetch an image, the adapter looks up the path's index in the stable listing and checks it with one `GetMetaData` before `lp` (a few ms); if the session was lost or the index no longer matches (new photos indexed), it runs the query again and lists it again.
+
+### Motion on the Pi (M0.3, measured 2026-11-18 with `api/public/dev/motion-test.html`)
+
+Frame timing measured in the page (requestAnimationFrame) at 1920x1080, photos from Picapport, cross-fade every 8 s:
+
+| Chromium | Variant | fps | p95 frame | notes |
+|---|---|---|---|---|
+| XWayland (old default) | cross-fade only | 57 | 17 ms | |
+| XWayland | pan and zoom (CSS transform) | 40 | 34 ms | visibly uneven |
+| XWayland | + blurred fill (CSS `filter: blur`) | 40 | 34 ms | spikes to 167 ms |
+| **Wayland (`--ozone-platform=wayland`)** | cross-fade only | 60 | 17 ms | |
+| Wayland | pan and zoom | 59 to 60 | 17 ms | |
+| Wayland | + CSS blur fill | 56 | 17 ms | 13 frames over 34 ms in 25 s, spikes to 167 ms at cross-fades |
+| Wayland | + fill from a 48x27 canvas, stretched | 55 | 33 ms | |
+| **Wayland** | **+ fill as a small pre-blurred image** | **57 to 58** | **17 ms** | a few slow frames at the cross-fade |
+
+CPU about 15 to 20% of the whole Pi during motion, temperature 47 to 50 °C, no throttling (`vcgencmd get_throttled` 0x0).
+
+**Decisions:** Chromium runs with `--ozone-platform=wayland` (config `CHROMIUM_FLAGS_EXTRA`, default in `api/lib/config.js`; it also needs `XDG_RUNTIME_DIR` and `WAYLAND_DISPLAY`, which `browser.js` now passes). Motion is a CSS transform animated with the Web Animations API (compositor only); transitions animate only opacity and transform; the blurred fill is a tiny blurred copy (made once per photo while preloading, not at the cross-fade) stretched and dimmed, never a CSS `filter: blur` on a full-screen layer. Lively motion moves at most 15% and subtle 6%. The test page is kept as a dev tool (`POST /api/dev/kiosk {"path":"/dev/motion-test.html?q=<query>&secs=40","flags":[...]}`, results at `GET /api/dev/report`). Whether the hidden pointer (B30) stays hidden under native Wayland is checked by looking at the screen (owner's checklist).
+
+### Full screen on the phone (M0.4)
+
+`Element.requestFullscreen()` is not one of the features restricted to secure contexts (MDN, "Features restricted to secure contexts"; checked 2026-11-18); it needs a user gesture (transient activation). So the phone page asks for full screen on a tap over plain `http://`. Installing the page as an app (PWA) needs HTTPS in Chrome (web.dev "install criteria"), so the manifest is included for later but installation is not expected over `http://` (R14 says HTTPS only if full screen proves impossible without it). The owner checks on the real phone (owner's checklist); the PC's mobile emulation test is part of M4.5.
+
 ## Known design issues (tracked in the backlog)
 
 - ~~`api/slideshow_url.txt` was runtime state in a tracked file, so the Pi's checkout was always dirty.~~ Fixed in B06: the saved slideshow moved to `/var/lib/photo-api/`. Deployed to the Pi on 2026-11-15 (on `main`); the Pi's checkout is now clean apart from an untracked `api/package-lock.json`.
