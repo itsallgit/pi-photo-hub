@@ -108,7 +108,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M3.1 (2026-11-18; `api/public/show.html`, `show.js`, `show.css`; browser test `tools/browser-test/run.js`: lockstep of shelf and phone, late joiner in step, fill only for photos that leave bars, each transition, no console errors) `/show`: lockstep with events, preloading, blurred fill, transitions, motion.
 - [x] M3.2 (2026-11-18; five overlay styles in `config/slideshow-presets.json`, the last hides it; relative dates "8 weeks ago", "3 years ago"; screenshots reviewed) Overlay with fields and style presets; relative dates; title and chapter cards; clock; night look.
 - [x] M3.3 (2026-11-18; the kiosk opens `/show?kiosk=1`; `viewer: picapport` opens Picapport's own page and `layer` comes back, smoke-tested and used on the Pi during M2) Kiosk opens `/show`; the fallback setting back to Picapport's page (R21).
-- [ ] M3.4 Deploy; screenshots across presets and orders; performance; a 30-minute run.
+- [x] M3.4 (2026-11-18; the four presets on the shelf screenshotted and reviewed (night dimmed without text, guests with the strip), a second viewer on the PC in step; 30-minute run 09:03 to 09:35 on the honeymoon at 5 s: steady advance, 48 to 52 °C, no throttling, Chromium about 1.08 GB and node about 155 MB with no growth, no API errors; CPU 11 to 24% with motion, load 3 to 4 with a new photo from Picapport every 5 s) Deploy; screenshots across presets and orders; performance; a 30-minute run.
 
 ### M4: Phone page (R14, R20 UI)
 - [x] M4.1 (2026-11-18; tap: controls and full screen; swipe; manifest and icons) Controls layer: now playing, swipe, pause, back/next, full screen on tap, manifest.
