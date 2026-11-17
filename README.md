@@ -187,6 +187,8 @@ curl -s -X POST $API/api/marks -H 'content-type: application/json' -d '{"mark":"
 curl -s -X PATCH $API/api/player/settings -H 'content-type: application/json' -d '{"viewer":"picapport"}'  # fallback: Picapport's own page ("layer" to come back)
 ```
 
+**On the phone:** open `http://pi.local:3000/show` in Chrome (bookmark it, or "Add to home screen"), tap once for the controls and full screen, swipe for next and back; Search, Browse (years, places, people, keywords, folders, this week in past years, not seen in a while), Map, Settings; ★ and ⚑ put the photo on the review list. Mirror the phone to the TV in landscape to show a trip there.
+
 State on the Pi: `/var/lib/photo-api/player.json` (now playing, settings) and `playlist.json` (the order), `history.json`, `marks.json`, `schedule.json`, `catalogue.json` (built nightly with the vocabulary). Disposable cache: `/var/cache/photo-api/` (resized photos, capped at 2 GB, and listed query results); deleting it is safe. Defaults and presets: `config/slideshow-presets.json`.
 
 Manual alternative on the Pi, without the API: the screen with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --off` (or `--on`). The vocabulary and the photo catalogue are rebuilt nightly at 03:30; by hand: `bash ~/pi-photo-hub/scripts/refresh-vocabulary.sh` (about 40 minutes) or `--build-only` (seconds, from the last scan). Place names (country, city) come from GPS with an offline list from GeoNames (place data © GeoNames, https://www.geonames.org, licensed CC BY 4.0), downloaded once by `scripts/fetch-places.sh` into `~/metadata-survey/places/` (`--refresh` to download it again).

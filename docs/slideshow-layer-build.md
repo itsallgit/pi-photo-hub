@@ -127,7 +127,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [ ] M6.3 `slideshow-control` skill: what's playing with preview, controls, presets, overlays, orders, search sources, marks, schedule, history; `docs/slideshow-experience.md` updated.
 
 ### M7: Map (R15, stretch)
-- [ ] M7.1 Map panel on the phone page (vendored Leaflet, OpenStreetMap tiles fetched by the phone), points from the catalogue, pick an area to play (`within:`).
+- [x] M7.1 (2026-11-18; `api/public/map.js`, vendored Leaflet 1.9.4, browser test with the tiles stubbed; on the Pi with M4.5) Map panel on the phone page (vendored Leaflet, OpenStreetMap tiles fetched by the phone), points from the catalogue, pick an area to play (`within:`).
 
 ### M8: Release check and report
 - [ ] M8.1 Every requirement R1 to R21 checked on the Pi with evidence (in the table below); soak of at least 2 hours; resume after an API restart; fallback and back.

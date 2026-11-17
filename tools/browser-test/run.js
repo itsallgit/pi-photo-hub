@@ -62,11 +62,13 @@ async function main() {
     if (!piUrl) await startStack();
     const browser = await puppeteer.launch({ executablePath: CHROME, headless: !args.includes("--headful"), args: ["--autoplay-policy=no-user-gesture-required"] });
     const errors = [];
+    const notFound = [];
     async function open(url, viewport, name) {
         const page = await browser.newPage();
         await page.setViewport(viewport);
         page.on("console", (m) => { if (m.type() === "error") errors.push(`${name}: ${m.text()}`); if (process.env.DEBUG_PAGE) console.log(`[${name}] ${m.text()}`); });
         page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+        page.on("response", (r) => { if (r.status() >= 400) notFound.push(`${name}: ${r.status()} ${r.url()}`); });
         await page.goto(BASE + url, { waitUntil: "load" });
         return page;
     }
@@ -302,13 +304,32 @@ async function main() {
         await sleep(1700);
         await shot(phone, "phone-landscape");
     });
+    await ok("phone: map: points from the catalogue, play the area shown (tiles stubbed: the test stays offline)", async () => {
+        await phone.setRequestInterception(true);
+        phone.on("request", (r) => (r.url().includes("tile.openstreetmap.org") ? r.respond({ status: 200, contentType: "image/png", body: fake.png(8, 8, [200, 210, 220]) }) : r.continue()));
+        await phone.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6 });
+        await showControls(phone);
+        await clickLabel(phone, "Browse");
+        await clickLabel(phone, "Map");
+        await until(() => phone.evaluate(() => !!window.L && /photos here/.test(document.querySelector("#controls .play-row .count").textContent)), "the map", 15000);
+        const n = await phone.evaluate(() => document.querySelector("#controls .play-row .count").textContent);
+        assert.match(n, /About 20 photos here/);
+        await sleep(500);
+        await shot(phone, "phone-map");
+        await clickLabel(phone, "Play this area");
+        await until(async () => (await api("GET", "/api/player")).source.label === "Map area", "the map area playing");
+        assert.equal((await api("GET", "/api/player")).count, 18); // 12 Noosa (bursts: 10) + 8 Cinque Terre
+    });
     await ok("the shelf never shows the controls", async () => {
         assert.equal(await shelf.evaluate(() => document.getElementById("controls").classList.contains("hidden") && document.getElementById("controls").children.length === 0), true);
     });
 
-    await ok("no errors in the page consoles", async () => {
-        assert.deepEqual(errors, [], errors.join("
-"));
+    await ok("no errors in the page consoles (404s only for the photo Picapport has not indexed)", async () => {
+        const f9 = require("crypto").createHash("sha1").update(`${fake.ROOT}/_Friends/f9.jpg`).digest("hex").slice(0, 20);
+        const other404 = notFound.filter((x) => !x.includes(`/api/photo/${f9}`));
+        const otherErrors = errors.filter((x) => !/Failed to load resource: the server responded with a status of 404/.test(x));
+        assert.deepEqual([...other404, ...otherErrors], []);
+        assert.equal(errors.length - otherErrors.length, notFound.length);
     });
 
     await browser.close();
