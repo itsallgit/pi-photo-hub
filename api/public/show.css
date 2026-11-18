@@ -50,3 +50,7 @@ body.carding #overlay { opacity: 0; }
   background: rgba(0,0,0,.55); padding: .6em 1.1em; border-radius: 2em; pointer-events: none; white-space: nowrap; }
 #status.center { bottom: auto; top: 50%; transform: translate(-50%, -50%); font-size: 3vh; background: none; color: #999; }
 #pausemark { position: fixed; top: 3vh; right: 3vw; font-size: 3vh; color: #fff; opacity: .75; text-shadow: 0 0 .4em #000; pointer-events: none; letter-spacing: -0.1em; }
+/* Toast: a moment's confirmation of a control (the knob's speed, a star). */
+#toast { position: fixed; top: 4vh; left: 50%; transform: translateX(-50%); font-size: min(3.2vh, 4.6vw); color: #fff; background: rgba(0,0,0,.68);
+  padding: .55em 1.2em; border-radius: 2em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
+#toast.show { opacity: 1; transition-duration: .1s; }

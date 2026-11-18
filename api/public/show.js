@@ -8,7 +8,7 @@
   const kiosk = params.get("kiosk") === "1";
   if (kiosk) document.body.classList.add("kiosk");
   const $ = (id) => document.getElementById(id);
-  const stage = $("stage"), overlay = $("overlay"), card = $("card"), clock = $("clock"), status = $("status"), pausemark = $("pausemark");
+  const stage = $("stage"), overlay = $("overlay"), card = $("card"), clock = $("clock"), status = $("status"), pausemark = $("pausemark"), toast = $("toast");
 
   let state = null;
   let offset = 0; // server time - local time
@@ -201,6 +201,19 @@
     if (!st.current) status.classList.add("center");
   }
 
+  // A toast shows once, and not at all on a screen that connects after it was sent.
+  const TOAST_MS = 2200;
+  let lastToast = null, toastTimer = null;
+  function renderToast(t) {
+    if (!t || t.id === lastToast) return;
+    lastToast = t.id;
+    if (serverNow() - t.id > TOAST_MS) return;
+    toast.textContent = t.text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), TOAST_MS);
+  }
+
   // ---------- following the slideshow ----------
   let pending = 0;
   async function apply(st) {
@@ -210,6 +223,7 @@
     renderStatus(st, true);
     tickClock();
     pausemark.classList.toggle("hidden", !st.paused || !kiosk);
+    renderToast(st.toast);
     listeners.forEach((fn) => { try { fn(st); } catch (e) { console.error(e); } });
     const cur = st.current;
     // preload what comes next (and the one before, for "back")
@@ -238,7 +252,7 @@
     slideStarted = Date.now();
     const cardLeft = showCard(cur, state);
     const slide = makeSlide(cur, loaded, state);
-    const immediate = first || cardLeft > 0;
+    const immediate = first || cardLeft > 0 || state.manualMove; // next, back and jump snap; autoplay transitions
     transitionIn(slide, state.settings.transition, back, immediate);
     // The words change halfway through the transition, when the new photo is mostly visible.
     clearTimeout(overlayTimer);

@@ -197,18 +197,64 @@ async function main() {
         assert.equal(await shelf.evaluate(() => !document.getElementById("pausemark").classList.contains("hidden")), true);
         await api("POST", "/api/player/play");
     });
-    await ok("each transition", async () => {
+    const slideCount = (page) => page.evaluate(() => document.querySelectorAll("#stage .slide").length);
+    await ok("next and back snap with no transition, on the shelf and the phone", async () => {
         await shelf.bringToFront();
+        await api("PATCH", "/api/player/settings", { transition: "fade", interval: 60 });
+        await sleep(1700);
+        for (const move of ["next", "back"]) {
+            const r = await api("POST", `/api/player/${move}`);
+            assert.equal(r.manualMove, true);
+            for (const page of [shelf, phone]) {
+                await until(async () => (await shownId(page)) === r.current.id, `${move} on the viewer`);
+                assert.equal(await slideCount(page), 1, `${move}: the old photo is gone at once`);
+            }
+            assert.equal((await api("GET", "/api/player")).playing, true, "autoplay keeps running");
+        }
+    });
+    await ok("autoplay still uses each transition, also straight after a manual move", async () => {
+        await shelf.bringToFront();
+        await api("PATCH", "/api/player/settings", { interval: 3 });
         for (const tr of ["slide", "zoom", "dip", "fade"]) {
             await api("PATCH", "/api/player/settings", { transition: tr });
-            const r = await api("POST", "/api/player/next");
-            await until(async () => (await shownId(shelf)) === r.current.id, `next with ${tr}`);
+            const manual = await api("POST", "/api/player/next");
+            await until(async () => (await shownId(shelf)) === manual.current.id, `next before ${tr}`);
+            const auto = await until(async () => { const v = await api("GET", "/api/player"); return v.position !== manual.position ? v : null; }, `autoplay with ${tr}`);
+            assert.equal(auto.manualMove, false);
+            await until(async () => (await shownId(shelf)) === auto.current.id, `the photo after ${tr}`);
+            assert.equal(await slideCount(shelf), 2, `${tr}: both photos during the transition`);
             await sleep(500);
             await shot(shelf, `shelf-transition-${tr}`);
-            await sleep(1500);
-            const n = await shelf.evaluate(() => document.querySelectorAll("#stage .slide").length);
-            assert.equal(n, 1, `${tr}: ${n} slides 2 s after the move`);
+            await until(async () => (await slideCount(shelf)) === 1, `${tr} to finish`, 2500);
         }
+        await api("PATCH", "/api/player/settings", { interval: 40, transition: "fade" });
+        await api("POST", "/api/player/next"); // a photo's motion is timed when it appears (backlog B39)
+    });
+    await ok("toast: the knob's speed and a star from a button; other controls show none", async () => {
+        const toast = (page) => page.evaluate(() => { const t = document.getElementById("toast"); return t.classList.contains("show") ? t.textContent : null; });
+        await until(async () => (await toast(shelf)) === null, "no toast yet", 4000);
+        await api("POST", "/api/player/nudge", { setting: "interval", by: 1 });
+        await until(async () => (await toast(shelf)) === "Slower: 60 seconds per photo", "the slower toast", 3000);
+        await until(async () => (await toast(phone)) === "Slower: 60 seconds per photo", "the toast on the phone", 3000);
+        await sleep(300);
+        await shot(shelf, "shelf-toast");
+        await api("POST", "/api/player/nudge", { setting: "interval", by: -1 });
+        await until(async () => (await toast(shelf)) === "Faster: 40 seconds per photo", "the faster toast", 3000);
+        await until(async () => (await toast(shelf)) === null, "the toast to go", 4000);
+        await api("POST", "/api/player/toggle");
+        await api("POST", "/api/player/toggle");
+        await api("POST", "/api/player/nudge", { setting: "overlayStyle" });
+        await sleep(300);
+        assert.equal(await toast(shelf), null, "pause and overlay style show no toast");
+        await api("POST", "/api/marks", { mark: "star", by: "button" });
+        await until(async () => (await toast(shelf)) === "★ Starred", "the star toast", 3000);
+        await api("DELETE", "/api/marks", { mark: "star" });
+        await until(async () => (await toast(shelf)) === null, "the star toast to go", 4000);
+        const later = await open("/show?kiosk=1", { width: 960, height: 540 }, "later-toast");
+        await until(async () => (await shownId(later)) === (await shownId(shelf)), "the later viewer");
+        assert.equal(await toast(later), null, "a viewer that connects later shows no old toast");
+        await later.close();
+        await shelf.bringToFront(); // closing a tab can leave the shelf in the background, where its motion stops
     });
     await ok("a viewer that joins late is in step (motion placed by elapsed time)", async () => {
         await api("PATCH", "/api/player/settings", { motion: "subtle" });

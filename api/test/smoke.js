@@ -226,8 +226,10 @@ async function main() {
     });
     await ok("autoplay moves on by itself after the interval", async () => {
         await api("PATCH", "/api/player/settings", { interval: 3 });
-        const before = await player();
+        const before = (await api("POST", "/api/player/next")).body;
+        assert.equal(before.manualMove, true, "a manual move is marked, so viewers snap");
         await until(async () => (await player()).position !== before.position, "an automatic move", 6000);
+        assert.equal((await player()).manualMove, false, "an automatic move uses the transition");
         await api("PATCH", "/api/player/settings", { interval: 20 });
     });
     await ok("resume after an API restart: same order, same photo (R2)", async () => {
@@ -331,10 +333,24 @@ async function main() {
     });
     await ok("nudge: interval steps up and down, overlay style cycles", async () => {
         await api("PATCH", "/api/player/settings", { interval: 20 });
-        assert.equal((await api("POST", "/api/player/nudge", { setting: "interval", by: 1 })).body.settings.interval, 25);
-        assert.equal((await api("POST", "/api/player/nudge", { setting: "interval", by: -1 })).body.settings.interval, 20);
+        const slower = (await api("POST", "/api/player/nudge", { setting: "interval", by: 1 })).body;
+        assert.equal(slower.settings.interval, 25);
+        assert.equal(slower.toast.text, "Slower: 25 seconds per photo");
+        const faster = (await api("POST", "/api/player/nudge", { setting: "interval", by: -1 })).body;
+        assert.equal(faster.settings.interval, 20);
+        assert.equal(faster.toast.text, "Faster: 20 seconds per photo");
+        assert.ok(faster.toast.id > slower.toast.id);
+        await api("PATCH", "/api/player/settings", { interval: 3 });
+        assert.equal((await api("POST", "/api/player/nudge", { setting: "interval", by: -1 })).body.toast.text, "Fastest: 3 seconds per photo");
+        await api("PATCH", "/api/player/settings", { interval: 180 });
+        assert.equal((await api("POST", "/api/player/nudge", { setting: "interval", by: 1 })).body.toast.text, "Slower: 5 minutes per photo");
+        assert.equal((await api("POST", "/api/player/nudge", { setting: "interval", by: 1 })).body.toast.text, "Slowest: 5 minutes per photo");
+        await api("PATCH", "/api/player/settings", { interval: 20 });
         const s0 = (await player()).settings.overlayStyle;
-        assert.equal((await api("POST", "/api/player/nudge", { setting: "overlayStyle" })).body.settings.overlayStyle, (s0 + 1) % 5);
+        const styled = (await api("POST", "/api/player/nudge", { setting: "overlayStyle" })).body;
+        assert.equal(styled.settings.overlayStyle, (s0 + 1) % 5);
+        assert.equal(styled.toast.id, (await player()).toast.id, "the overlay style sends no new toast");
+        assert.equal(styled.toast.text, "Slowest: 5 minutes per photo");
         assert.equal((await api("POST", "/api/player/nudge", { setting: "colour" })).status, 400);
     });
 
@@ -361,15 +377,20 @@ async function main() {
     });
     await ok("marks: star and bad photo go into the review list only", async () => {
         const v = await player();
+        const toastBefore = v.toast && v.toast.id;
         const r = await api("POST", "/api/marks", { mark: "star" });
         assert.deepEqual(r.body.marks, ["star"]);
         await api("POST", "/api/marks", { id: v.current.id, mark: "bad", by: "phone" });
+        assert.equal(((await player()).toast || {}).id, toastBefore, "only a button's mark sends a toast");
         const list = (await api("GET", "/api/marks")).body.marks;
         assert.equal(list.length, 2);
         assert.equal(list[1].by, "phone");
         assert.deepEqual((await player()).current.info.marks, ["star", "bad"]);
         assert.equal((await api("POST", "/api/marks", { mark: "delete" })).status, 400);
         await api("DELETE", "/api/marks", { id: v.current.id, mark: "bad" });
+        assert.equal((await api("GET", "/api/marks")).body.marks.length, 1);
+        await api("POST", "/api/marks", { mark: "star", by: "button" });
+        assert.equal((await player()).toast.text, "★ Starred");
         assert.equal((await api("GET", "/api/marks")).body.marks.length, 1);
     });
 

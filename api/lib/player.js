@@ -28,6 +28,7 @@ let items = []; // the order: [{ p, c? }] (playlist.json)
 let timer = null;
 let buildSeq = 0;
 let moveSeq = 0;
+let toast = null; // the latest short message for the screens: { id (server time, ms), text }
 
 // ---------------------------------------------------------------------------------------------
 // Persistence
@@ -217,12 +218,14 @@ async function step(steps, { auto = false } = {}) {
             if (target >= items.length) target = 0;
         }
     }
-    return moveTo(target);
+    return moveTo(target, { manual: !auto });
 }
 
-function moveTo(target) {
+// A manual move (next, back, jump) snaps on every screen; only autoplay's moves use the transition.
+function moveTo(target, { manual = true } = {}) {
     if (!items.length) return view();
     s.position = Math.max(0, Math.min(items.length - 1, target));
+    s.moveKind = manual ? "manual" : "auto";
     s.startedAt = Date.now();
     s.elapsedAtPause = 0;
     showing();
@@ -265,6 +268,11 @@ function play() {
 }
 
 function toggle() { return s.playing && s.settings.autoplay ? pause() : play(); }
+
+// A short message every screen shows for a moment. It goes out with the next state event.
+function setToast(text) {
+    toast = { id: Math.max(Date.now(), toast ? toast.id + 1 : 0), text };
+}
 
 // ---------------------------------------------------------------------------------------------
 // Starting a slideshow, changing settings
@@ -309,6 +317,7 @@ async function setSource(src, { settings, preset } = {}) {
         s.playlistId = `${Date.now().toString(36)}`;
         s.count = items.length;
         s.position = 0;
+        s.moveKind = "auto";
         s.playing = true;
         s.status = "playing";
         s.preparing = null;
@@ -415,6 +424,8 @@ function view() {
         paused: !s.playing,
         position: i,
         count: items.length,
+        manualMove: s.moveKind === "manual",
+        toast,
         startedAt: s.startedAt,
         elapsed: s.playing ? now - s.startedAt : s.elapsedAtPause,
         duration: durationMs(i),
@@ -492,6 +503,6 @@ function stop() {
 }
 
 module.exports = {
-    start, stop, view, step, jump, pause, play, toggle, setSource, setSettings, applyPreset, checkSource, describeSource,
+    start, stop, view, step, jump, pause, play, toggle, setToast, setSource, setSettings, applyPreset, checkSource, describeSource,
     current, source, settings, itemsCount, info, setSourceLabel,
 };

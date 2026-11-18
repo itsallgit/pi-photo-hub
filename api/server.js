@@ -348,6 +348,11 @@ app.patch("/api/player/settings", wrap(async (req, res) => {
 }));
 app.post("/api/player/preset", wrap(async (req, res) => res.json(player.applyPreset(String((req.body || {}).name || "")))));
 
+function speedWords(seconds) {
+    if (seconds >= 120 && seconds % 60 === 0) return `${seconds / 60} minutes per photo`;
+    return `${seconds} seconds per photo`;
+}
+
 // Step a setting by an amount or to the next value (buttons and the knob): { setting, by? }.
 app.post("/api/player/nudge", wrap(async (req, res) => {
     const b = req.body || {};
@@ -357,7 +362,10 @@ app.post("/api/player/nudge", wrap(async (req, res) => {
         const steps = [3, 5, 8, 10, 12, 15, 20, 25, 30, 40, 60, 90, 120, 180, 300];
         const cur = st.interval;
         let next = by > 0 ? steps.find((x) => x > cur) : [...steps].reverse().find((x) => x < cur);
-        if (next === undefined) next = cur;
+        const atLimit = next === undefined;
+        if (atLimit) next = cur;
+        const word = by > 0 ? (atLimit ? "Slowest" : "Slower") : (atLimit ? "Fastest" : "Faster");
+        player.setToast(`${word}: ${speedWords(next)}`);
         return res.json(player.setSettings({ interval: next }));
     }
     if (b.setting === "overlayStyle") {
@@ -414,6 +422,8 @@ app.post("/api/marks", wrap(async (req, res) => {
     if (!marks.KINDS.includes(b.mark)) return res.status(400).json({ error: `mark must be one of: ${marks.KINDS.join(", ")}` });
     marks.add(p, b.mark, b.by ? String(b.by).slice(0, 40) : null);
     logger.info(`Marked ${b.mark}: ${p}`);
+    // A held button has nothing else to show that it worked; the phone lights its own icon.
+    if (b.by === "button") player.setToast(b.mark === "star" ? "★ Starred" : "Marked as a bad photo");
     events.broadcast("state", player.view());
     res.json({ path: p, marks: marks.of(p) });
 }));
