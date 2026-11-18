@@ -130,21 +130,46 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 - [x] M7.1 (2026-11-18; `api/public/map.js`, vendored Leaflet 1.9.4, browser test with the tiles stubbed; on the Pi with M4.5) Map panel on the phone page (vendored Leaflet, OpenStreetMap tiles fetched by the phone), points from the catalogue, pick an area to play (`within:`).
 
 ### M8: Release check and report
-- [ ] M8.1 Every requirement R1 to R21 checked on the Pi with evidence (in the table below); soak of at least 2 hours; resume after an API restart; fallback and back.
-- [ ] M8.2 Docs complete (architecture, README runbooks manual and automated, skills, `slideshow-experience.md`, `slideshow-layer.md`, backlog: B32, B31, B26, L1, L9, L10, L11 updated).
-- [ ] M8.3 Report to the owner: what was built, what to try, the owner's checklist (below), known limits; shelf left on the saved slideshow (or the owner's choice).
+- [x] M8.1 (2026-11-18; evidence table below; soak 09:42 to 11:43 on the Pi, plus the overnight run 01:04 to 09:00) Every requirement R1 to R21 checked on the Pi with evidence (in the table below); soak of at least 2 hours; resume after an API restart; fallback and back.
+- [x] M8.2 (2026-11-18) Docs complete (architecture, README runbooks manual and automated, skills, `slideshow-experience.md`, `slideshow-layer.md`, backlog: B32, B31, B26, L1, L9, L10, L11 updated).
+- [x] M8.3 (2026-11-18; reported in the build session; shelf left on the saved Honeymoon slideshow) Report to the owner: what was built, what to try, the owner's checklist (below), known limits; shelf left on the saved slideshow (or the owner's choice).
 
 ## Owner's checklist (things only the owner can check; filled in at M8)
-- Phone: open the page, full screen, swipe, search, mark; mirror to the TV in landscape.
-- Program the button board (Windows tool) as the README says, plug it into the Pi, press each input.
-- Look at the shelf from the sofa: overlay legible? motion subtle enough? presets right?
-- Decide: screen schedule on? default preset? burst thinning on?
-- Then say "go" to merge to `main`.
+- **Phone:** open `http://pi.local:3000/show` in Chrome on the Samsung, tap once: does it go full screen without the address bar (R14's hard requirement)? Swipe left and right, pause, try Search (type a word, pick, tap "and" to make it "or", Play), Browse (a country, then a city; a folder; a year), Map ("Play this area"), Settings (a preset), and ★ then ★ again (star and unstar). "Add to home screen" if you like (it opens as a bookmark; an installed app would need HTTPS, not set up).
+- **TV:** mirror the phone to the LG in landscape: does the photo fill the screen once the controls hide (6 s)?
+- **Button board:** program it on the Windows PC as README "Button board" says (KEY1 to KEY3 = F13 to F15, knob left/press/right = F16/F17/F18; or leave it on its multimedia keys), plug it into the Pi, press each input (KEY2 held = screen off/on; KEY3 held = star). If nothing happens, ask an agent to use the `button-board` skill (learn mode).
+- **From the sofa:** is the small date and place (Ambient) readable enough, or prefer the strip (overlay style 1, knob press)? Is the pan and zoom subtle enough? Do the presets feel right (Ambient, Present, Guests, Night)?
+- **The mouse pointer:** still hidden on the shelf now that Chromium runs natively on Wayland (screenshots cannot show it)?
+- **Decide:** burst thinning on (the honeymoon plays 6,931 of its 11,807 photos)? Upright photos with the blurred fill, or skip them? Screen schedule (off by default; e.g. off 00:00, on 06:00)? Interval 5 s (yours) or the presets' 20 s? Default preset Ambient?
+- Then say **"go"** to merge to `main` (or ask for changes first). Until then the Pi runs the branch; back to the old slideshow is `update.sh` on `main` (the `apply-changes` skill), which replays Honeymoon in Picapport's page.
 
 ## Requirement evidence (filled in at M8)
+Checked 2026-11-18. "Smoke" = `node api/test/smoke.js` (38 API tests + 12 unit tests); "browser" = `tools/browser-test/run.js` (22 tests); "Pi" = on the real Pi (`api/test/pi-check.js`, `run.js --pi`, curl, screenshots).
+
 | ID | Evidence |
 |---|---|
-| R1 to R21 | _to fill_ |
+| R1 lockstep | Smoke: two event-stream viewers get every change within 1 s. Pi: two viewers within 71 ms (`pi-check.js`); a second viewer and a phone-emulated viewer on the PC followed the shelf (next from the phone moved the shelf). Browser: a late joiner's motion within 1.2 s. |
+| R2 resume | Smoke: same order, same photo after an API restart. Pi: after each update's restart ("Resumed Honeymoon at photo 15 of 6931 (no reshuffle)"; 1,427 after the final one). A real reboot was not done (not allowed in the build); a boot uses the same start path. |
+| R3 controls | Smoke and Pi: play, pause, next, back (several), jump (position, year). |
+| R4 settings, presets | Smoke: validation, presets, a change kept and reported. Pi: the four presets on the shelf, screenshots reviewed. |
+| R5 orders | Unit and smoke: random (seeded), chapters, date both ways, burst thinning, recent photos last. Pi: chapters of 11,807 built; bursts 11,806 to 6,931; recent photos last tested in smoke. |
+| R6 on this day | Pi: 245 photos ("this week in past years", 2023 to earlier years). |
+| R7 highlights | Smoke: a rated photo twice per round and 1.5 times as long. Data later (58 rated photos). |
+| R8 upright | Pi: 15,783 upright photos in the catalogue; screenshot of an upright photo with the blurred fill; skip upright 6,931 to 4,822 and back. |
+| R9 motion, transitions | Pi: about 58 fps with motion and fill (native Wayland; 33 to 40 fps before), CPU 15 to 24%. Browser: each transition, motion paused with the slideshow. |
+| R10 overlay | Browser: relative and absolute dates, place, event, five styles (screenshots). Pi: "5 weeks ago, Capri, Italy" on the shelf. Legibility from the sofa: owner's checklist. |
+| R11 places offline | Pi: GeoNames list downloaded once (172,021 places); 42,512 photos with a place in 28 countries; places in the vocabulary and the phone's tree; no lookup leaves the Pi. |
+| R12 title cards | Browser: card with the event name and dates before the event's first photo (Present). |
+| R13 clock, night | Browser and Pi: night dimmed without text; clock on and off. |
+| R14 phone page | Browser (mobile emulation, portrait and landscape): tap shows controls and gets full screen, swipe, buttons, search with and/or, browse, settings, marks, map. Pi: phone-emulated viewer against the real data. The real phone's full screen: owner's checklist. |
+| R15 map | Browser: points, play the area; Pi: 43,139 photos with GPS on the map. |
+| R16 Paseo | `slideshow-control` skill: what's playing with date, place, event and a preview link (`/api/photo/<id>?size=thumb`), and every new control; each call run against the Pi. Not cold-tested. |
+| R17 buttons | Pi: `photo-buttons` active; virtual USB board: every input, long presses, Chromium got nothing (F5 did not reload the shelf). Unit tests with recorded presses. The real board: owner's checklist. |
+| R18 schedule | Pi: off at 09:36, stayed off through an API restart without firing twice, on at 09:39; off by default. |
+| R19 history | Pi: history kept since 01:04 (6,118 photos), suggestions (57,189 of 63,307 not seen in 90 days), "not seen in a while" played 40,353. |
+| R20 marks | Pi: a star went onto `marks.json` and off again; nothing else written. Browser: star and unstar from the phone. |
+| R21 fallback | Pi: `viewer: picapport` put Picapport's own page on the shelf (URL checked, screenshot) and `layer` brought ours back. The older endpoints (`/api/status`, `/api/count`, `POST`/`PATCH`/`GET /api/slideshow`) work for their callers (smoke, Pi). |
+| Soak | 2 hours on the Pi, 09:42:42 to 11:43 (photo-api up the whole time): 125 one-minute samples, always playing and advancing (photo 18 to 1,421 at 5 s), never throttled, 49 to 53.5 °C, Chromium 1.05 to 1.18 GB and node 107 to 161 MB with no growth, 0 warnings or errors in the photo-api and photo-buttons logs. Also the overnight run 01:04 to 09:00 (only 3 warnings, from test jumps). |
 
 ## Build log (newest last; one entry per session, written before the session ends)
 
@@ -152,6 +177,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 |---|---|---|---|
 | 2026-11-18 | Plan written and agreed. Nothing built. | `main` at the plan's commit; saved slideshow "Cinque Terre" (honeymoon folder), smart random, 20 s | M0.1 |
 | 2026-11-18 00:10 to 09:45 | Session 1: M0 to M7 built, tested and deployed (spikes, catalogue and places, player engine, shelf page, phone controls, buttons, schedule/history/skill, map). Fixes on the way: native Wayland Chromium for smooth motion; viewer images before look-ahead (21 s to 3 s); fallback kiosk follows a new source; phone swipe needs `touch-action: none`; stray text, overlay under the controls. Two slips corrected: the PC's `api/package-lock.json` and `__pycache__` were committed by mistake (now ignored), and one diagnostic `git merge --ff-only` was run by hand on the Pi's checkout (it aborted and changed nothing; not repeated). The nightly refresh at 03:30 built the catalogue (63,307 photos, 15,783 upright, 42,512 with a place). M8 started: fallback and back, resume after a restart, both OK on the Pi. | `feat/slideshow-layer` at the latest commit; Honeymoon (dirall), random, 5 s, Ambient (interval changed), our page on the shelf; `photo-buttons` active; schedule off | M8.1: 2-hour soak, then the evidence table, M8.2 docs, M8.3 report |
+| 2026-11-18 09:45 to 11:50 | M8 done: skip upright and marks checked on the Pi, docs completed (architecture overview, components, known limits; requirements page; backlog B32, B31, B26, L1, L9, L10, L11), 2-hour soak passed, final tip deployed (`verify.sh`: no drift), evidence table and owner's checklist filled in. **Slideshow layer v1 is built.** | `feat/slideshow-layer` at the final commit; the shelf plays Honeymoon (dirall), random, 5 s, Ambient, our page, screen on; `photo-buttons` active, no board plugged in; schedule off | The owner's checklist, then "go" to merge to `main` (`git-workflow` skill) |
 
 ## How to resume
 
