@@ -1,6 +1,8 @@
 # Pi Photo Hub — Project Instructions
 
-A Raspberry Pi 4 that plays the owner's photo library as a slideshow on an attached monitor. Picapport (Java) indexes the photos on an attached HDD; a small Node.js API (`photo-api`) launches Chromium in kiosk mode on a Picapport slideshow URL. This repo is the **whole project**: install scripts, Pi configuration, the API, documentation and the AI agent configuration used to manage it.
+A Raspberry Pi 4 that plays the owner's photo library as a slideshow on an attached monitor (the shelf screen). **Release 1 (tag `v1.0`, 2026-11-18) is the slideshow layer:** the Node.js photo API (`photo-api`, port 3000) holds the one slideshow (order, position, settings) and serves the page that shows it (`/show`); the shelf shows it in a kiosk browser, the owner's phone opens the same page to watch and steer it (and mirrors it to the TV), a USB button board and Paseo (the `slideshow-control` skill) steer it too, all through the API. Picapport (Java) only indexes the photos on an attached HDD and supplies search results and resized images; its own slideshow page is retired (kept only as an emergency fallback setting). This repo is the **whole project**: install scripts, Pi configuration, the API and pages, documentation and the AI agent configuration used to manage it.
+
+**The owner changes the project by just saying what they want** in a new session ("add a random transition", "the settings page should use drop-downs"). Use the `make-changes` skill: it has the code map, the tests, the deploy and the owner's standing mandate.
 
 The Pi has **no keyboard or mouse** attached, only a monitor (see [docs/hardware.md](docs/hardware.md)). Never ask the owner to click, type or press a button on the Pi; plan everything to work over SSH, the API or the power button.
 
@@ -14,13 +16,14 @@ This file holds context and the always-on rules. **How to do things lives in ski
 2. Read [docs/backlog.md](docs/backlog.md): what is in progress, next, and still an open question.
 3. If the task involves the Pi, use the `pi-access` skill to reach it and read its state. The Pi's checkout at `/home/pi/pi-photo-hub` is changed only by `scripts/update.sh` (the `apply-changes` skill); it may be on a test branch (backlog B06). If it is dirty, report it; do **not** "fix" it with `git checkout`, `git clean`, `git stash` or `git reset` on the Pi.
 4. Never rely on chat history or personal memory for project facts. If a fact matters, it belongs in this repo.
+5. A request to build or change something: the `make-changes` skill. A request to see or steer photos: the `slideshow-control` skill.
 
 ## Hard rules
 
 These are non-negotiable. The reasoning and how each is enforced is in [docs/principles.md](docs/principles.md).
 
 1. **NEVER modify the photo HDD** (mounted at `/mnt/photos` on the Pi, device `/dev/sda`). No writes, deletes, renames, moves, `fsck`, `mkfs`, `dd`, `wipefs`, `parted`, label changes, `chmod`/`chown`, remounting read-write, or anything else that changes its contents or filesystem, by any route: a direct command, a script you write or copy to the Pi, `rsync --delete`, `find -delete`, or any file-changing action in the Picapport web UI (tagging, rotating, deleting; whether it can write to photos is unverified, see Q4 in the backlog, so do not use such actions). Read-only commands are fine, including ones that name paths on it (`ls`, `ls -ld`, `find` without delete actions, `df`, reading files). A normal OS shutdown or reboot (`systemctl reboot` / `poweroff`), which unmounts the HDD itself, is allowed; running `mount` or `umount` on it by hand is not. This is the owner's irreplaceable photo library. If a task seems to need a change to the HDD, stop and ask the owner. You may give the owner a command to run themselves, but never run it or copy it to the Pi: the owner does HDD changes, not an agent.
-2. **Build the project, not the instance.** Make changes in this repo so they work on a fresh build on new hardware, then apply them to the Pi through the same path a fresh build uses. Do not make ad hoc changes on the Pi. The Pi is never the source of truth. There is no automated apply/update path yet (backlog B06), so until there is, agree any change to the Pi with the owner first. **Never run `cleanup.sh` or `bootstrap.sh` on the Pi as an agent.** `cleanup.sh` stops all services, unmounts the HDD, deletes and re-clones the checkout, and can delete the Picapport database; it is for the owner's deliberate rebuilds.
+2. **Build the project, not the instance.** Make changes in this repo so they work on a fresh build on new hardware, then apply them to the Pi through the same path a fresh build uses (`scripts/update.sh`, the `apply-changes` skill). Do not make ad hoc changes on the Pi. The Pi is never the source of truth. **Never run `cleanup.sh` or `bootstrap.sh` on the Pi as an agent.** `cleanup.sh` stops all services, unmounts the HDD, deletes and re-clones the checkout, and can delete the Picapport database; it is for the owner's deliberate rebuilds.
 3. **Docs move with code.** Any change to a script, service, config or behaviour updates, in the same commit: the README runbook (where a procedure has both a manual and an automated form, keep both), the relevant `docs/` page, the matching skill if there is one, and `docs/backlog.md`.
 4. **Do not assume.** If a fact is not verified, write it in the backlog as an open question rather than stating it as fact in docs.
 
@@ -32,6 +35,7 @@ This is how every session should behave. It is a working style, not a technical 
 - **You understand the objective before extending the project.** For a new feature or a substantial extension (for example the planned knob-and-buttons board), first make sure you understand what the owner is trying to achieve, discuss the options and agree a plan. Do not go straight in.
 - **Every reboot and shutdown goes through the `pi-power` skill.** It checks what is running, stops Picapport cleanly first and holds the agreement gate (a double confirmation if it would interrupt a job). Never reboot or power off the Pi any other way. Whenever the Pi needs to be switched off or restarted, say so and offer it, so the owner never has to remember to ask.
 - **Never suggest the power-cable button while the Pi is running.** Background: the owner used to switch the Pi off and on by the cable, a hard power cut that probably corrupted Picapport's database (backlog Q3). The cable is only for after a finished `pi-power` shutdown, and to switch the Pi back on.
+- **Development has a standing mandate (owner, 2026-11-18).** For changes to the project the owner asks for, the `make-changes` skill's mandate replaces the per-change agreement above: small changes are built, tested, committed to `main`, deployed and checked without asking; a feature gets a short agreed plan first, then is built on a branch and deployed to the Pi freely, and merged to `main` only on the owner's "go". Everything on that skill's "still needs the owner" list (the photo HDD, reboots, Picapport, `cleanup.sh`/`bootstrap.sh`, destructive git) is unchanged.
 - **Slideshow requests need no confirmation.** Playing or changing the slideshow and switching the screen through the photo API, when the owner asks for it, is everyday use: act first, then report (the `slideshow-control` skill). This covers only the photo API; anything else that changes the Pi still needs agreement first.
 - **Bookkeeping needs no review.** Updating the backlog, docs and similar notes to reflect what is known or decided is part of the job and needs no discussion.
 - **Investigate freely.** Read-only work (reading files and logs, `git status`, read-only SSH, screenshots) needs no discussion.
@@ -49,6 +53,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | `git-workflow` | Commit, branch, test a branch on the Pi, merge to `main`, push |
 | `apply-changes` | Get a change (or a branch, or a rollback) onto the Pi with `scripts/update.sh`, behind an agreement gate |
 | `pi-power` | Reboot or shut down the Pi cleanly with `scripts/pi-power.sh`: checks what is running, stops Picapport first, agreement gate |
+| `make-changes` | Build a feature, change or fix the owner asks for: code map, tests, deploy and check on the Pi, docs; holds the standing mandate |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 | `picapport-db` | **Draft (B04).** Diagnose and repair Picapport's database on copies: status, snapshot, repair playbook, case history |
 | `button-board` | Check the button board, learn what it sends, change what a key does, test with a virtual board |
@@ -66,7 +71,8 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 
 - **Commits:** Conventional Commits, `<type>(<scope>): <description>`, types `feat fix chore docs refactor test ci`. No `Co-Authored-By` lines and no AI attribution.
 - **`main` is what a fresh Pi builds.** It is intended to always work. (A fresh build has not been re-tested since September 2025 and no test is planned; the owner will revise the build when it is next done on new hardware. Treat this as the goal, not a guarantee.) A fresh Pi clones `main`.
-- **Default:** small commits straight to `main`. One logical change per commit, including its docs and backlog updates (hard rule 3). Risky code goes on a short-lived branch and is tested on the Pi before a fast-forward merge to `main`; no pull request is needed (the owner's decision, overriding the global "use PRs for main" rule). The steps are in the `git-workflow` skill.
+- **Default:** small commits straight to `main`. One logical change per commit, including its docs and backlog updates (hard rule 3). Features and risky code go on a short-lived branch and are tested on the Pi before a fast-forward merge to `main` on the owner's "go"; no pull request is needed (the owner's decision, overriding the global "use PRs for main" rule). The steps are in the `git-workflow` skill; which is which is in the `make-changes` skill.
+- **Releases** are annotated tags on `main` (`v1.0` = the slideshow layer, 2026-11-18), made when the owner calls something a release.
 - Never force-push or rebase. Never `git reset --hard` without the owner's explicit instruction.
 - The Pi pulls from GitHub, so a change reaches the Pi only after it is pushed.
 
@@ -83,6 +89,7 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 | How asking for a slideshow should feel (agreed experience) | [docs/slideshow-experience.md](docs/slideshow-experience.md) |
 | The slideshow layer (Phase 2): requirements, delivery plan, build progress | [docs/slideshow-layer.md](docs/slideshow-layer.md), [docs/slideshow-layer-build.md](docs/slideshow-layer-build.md) |
 | Hardware | [docs/hardware.md](docs/hardware.md) |
+| The slideshow layer: modules, API, settings, page, buttons, known limits | [docs/architecture.md](docs/architecture.md), "Slideshow layer"; code map in the `make-changes` skill |
 | How to do things | `.claude/skills/` |
 | Runbooks for humans (install, SSH, DB fix, ...) | [README.md](README.md) |
 
