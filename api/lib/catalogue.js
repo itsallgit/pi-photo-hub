@@ -172,12 +172,13 @@ function covers(day) {
         const turned = [5, 6, 7, 8].includes(r[f.orientation]);
         const wide = r[f.width] && r[f.height] && (turned ? r[f.height] > r[f.width] : r[f.width] > r[f.height]);
         const n = score(day + p) + (wide ? 0 : 2 ** 32); // every wide photo ranks before every upright one
-        offer("all", p, n);
+        const own = (k) => score(k + day + p) + (wide ? 0 : 2 ** 32); // the home tiles should not all pick one photo
+        offer("all", p, own("all"));
         if (rating === 5) offer("favourites", p, n);
         if (r[f.date]) offer(`y:${r[f.date].slice(0, 4)}`, p, n);
         const city = c.places[r[f.city]];
-        if (city) { offer("places", p, n); offer(`c:${city.cc}`, p, n); offer(`t:${city.cc}/${city.name}`, p, n); }
-        for (const i of r[f.people] || []) { offer("people", p, n); if (c.people[i]) offer(`p:${c.people[i]}`, p, n); }
+        if (city) { offer("places", p, own("places")); offer(`c:${city.cc}`, p, n); offer(`t:${city.cc}/${city.name}`, p, n); }
+        for (const i of r[f.people] || []) { offer("people", p, own("people")); if (c.people[i]) offer(`p:${c.people[i]}`, p, n); }
         const dir = path.posix.dirname(p);
         if (dir.startsWith(root + "/")) {
             let sofar = "";
