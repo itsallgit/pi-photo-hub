@@ -236,6 +236,29 @@
     });
   }
 
+  // ---------- thumbnails: a new one can take the Pi seconds, and a browser opens only six connections
+  // to it, so at most two load at a time (what came on screen last first). Next, settings and the rest
+  // never wait behind a page of covers.
+  const thumbQueue = [];
+  let thumbsLoading = 0;
+  function pumpThumbs() {
+    while (thumbsLoading < 2 && thumbQueue.length) {
+      const img = thumbQueue.pop();
+      if (!img.isConnected) continue;
+      thumbsLoading++;
+      let open = true;
+      const done = (ok) => { if (!open) return; open = false; clearTimeout(limit); thumbsLoading--; if (ok) img.classList.add("in"); else img.remove(); pumpThumbs(); };
+      const limit = setTimeout(() => done(false), 20000);
+      img.addEventListener("load", () => done(true), { once: true });
+      img.addEventListener("error", () => done(false), { once: true });
+      img.src = img.dataset.src;
+    }
+  }
+  const thumbWatch = new IntersectionObserver((seen) => {
+    for (const e of seen) if (e.isIntersecting) { thumbWatch.unobserve(e.target); thumbQueue.push(e.target); }
+    pumpThumbs();
+  }, { rootMargin: "240px" });
+
   // ---------- building blocks ----------
   const ui = {
     group: (title, ...rows) => h("section", { class: "group" }, title ? h("h3", {}, title) : null, h("div", { class: "group-card" }, rows)),
@@ -262,7 +285,7 @@
     },
     empty: (ic, title, text) => h("div", { class: "empty" }, h("span", { class: "empty-ic" }, icon(ic)), h("h4", {}, title), text ? h("p", {}, text) : null),
     loading: (text = "Loading…") => h("div", { class: "loading" }, h("i"), text),
-    img: (src, cls) => { const i = h("img", { class: cls || "cover", alt: "", loading: "lazy", decoding: "async", src, on: { load: (e) => e.target.classList.add("in"), error: (e) => e.target.remove() } }); return i; },
+    img: (src, cls) => { const i = h("img", { class: cls || "cover", alt: "", decoding: "async", "data-src": src }); thumbWatch.observe(i); return i; },
   };
   function paintRange(input) { const p = ((input.value - input.min) / (input.max - input.min)) * 100; input.style.setProperty("--p", `${p}%`); }
 

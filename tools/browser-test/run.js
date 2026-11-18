@@ -418,7 +418,17 @@ async function main() {
     const tile = (page, label) => page.evaluate((l) => { const b = [...document.querySelectorAll("#controls .tile, #controls .subject, #controls .person, #controls .tag")].find((x) => x.getAttribute("aria-label") === l); if (!b) throw new Error(`no tile ${l}`); b.click(); }, label);
     const openBrowse = async () => { await showControls(phone); await clickLabel(phone, "Browse"); await until(() => phone.evaluate(() => document.querySelectorAll("#controls .tile").length >= 8), "the browse tiles"); };
     await ok("phone: browse opens on tiles; places: country, then city, play", async () => {
+        let loading = 0, most = 0;
+        const thumb = (r) => r.url().includes("size=thumb");
+        const started = (r) => { if (thumb(r)) most = Math.max(most, ++loading); };
+        const ended = (r) => { if (thumb(r.request ? r.request() : r)) loading--; };
+        phone.on("request", started); phone.on("response", ended); phone.on("requestfailed", ended);
+        pic.delayMs = 120;
         await openBrowse();
+        await sleep(1500);
+        pic.delayMs = 0;
+        phone.off("request", started); phone.off("response", ended); phone.off("requestfailed", ended);
+        assert.ok(most >= 1 && most <= 3, `two covers at a time plus the panel's backdrop, saw ${most}`);
         await sleep(900);
         await shot(phone, "phone-browse-home");
         await tile(phone, "Places");
