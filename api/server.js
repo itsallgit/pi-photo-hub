@@ -370,10 +370,15 @@ app.post("/api/player/nudge", wrap(async (req, res) => {
         return res.json(player.setSettings({ interval: next }));
     }
     if (b.setting === "overlayStyle") {
+        // The knob steps through the classic styles, and through the owner's own layout if there is one.
         const n = settingsLib.overlayStyles().length;
-        return res.json(player.setSettings({ overlayStyle: (st.overlayStyle + (Number(b.by) || 1) + n) % n }));
+        const hasOwn = st.captions && st.captions.items.length;
+        if (st.overlayMode === "custom") return res.json(player.setSettings({ overlayStyle: 0 }));
+        const next = st.overlayStyle + (Number(b.by) || 1);
+        if (hasOwn && next >= n) return res.json(player.setSettings({ overlayMode: "custom" }));
+        return res.json(player.setSettings({ overlayStyle: (next + n) % n }));
     }
-    const cycles = { motion: ["off", "subtle", "lively"], transition: ["fade", "slide", "zoom", "dip"], order: settingsLib.ORDERS };
+    const cycles = { motion: ["off", "subtle", "lively"], transition: settingsLib.TRANSITIONS, order: settingsLib.ORDERS };
     if (cycles[b.setting]) {
         const list = cycles[b.setting];
         return res.json(player.setSettings({ [b.setting]: list[(list.indexOf(st[b.setting]) + 1) % list.length] }));
@@ -384,7 +389,26 @@ app.post("/api/player/nudge", wrap(async (req, res) => {
     res.status(400).json({ error: "setting must be interval, overlayStyle, motion, transition, order, clock, night, bursts, titleCards, highlights or autoplay" });
 }));
 
-app.get("/api/presets", (req, res) => res.json({ presets: settingsLib.presets(), overlayStyles: settingsLib.overlayStyles(), defaults: settingsLib.defaults(), orders: settingsLib.ORDERS }));
+app.get("/api/presets", (req, res) => res.json({ presets: settingsLib.presets({ all: req.query.all === "1" }), overlayStyles: settingsLib.overlayStyles(), defaults: settingsLib.defaults(), orders: settingsLib.ORDERS, catalog: settingsLib.catalog() }));
+
+// The owner's presets (B41). Save what is on screen now as a new preset: { label, about? }.
+function presetReply(res, r, after) {
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    const view = after(r);
+    res.json({ preset: r.value, presets: settingsLib.presets({ all: true }), player: view });
+}
+app.post("/api/presets", (req, res) => {
+    const b = req.body || {};
+    presetReply(res, settingsLib.savePreset(player.settings(), b.label, b.about), (r) => player.presetSaved(r.value.name));
+});
+// Change one: { label?, about?, capture?: true (take the current settings), move?: -1 or 1, hidden? }.
+app.put("/api/presets/:name", (req, res) => {
+    const b = req.body || {};
+    presetReply(res, settingsLib.updatePreset(req.params.name, b, player.settings()), () => (b.capture ? player.presetSaved(req.params.name) : player.presetsChanged()));
+});
+app.delete("/api/presets/:name", (req, res) => {
+    presetReply(res, settingsLib.deletePreset(req.params.name), () => player.presetsChanged());
+});
 
 // ---------- Photos ----------
 // The image of a photo, sized for a screen (1920x1080 box) or as a thumbnail; cached on the SD card.
@@ -393,7 +417,8 @@ app.get("/api/photo/:id", wrap(async (req, res) => {
     if (!p) return res.status(404).json({ error: "unknown photo id" });
     const size = req.query.size === "thumb" ? "thumb" : "screen";
     try {
-        const file = await library.image(p, size, { urgent: true });
+        // Thumbnails (the phone's galleries) wait their turn behind the slideshow's own images.
+        const file = await library.image(p, size, size === "thumb" ? { low: true } : { urgent: true });
         library.touch(file);
         res.set("cache-control", "private, max-age=86400");
         res.sendFile(file);
@@ -453,6 +478,28 @@ app.get("/api/ratings", wrap(async (req, res) => res.json({
     skipped: catalogue.pathsWithRating(order.SKIPPED).length,
     ...await ratings.status(),
 })));
+
+// The photos behind a rating, for the phone's Favourites and Skipped galleries (newest first).
+function photoCard(p) {
+    const i = player.info(p);
+    const id = library.register(p);
+    return { id, url: `/api/photo/${id}`, thumb: `/api/photo/${id}?size=thumb`, date: i.date, event: i.event,
+        place: i.place ? `${i.place.name}, ${i.place.country}` : null, rating: i.rating, upright: i.upright, file: p };
+}
+app.get("/api/ratings/photos", (req, res) => {
+    const rating = { favourites: order.FAVOURITE, skipped: order.SKIPPED }[req.query.kind];
+    if (!rating) return res.status(400).json({ error: "kind must be favourites or skipped" });
+    const offset = Math.max(0, Number(req.query.offset) || 0), limit = Math.max(1, Math.min(Number(req.query.limit) || 60, 200));
+    const all = catalogue.pathsWithRating(rating).map((p) => [p, player.info(p).date || ""]).sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0));
+    res.json({ kind: req.query.kind, total: all.length, offset, photos: all.slice(offset, offset + limit).map(([p]) => photoCard(p)) });
+});
+
+// Cover pictures for the phone's Browse pages: { "<group>": thumbnail url }, the same all day.
+app.get("/api/browse/covers", (req, res) => {
+    const d = new Date();
+    const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    res.json({ covers: Object.fromEntries(Object.entries(catalogue.covers(day)).map(([k, p]) => [k, `/api/photo/${library.register(p)}?size=thumb`])) });
+});
 
 // Set a rating and wait for the verified result: { rating: 0|1|5, id? or path? } (no id: the photo on screen).
 app.post("/api/photo/rating", wrap(async (req, res) => {

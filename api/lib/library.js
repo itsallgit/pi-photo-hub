@@ -132,11 +132,19 @@ const SIZES = { screen: () => config.screenBox, thumb: () => config.thumbBox };
 const inflight = new Map();
 let imageSlots = 2; // Picapport resizes at most this many at once
 const waiting = [];
-// A viewer waiting for a photo goes before the look-ahead (urgent requests join the front).
-async function slot(fn, urgent) {
-    if (imageSlots === 0) await new Promise((r) => (urgent ? waiting.unshift(r) : waiting.push(r)));
+const waitingLow = []; // thumbnails for the phone's galleries: never in the slideshow's way
+// A viewer waiting for a photo goes before the look-ahead (urgent requests join the front). A
+// low-priority request runs only when both slots are free and nothing else waits, so one slot always
+// stays open for the slideshow.
+async function slot(fn, urgent, low) {
+    if (low) while (imageSlots < 2 || waiting.length) await new Promise((r) => waitingLow.push(r));
+    else if (imageSlots === 0) await new Promise((r) => (urgent ? waiting.unshift(r) : waiting.push(r)));
     imageSlots--;
-    try { return await fn(); } finally { imageSlots++; const next = waiting.shift(); if (next) next(); }
+    try { return await fn(); } finally {
+        imageSlots++;
+        const next = waiting.shift() || waitingLow.shift();
+        if (next) next();
+    }
 }
 const metaCache = new Map(); // path -> { date, width, height } from Picapport (when not in the catalogue)
 
@@ -145,7 +153,7 @@ function cacheFile(p, size) { return path.join(imagesDir(), `${photoId(p)}-${siz
 function cached(p, size) { return fs.existsSync(cacheFile(p, size)); }
 
 // Returns the cache file of a resized image, fetching it from Picapport if needed.
-async function image(p, size = "screen", { urgent = false } = {}) {
+async function image(p, size = "screen", { urgent = false, low = false } = {}) {
     if (!SIZES[size]) throw new Error(`unknown size ${size}`);
     const file = cacheFile(p, size);
     if (fs.existsSync(file)) return file;
@@ -171,7 +179,7 @@ async function image(p, size = "screen", { urgent = false } = {}) {
             fs.renameSync(tmp, file);
             noteWritten(buf.length);
             return file;
-        }, urgent).finally(() => inflight.delete(key)));
+        }, urgent, low).finally(() => inflight.delete(key)));
     }
     return inflight.get(key);
 }

@@ -13,6 +13,7 @@ const library = require("./library");
 const settingsLib = require("./settings");
 const order = require("./order");
 const history = require("./history");
+const build = require("./build");
 
 const CARD_MS = 4000; // a title card shows this long before the event's first photo
 const LOOK_AHEAD = 2;
@@ -321,7 +322,7 @@ async function setSource(src, { settings, preset } = {}) {
     if (err) throw Object.assign(new Error(err), { status: 400 });
     let nextSettings = s.settings;
     if (preset) {
-        const r = settingsLib.applyPreset(preset);
+        const r = settingsLib.applyPreset(preset, s.settings);
         if (r.error) throw Object.assign(new Error(r.error), { status: 400 });
         nextSettings = r.value;
     }
@@ -393,9 +394,21 @@ function setSettings(change) {
 }
 
 function applyPreset(name) {
-    const r = settingsLib.applyPreset(name);
+    const r = settingsLib.applyPreset(name, s.settings);
     if (r.error) throw Object.assign(new Error(r.error), { status: 400 });
     applySettings(r.value, r.value);
+    return view();
+}
+
+// The owner's presets: the one just saved is the one in use; every screen hears the list changed.
+function presetSaved(name) {
+    s.settings = { ...s.settings, preset: name };
+    changed("settings");
+    return view();
+}
+function presetsChanged() {
+    if (s.settings.preset && !settingsLib.presets({ all: true }).some((p) => p.name === s.settings.preset)) s.settings = { ...s.settings, preset: null };
+    changed("settings");
     return view();
 }
 
@@ -457,6 +470,8 @@ function view() {
     for (let k = 1; k <= LOOK_AHEAD && k < items.length; k++) next.push(photoView((i + k) % items.length));
     return {
         v: s.version,
+        build: build.id(), // a page still running older code reloads itself when this changes
+        presetsRev: settingsLib.presetsRev(),
         serverTime: now,
         status: items.length ? s.status : (s.preparing ? "preparing" : "empty"),
         preparing: s.preparing,
@@ -544,6 +559,6 @@ function stop() {
 }
 
 module.exports = {
-    start, stop, view, step, jump, pause, play, toggle, setToast, ratingChanged, setSource, setSettings, applyPreset, checkSource, describeSource,
+    start, stop, view, step, jump, pause, play, toggle, setToast, ratingChanged, setSource, setSettings, applyPreset, presetSaved, presetsChanged, checkSource, describeSource,
     current, source, settings, itemsCount, info, setSourceLabel,
 };

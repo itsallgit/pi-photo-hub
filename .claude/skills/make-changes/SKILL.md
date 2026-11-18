@@ -24,7 +24,7 @@ Replaces the per-change agreement of `CLAUDE.md` "Working with the owner" **for 
 
 ## Build and test on the PC
 
-- A setting is added in four places: `api/lib/settings.js` (check), `config/slideshow-presets.json` (default, presets), where it acts (`show.js` or `order.js`/`player.js`), and the phone's settings pane (`controls.js`, `settingsPane`). Viewers get every setting in each state event, so the page needs no new route.
+- A setting is added in four places: `api/lib/settings.js` (check), `config/slideshow-presets.json` (default, presets), where it acts (`show.js` or `order.js`/`player.js`), and the phone's settings page (`settings-ui.js`). A new value of a clock, caption or transition setting is added to the `catalog` in `config/slideshow-presets.json`, and its drawing to `hud.js` or `show.js` with `show.css`; the menus follow by themselves. Viewers get every setting in each state event, so the page needs no new route.
 - Tests (all must pass before a commit):
   - `bash scripts/check.sh` (on a branch `--base origin/main`): shell, secrets, skills, the API smoke and unit tests (`api/test/smoke.js`, `unit.js`, against `api/test/fake-picapport.js`), the Python tests (`scripts/test/`). Needs `cd api && npm install` once.
   - Page changes: `cd tools/browser-test && npm install && node run.js` (headless Chrome against the fake Picapport; shelf and phone, `--only <text>` for one test). Add a test for what you built. **Look at the screenshots** in `tools/browser-test/shots/` (the Read tool) before you call it done: wrong layout shows there, not in a test.

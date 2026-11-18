@@ -504,6 +504,61 @@ async function main() {
         const v = await until(async () => { const x = await player(); return x.source.label === "unseen" && x.count ? x : null; }, "unseen photos");
         assert.ok(v.count <= s.notSeen.photos);
     });
+    await ok("presets: save the current look, apply, rename, reorder, hide, delete; built-ins are protected", async () => {
+        const clockStyle = { face: "flip", size: "xl", position: "bottom-right" };
+        const captions = { items: [{ id: "a", field: "date", format: "long", corner: "top-left", size: "xl", font: "serif" }, { id: "b", field: "date", format: "ago", corner: "top-left", size: "s", font: "caps" }], groups: { "top-left": { look: "glass", tone: "auto" } } };
+        assert.equal((await api("PATCH", "/api/player/settings", { clock: true, clockStyle, captions, overlayMode: "custom", transition: "random" })).status, 200);
+        const saved = await api("POST", "/api/presets", { label: "Living room" });
+        assert.equal(saved.status, 200);
+        assert.equal(saved.body.preset.name, "my-living-room");
+        assert.equal((await player()).settings.preset, "my-living-room");
+        assert.equal((await api("POST", "/api/presets", { label: "living ROOM" })).status, 409, "the same name twice");
+        assert.equal((await api("POST", "/api/presets", { label: "  " })).status, 400);
+        await api("POST", "/api/player/preset", { name: "night" });
+        let v = await player();
+        assert.equal(v.settings.overlayMode, "styles", "a built-in preset uses the classic overlay");
+        assert.equal(v.settings.clockStyle.face, "flip", "the clock is kept");
+        assert.deepEqual(v.settings.captions, captions, "your layout is kept for later");
+        assert.deepEqual(v.preset.changed, []);
+        await api("PATCH", "/api/player/settings", { clock: false, captions: null });
+        await api("POST", "/api/player/preset", { name: "my-living-room" });
+        v = await player();
+        assert.equal(v.settings.clock, true);
+        assert.deepEqual(v.settings.captions, captions, "a saved preset brings everything back");
+        assert.equal(v.settings.transition, "random");
+        assert.deepEqual(v.preset.changed, []);
+        assert.equal((await api("PUT", "/api/presets/my-living-room", { label: "Evenings", move: -1 })).status, 200);
+        let all = (await api("GET", "/api/presets?all=1")).body.presets;
+        assert.deepEqual(all.map((p) => p.label), ["Ambient", "Present", "Guests", "Evenings", "Night"]);
+        assert.equal((await api("PUT", "/api/presets/night", { hidden: true })).status, 200);
+        assert.ok(!(await api("GET", "/api/presets")).body.presets.some((p) => p.name === "night"), "hidden from the list");
+        assert.ok((await api("GET", "/api/presets?all=1")).body.presets.some((p) => p.name === "night" && p.hidden));
+        await api("PUT", "/api/presets/night", { hidden: false });
+        assert.equal((await api("PUT", "/api/presets/night", { label: "Mine" })).status, 409, "a built-in cannot be renamed");
+        assert.equal((await api("DELETE", "/api/presets/night")).status, 409, "a built-in cannot be deleted");
+        assert.equal((await api("DELETE", "/api/presets/my-living-room")).status, 200);
+        assert.equal((await player()).settings.preset, null, "the deleted preset is no longer in use");
+        assert.equal((await api("DELETE", "/api/presets/my-living-room")).status, 404);
+        await api("PATCH", "/api/player/settings", { clock: false, captions: null, overlayStyle: 0, transition: "fade" });
+    });
+    await ok("settings: clock and captions are checked against the catalog", async () => {
+        for (const bad of [{ clockStyle: { face: "sundial" } }, { clockStyle: { opacity: 5 } }, { transition: "wipe" },
+            { captions: { items: [{ id: "a", field: "mood", format: "x", corner: "top-left", size: "s", font: "sans" }] } },
+            { captions: { items: [{ id: "a", field: "date", format: "ago", corner: "center", size: "s", font: "sans" }] } }]) {
+            assert.equal((await api("PATCH", "/api/player/settings", bad)).status, 400, JSON.stringify(bad));
+        }
+    });
+    await ok("the phone's galleries and covers: rated photos with thumbnails; every cover is a known photo", async () => {
+        const counts = (await api("GET", "/api/ratings")).body;
+        const fav = (await api("GET", "/api/ratings/photos?kind=favourites")).body;
+        assert.equal(fav.total, counts.favourites);
+        assert.equal(fav.photos.length, counts.favourites);
+        if (fav.photos.length) assert.equal((await api("GET", fav.photos[0].thumb)).status, 200);
+        assert.equal((await api("GET", "/api/ratings/photos?kind=everything")).status, 400);
+        const covers = (await api("GET", "/api/browse/covers")).body.covers;
+        assert.ok(covers.all && covers["y:2021"] && covers["c:IT"] && covers["f:2021.05 - Noosa"]);
+        assert.ok((await player()).build, "the view says which page version is current");
+    });
     await ok("map points from the catalogue", async () => {
         const m = (await api("GET", "/api/map/points")).body;
         assert.equal(m.points.reduce((a, p) => a + p[2], 0), 20); // Noosa 12 + Cinque Terre 8

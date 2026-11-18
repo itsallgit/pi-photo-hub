@@ -1,6 +1,8 @@
-// controls.js - the phone controls layer (R14, R20 UI). The same page as the shelf; on a phone a tap
+// controls.js - the phone's controls (R14, R20, B41). The same page as the shelf; on a phone a tap
 // shows the controls (and asks for full screen), a swipe steps back or forward. Everything goes
 // through the photo API, so the shelf, the phone and Paseo always show the same slideshow.
+// This file is the shell: the bars over the photo, the panel with its pages, the shared building
+// blocks, and Search. Browse is browse.js, Settings settings-ui.js, the map map.js.
 // Not shown on the shelf screen (kiosk).
 "use strict";
 (function () {
@@ -12,15 +14,55 @@
     for (const [k, v] of Object.entries(attrs)) {
       if (k === "on") for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn);
       else if (k === "class") e.className = v;
+      else if (k === "value") e.value = v;
       else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? "" : v);
     }
     for (const kid of kids.flat(Infinity)) if (kid !== null && kid !== undefined && kid !== false) e.append(kid.nodeType ? kid : String(kid));
     return e;
   };
+
+  // ---------- icons: one hand-drawn set, 24 px grid, 1.7 px line ----------
+  const ICONS = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+    browse: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+    map: '<path d="m9 4.5-5 2v13l5-2 6 2 5-2v-13l-5 2z"/><path d="M9 4.5v13M15 6.5v13"/>',
+    settings: '<path d="M4 7h9M18 7h2M4 17h2M11 17h9"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="8.5" cy="17" r="2.5"/>',
+    close: '<path d="m6 6 12 12M18 6 6 18"/>', back: '<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>', chevron: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>', down: '<path d="m5.5 9.5 6.5 6.5 6.5-6.5"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', plus: '<path d="M12 5v14M5 12h14"/>', up: '<path d="m5.5 14.5 6.5-6.5 6.5 6.5"/>',
+    star: '<path d="m12 3.8 2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/>',
+    ban: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
+    prev: '<path d="M18.5 6v12L9 12zM5.5 6v12"/>', next: '<path d="M5.5 6v12L15 12zM18.5 6v12"/>',
+    play: '<path d="M7.5 5v14l11.5-7z"/>', pause: '<path d="M8.5 5.5v13M15.5 5.5v13"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    pin: '<path d="M12 21s7-6.2 7-11.5a7 7 0 1 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    people: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.8 20c.5-3.6 3-5.5 6.2-5.5s5.7 1.9 6.2 5.5"/><path d="M16 5.3a3.5 3.5 0 0 1 0 6.4M18 14.9c1.8.8 3 2.5 3.3 5.1"/>',
+    tag: '<path d="M3.5 12.2V5a1.5 1.5 0 0 1 1.5-1.5h7.2L20.5 12a1.6 1.6 0 0 1 0 2.2l-6.3 6.3a1.6 1.6 0 0 1-2.2 0z"/><circle cx="8" cy="8" r="1.3"/>',
+    folder: '<path d="M3.5 18V6.5A1.5 1.5 0 0 1 5 5h4.5l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/>',
+    sparkle: '<path d="M12 3.5c.7 4.8 3.2 7.3 8 8-4.8.7-7.3 3.2-8 8-.7-4.8-3.2-7.3-8-8 4.8-.7 7.3-3.2 8-8z"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.3 2"/>',
+    type: '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>', film: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M8.5 5v14M15.5 5v14M3.5 12h17"/>',
+    monitor: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M12 16.5V20M8 20h8"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/>',
+    trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>', copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 8.5V6A2 2 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>',
+    pencil: '<path d="M4 20l1-4.5L16.5 4a2.1 2.1 0 0 1 3 3L8.5 19z"/>', eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+    eyeoff: '<path d="M4 4l16 16M9.8 5.8A9 9 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a15 15 0 0 1-3 3.7M6.5 7.4A15 15 0 0 0 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4-.9"/>',
+    moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>', image: '<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.7"/><path d="m4 17 5-4 3.5 2.8L16 12.5l4.5 4"/>',
+    bookmark: '<path d="M6.5 3.5h11v17L12 16.5l-5.5 4z"/>', shuffle: '<path d="M3.5 7h3.2c5 0 6.6 10 11.6 10h2.2M3.5 17h3.2c1.7 0 3-1.1 4-2.7M13.5 9.7c1-1.6 2.5-2.7 4.8-2.7h2.2M18 4.5 20.5 7 18 9.5M18 14.5l2.5 2.5-2.5 2.5"/>',
+    hash: '<path d="M9.5 4 7.5 20M16.5 4l-2 16M4.5 9h16M3.5 15h16"/>',
+  };
+  function icon(name, cls) {
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("viewBox", "0 0 24 24");
+    s.setAttribute("class", `ic${cls ? ` ${cls}` : ""}`);
+    s.setAttribute("aria-hidden", "true");
+    s.innerHTML = ICONS[name] || "";
+    return s;
+  }
+
   const api = Show.api;
-  let st = null, presets = null, vocab = null, words = null;
-  let sheet = null; // "search" | "browse" | "settings" | "map" | null
-  let hideTimer = null;
+  let st = null, presetData = null, presetsRev = null, vocab = null, words = null;
+  let sheet = null; // "search" | "browse" | "map" | "settings" | null
+  let stack = []; // the pages open in the panel, deepest last
+  let lastTab = "browse", hideTimer = null, settingsKey = null, sliding = false, modal = null;
 
   // ---------- messages ----------
   let msgTimer = null;
@@ -32,12 +74,12 @@
     msgTimer = setTimeout(() => m.remove(), 2600);
   }
   async function act(fn, done) {
-    try { const r = await fn(); if (done) say(typeof done === "function" ? done(r) : done); return r; } catch (e) { say(e.message); }
+    try { const r = await fn(); if (done) say(typeof done === "function" ? done(r) : done); return r; } catch (e) { say(e.message); return undefined; }
   }
 
   // ---------- showing and hiding ----------
   function visible() { return !root.classList.contains("hidden"); }
-  // While the controls show, the on-photo words step aside (the controls show the same and more).
+  // While the controls show, the words on the photo step aside (the controls show the same and more).
   function show() { root.classList.remove("hidden"); document.body.classList.add("controls-on"); poke(); }
   function hide() { if (sheet) return; root.classList.add("hidden"); document.body.classList.remove("controls-on"); }
   function poke() { clearTimeout(hideTimer); if (!sheet) hideTimer = setTimeout(hide, 6000); }
@@ -45,24 +87,19 @@
     if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
     try { await document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch { /* the browser said no; the page still works */ }
   }
+  const step = (dir) => act(() => Show.step(dir));
 
-  // Tap: full screen and the controls. Swipe left/right: next/back.
+  // Tap: full screen and the controls. Swipe left/right: next/back, at once.
   let touch = null;
   document.getElementById("stage").parentElement.addEventListener("pointerdown", (e) => {
-    if (window.SHOW_DEBUG) console.log("pointerdown", e.target.id || e.target.className, e.clientX);
     if (root.contains(e.target) && e.target !== root) return;
     touch = { x: e.clientX, y: e.clientY, t: Date.now() };
   });
-  window.addEventListener("pointercancel", (e) => { if (window.SHOW_DEBUG) console.log("pointercancel"); });
   window.addEventListener("pointerup", (e) => {
     if (!touch) return;
-    if (window.SHOW_DEBUG) console.log("pointerup", e.clientX, touch.x, e.clientY, touch.y);
     const dx = e.clientX - touch.x, dy = e.clientY - touch.y;
     touch = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      act(() => api("POST", dx < 0 ? "/api/player/next" : "/api/player/back"));
-      return;
-    }
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { step(dx < 0 ? 1 : -1); return; }
     if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
       fullscreen();
       if (sheet) { closeSheet(); return; }
@@ -70,67 +107,197 @@
     }
   });
   document.addEventListener("keydown", (e) => { // a keyboard (PC, TV browser) works too
-    if (e.target.tagName === "INPUT") return;
-    if (e.key === "ArrowRight") act(() => api("POST", "/api/player/next"));
-    else if (e.key === "ArrowLeft") act(() => api("POST", "/api/player/back"));
+    if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
+    if (e.key === "ArrowRight") step(1);
+    else if (e.key === "ArrowLeft") step(-1);
     else if (e.key === " ") act(() => api("POST", "/api/player/toggle"));
+    else if (e.key === "Escape" && sheet) closeSheet();
   });
 
-  // ---------- now playing ----------
+  // ---------- the bars over the photo ----------
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const presetLabel = (n) => (presetData && (presetData.presets.find((p) => p.name === n) || {}).label) || n;
+  const round = (name, label, click, cls) => h("button", { class: `round${cls ? ` ${cls}` : ""}`, "aria-label": label, on: { click } }, icon(name));
   function renderBars() {
-    const cur = st.current;
-    const i = (cur && cur.info) || {};
+    const i = (st.current && st.current.info) || {};
+    const sub = [st.count ? `${(st.position + 1).toLocaleString()} of ${st.count.toLocaleString()}` : "",
+      st.preset ? `${presetLabel(st.preset.name)}${st.preset.changed.length ? " (changed)" : ""}` : "",
+      st.preparing ? `getting ${st.preparing.label} ready${st.preparing.total ? ` ${Math.round((100 * st.preparing.done) / st.preparing.total)}%` : ""}` : ""].filter(Boolean).join("  ·  ");
     const top = h("div", { class: "bar top" },
-      h("div", { class: "title" },
-        h("div", { class: "t1" }, st.source && st.source.label ? st.source.label : "Slideshow"),
-        h("div", { class: "t2" }, st.count ? `${st.position + 1} of ${st.count}` : "", st.preset ? ` · ${presetLabel(st.preset.name)}${st.preset.changed.length ? " (changed)" : ""}` : "",
-          st.preparing ? ` · getting ${st.preparing.label} ready${st.preparing.total ? ` ${Math.round((100 * st.preparing.done) / st.preparing.total)}%` : ""}` : "")),
-      h("button", { "aria-label": "Search", on: { click: () => openSheet("search") } }, "🔍"),
-      h("button", { "aria-label": "Browse", on: { click: () => openSheet("browse") } }, "☰"),
-      h("button", { "aria-label": "Settings", on: { click: () => openSheet("settings") } }, "⚙"));
+      h("div", { class: "title" }, h("div", { class: "t1" }, st.source && st.source.label ? st.source.label : "Slideshow"), h("div", { class: "t2" }, sub)),
+      h("div", { class: "bar-actions" }, round("search", "Search", () => openSheet("search")), round("browse", "Browse", () => openSheet("browse")), round("settings", "Settings", () => openSheet("settings"))));
     const info = h("div", { class: "info" },
-      i.date ? h("div", { class: "when" }, `${Number(i.date.slice(8, 10))} ${MONTHS[Number(i.date.slice(5, 7)) - 1]} ${i.date.slice(0, 4)}`, h("span", { class: "muted" }, ` · ${Show.relDate(i.date)}`)) : null,
-      i.place ? h("div", {}, i.place) : null,
-      i.event ? h("div", { class: "muted" }, i.event) : null,
-      i.people && i.people.length ? h("div", { class: "muted" }, i.people.join(", ")) : null);
-    const bottom = h("div", { class: "bar bottom" }, info,
-      h("div", { class: "buttons" },
-        h("button", { class: `big${i.favourite ? " on" : ""}`, "aria-label": "Star", on: { click: () => rate("favourite") } }, "★"),
-        h("button", { class: "big", "aria-label": "Back", on: { click: () => act(() => api("POST", "/api/player/back")) } }, "⏮"),
-        h("button", { class: "big", "aria-label": st.playing ? "Pause" : "Play", on: { click: () => act(() => api("POST", "/api/player/toggle")) } }, st.playing ? "❚❚" : "▶"),
-        h("button", { class: "big", "aria-label": "Next", on: { click: () => act(() => api("POST", "/api/player/next")) } }, "⏭"),
-        h("button", { class: `big bad${i.skipped ? " on" : ""}`, "aria-label": "Skip this photo", on: { click: () => rate("skip") } }, "⊘")));
-    return [top, bottom];
+      i.date ? h("div", { class: "when" }, `${Number(i.date.slice(8, 10))} ${MONTHS[Number(i.date.slice(5, 7)) - 1]} ${i.date.slice(0, 4)}`, h("span", { class: "muted" }, `  ·  ${Show.relDate(i.date)}`)) : null,
+      i.place ? h("div", { class: "line" }, icon("pin"), i.place) : null,
+      i.event ? h("div", { class: "line muted" }, icon("folder"), i.event) : null,
+      i.people && i.people.length ? h("div", { class: "line muted" }, icon("people"), i.people.join(", ")) : null);
+    const transport = h("div", { class: "transport" },
+      round("star", "Star", () => rate("favourite"), `side star${i.favourite ? " on" : ""}`),
+      round("prev", "Back", () => step(-1)),
+      round(st.playing ? "pause" : "play", st.playing ? "Pause" : "Play", () => act(() => api("POST", "/api/player/toggle")), "primary"),
+      round("next", "Next", () => step(1)),
+      round("ban", "Skip this photo", () => rate("skip"), `side bad${i.skipped ? " on" : ""}`));
+    return [top, h("div", { class: "bar bottom" }, info, transport)];
   }
   // The result arrives as a toast on every screen, also when saving is refused.
-  function rate(what) {
-    if (st.current) api("POST", "/api/photo/toggle", { what, id: st.current.id }).catch(() => {});
-  }
-  const presetLabel = (n) => (presets && (presets.presets.find((p) => p.name === n) || {}).label) || n;
-
-  // ---------- the sheet ----------
-  function openSheet(name) { sheet = name; clearTimeout(hideTimer); if (name === "browse") ratingCounts = null; render(); }
-  function closeSheet() { sheet = null; render(); poke(); }
-  function renderSheet() {
-    const tab = (name, label) => h("button", { class: sheet === name ? "on" : "", on: { click: () => openSheet(name) } }, label);
-    const panes = { search: searchPane, browse: browsePane, settings: settingsPane, map: mapPane };
-    return h("div", { class: "sheet", on: { pointerdown: (e) => e.stopPropagation(), pointerup: (e) => e.stopPropagation() } },
-      h("div", { class: "tabs" }, tab("search", "Search"), tab("browse", "Browse"), window.ShowMap ? tab("map", "Map") : null, tab("settings", "Settings"),
-        h("span", { class: "spacer" }), h("button", { "aria-label": "Close", on: { click: closeSheet } }, "✕")),
-      h("div", { class: "pane" }, (panes[sheet] || searchPane)()));
+  function rate(what) { if (st.current) api("POST", "/api/photo/toggle", { what, id: st.current.id }).catch(() => {}); }
+  function updateBars() {
+    const [top, bottom] = renderBars();
+    const old = root.querySelectorAll(":scope > .bar");
+    if (old.length === 2) { old[0].replaceWith(top); old[1].replaceWith(bottom); } else root.prepend(top, bottom);
   }
 
-  // ---------- search: type a word, pick it, AND or OR, the next ----------
-  const STOP = new Set(["in", "of", "the", "and", "at", "on", "from", "to", "with", "a", "an", "for", "photos", "pictures"]);
-  let picked = []; // { kind, label, query?, place?, year?, op }
-  let typed = "";
-  let countText = "";
+  // ---------- the panel and its pages ----------
+  const TABS = [["search", "Search", "search"], ["browse", "Browse", "browse"], ["map", "Map", "map"], ["settings", "Settings", "settings"]];
+  const rootPage = (name) => ({ search: searchPage, browse: () => window.ShowPanes.browse(app), map: () => window.ShowPanes.map(app), settings: () => window.ShowPanes.settings(app) }[name] || searchPage)();
+  const top = () => stack[stack.length - 1];
+  function openSheet(name) {
+    if (name !== "map") lastTab = name;
+    sheet = name; stack = [rootPage(name)];
+    clearTimeout(hideTimer);
+    renderPanel("enter");
+  }
+  function closeSheet() { sheet = null; stack = []; closeModal(); const p = root.querySelector(".panel"); if (p) p.remove(); poke(); }
+  function push(page) { stack.push(page); renderPanel("push"); }
+  function replace(page) { stack[stack.length - 1] = page; renderPanel("push"); }
+  function back() { if (stack.length > 1) { stack.pop(); renderPanel("pop"); } else closeSheet(); }
+  function renderPanel(motion) {
+    let panel = root.querySelector(".panel");
+    const fresh = !panel;
+    if (fresh) {
+      panel = h("div", { class: "panel", on: { pointerdown: (e) => e.stopPropagation(), pointerup: (e) => e.stopPropagation() } }, h("div", { class: "panel-bg" }, h("img", { alt: "" })));
+      root.append(panel);
+      updateBackdrop();
+    }
+    const page = top();
+    panel.classList.toggle("is-full", !!page.full);
+    panel.dataset.tab = sheet;
+    panel.querySelectorAll(":scope > .rail, :scope > .panel-main").forEach((n) => n.remove());
+    const rail = h("nav", { class: "rail" }, TABS.map(([name, label, ic]) => h("button", { class: sheet === name ? "on" : "", "aria-current": sheet === name ? "page" : null, on: { click: () => openSheet(name) } }, icon(ic), h("span", {}, label))));
+    const head = page.full ? null : h("header", { class: "page-head" },
+      stack.length > 1 ? round("back", "Go back", back) : null,
+      h("div", { class: "page-title" }, h("h2", {}, page.title), page.sub ? h("p", {}, typeof page.sub === "function" ? page.sub() : page.sub) : null),
+      page.actions ? page.actions() : null,
+      round("close", "Close", closeSheet));
+    const body = h("div", { class: "page-body" }, page.render());
+    const main = h("div", { class: `panel-main${motion ? ` go-${motion}` : ""}` }, head, h("div", { class: "pane" }, body));
+    panel.append(rail, main);
+    settingsKey = keyOf();
+  }
+  // Redraw the open page where it is (new data, or a setting changed elsewhere).
+  function refresh() {
+    const pane = root.querySelector(".panel .pane");
+    if (!pane || !top()) return;
+    const y = pane.scrollTop;
+    pane.querySelector(".page-body").replaceChildren(...[top().render()].flat(Infinity).filter(Boolean));
+    pane.scrollTop = y;
+    settingsKey = keyOf();
+  }
+  function updateBackdrop() {
+    const img = root.querySelector(".panel-bg img");
+    const u = st && st.current && st.current.thumb;
+    if (img && u && img.getAttribute("src") !== u) img.src = u;
+  }
+  const keyOf = () => (st ? JSON.stringify([st.settings, st.preset]) : "");
+
+  // ---------- pop-ups: a list to choose from, a question, a name to type ----------
+  function closeModal() { if (modal) { modal.remove(); modal = null; } }
+  function openModal(cls, ...kids) {
+    closeModal();
+    modal = h("div", { class: "modal", on: { pointerdown: (e) => { e.stopPropagation(); if (e.target === modal) closeModal(); }, pointerup: (e) => e.stopPropagation() } }, h("div", { class: `modal-card ${cls}`, role: "dialog", "aria-modal": "true" }, kids));
+    root.append(modal);
+    return modal;
+  }
+  function pick({ title, options, value, onPick, demo }) {
+    openModal("picker", h("div", { class: "modal-head" }, h("h3", {}, title), round("close", "Close", closeModal)),
+      h("div", { class: "picker-list" }, options.map((o) => h("button", { class: `option${o.name === value ? " on" : ""}`, on: { click: () => { closeModal(); onPick(o.name); } } },
+        demo ? h("span", { class: `tdemo t-${o.name}` }, h("i"), h("i")) : o.icon ? h("span", { class: "chip-ic" }, icon(o.icon)) : null,
+        h("span", { class: "option-text" }, h("b", {}, o.label), o.about ? h("small", {}, o.about) : null),
+        o.name === value ? icon("check", "tick") : null))));
+    const on = modal.querySelector(".option.on");
+    if (on) on.scrollIntoView({ block: "center" });
+  }
+  function ask({ title, text, ok = "OK", danger }) {
+    return new Promise((res) => {
+      openModal("dialog", h("h3", {}, title), text ? h("p", {}, text) : null, h("div", { class: "dialog-actions" },
+        h("button", { class: "btn", on: { click: () => { closeModal(); res(false); } } }, "Cancel"),
+        h("button", { class: `btn ${danger ? "danger" : "accent"}`, on: { click: () => { closeModal(); res(true); } } }, ok)));
+    });
+  }
+  function promptText({ title, text, value = "", placeholder, ok = "Save" }) {
+    return new Promise((res) => {
+      const input = h("input", { type: "text", class: "field", maxlength: 40, value, placeholder, autocomplete: "off" });
+      const done = (v) => { closeModal(); res(v); };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") done(input.value.trim() || null); });
+      openModal("dialog", h("h3", {}, title), text ? h("p", {}, text) : null, input, h("div", { class: "dialog-actions" },
+        h("button", { class: "btn", on: { click: () => done(null) } }, "Cancel"),
+        h("button", { class: "btn accent", on: { click: () => done(input.value.trim() || null) } }, ok)));
+      setTimeout(() => { input.focus(); input.select(); }, 60);
+    });
+  }
+
+  // ---------- building blocks ----------
+  const ui = {
+    group: (title, ...rows) => h("section", { class: "group" }, title ? h("h3", {}, title) : null, h("div", { class: "group-card" }, rows)),
+    row: (label, sub, control, opts = {}) => h(opts.click ? "button" : "div", { class: `row${opts.cls ? ` ${opts.cls}` : ""}`, on: opts.click ? { click: opts.click } : undefined },
+      opts.icon ? h("span", { class: "chip-ic" }, icon(opts.icon)) : null,
+      h("span", { class: "row-text" }, h("span", { class: "row-label" }, label), sub ? h("small", {}, sub) : null), control),
+    toggle: (label, sub, value, onChange, opts = {}) => ui.row(label, sub,
+      h("span", { class: `switch${value ? " on" : ""}`, role: "switch", "aria-checked": value ? "true" : "false" }, h("i")),
+      { ...opts, cls: "is-toggle", click: () => onChange(!value) }),
+    select: (label, sub, options, value, onPick, opts = {}) => {
+      const cur = options.find((o) => o.name === value);
+      return ui.row(label, sub, h("span", { class: "select-value" }, h("span", {}, cur ? cur.label : value), icon("down")),
+        { ...opts, cls: "is-select", click: () => pick({ title: label, options, value, onPick, demo: opts.demo }) });
+    },
+    seg: (options, value, onPick) => h("div", { class: "seg", role: "radiogroup" }, options.map((o) => h("button", { class: o.name === value ? "on" : "", role: "radio", "aria-checked": o.name === value ? "true" : "false", on: { click: () => onPick(o.name) } }, o.short || o.label))),
+    stacked: (label, control, sub) => h("div", { class: "row stacked" }, h("span", { class: "row-text" }, h("span", { class: "row-label" }, label), sub ? h("small", {}, sub) : null), control),
+    slider: ({ label, sub, min, max, step: by = 1, value, format, onInput, onCommit }) => {
+      const out = h("span", { class: "slider-value" }, format(value));
+      const input = h("input", { type: "range", min, max, step: by, value, "aria-label": label, on: {
+        pointerdown: () => { sliding = true; }, input: (e) => { out.textContent = format(Number(e.target.value)); paintRange(e.target); if (onInput) onInput(Number(e.target.value)); },
+        change: (e) => { sliding = false; onCommit(Number(e.target.value)); } } });
+      paintRange(input);
+      return h("div", { class: "row stacked slider" }, h("span", { class: "row-text inline" }, h("span", { class: "row-label" }, label), out), input, sub ? h("small", { class: "slider-sub" }, sub) : null);
+    },
+    empty: (ic, title, text) => h("div", { class: "empty" }, h("span", { class: "empty-ic" }, icon(ic)), h("h4", {}, title), text ? h("p", {}, text) : null),
+    loading: (text = "Loading…") => h("div", { class: "loading" }, h("i"), text),
+    img: (src, cls) => { const i = h("img", { class: cls || "cover", alt: "", loading: "lazy", decoding: "async", src, on: { load: (e) => e.target.classList.add("in"), error: (e) => e.target.remove() } }); return i; },
+  };
+  function paintRange(input) { const p = ((input.value - input.min) / (input.max - input.min)) * 100; input.style.setProperty("--p", `${p}%`); }
+
+  // Change settings: shown here at once, sent to the Pi in order.
+  let sending = Promise.resolve(), unsent = 0;
+  function patch(change) {
+    const s = { ...st.settings, ...change };
+    if (change.clockStyle) s.clockStyle = { ...st.settings.clockStyle, ...change.clockStyle };
+    if (change.overlay) s.overlay = { ...st.settings.overlay, ...change.overlay };
+    if ((change.overlay || change.overlayStyle !== undefined) && change.overlayMode === undefined) s.overlayMode = "styles";
+    st = { ...st, settings: s };
+    refresh();
+    unsent++;
+    sending = sending.then(() => api("PATCH", "/api/player/settings", change)).catch((e) => say(e.message)).finally(() => { unsent--; });
+    return sending;
+  }
+
   async function loadVocab() {
     if (!vocab) vocab = await api("GET", "/api/vocabulary").catch(() => ({ keywords: [], people: [], folders: [], places: [], years: {} }));
     if (!words) words = await api("GET", "/api/words").catch(() => ({ words: {} }));
+    return vocab;
   }
-  function folderName(p) { const parts = p.split("/"); return parts[parts.length - 1]; }
+  async function play(source, msg) {
+    closeSheet();
+    say(`Starting ${source.label}…`);
+    await act(() => api("POST", "/api/player/source", { source }), (x) => msg || (x.preparing ? `Getting ${source.label} ready…` : `Playing ${source.label}: ${x.count} photos`));
+  }
+  const loadPresets = () => api("GET", "/api/presets?all=1").then((p) => { presetData = p; if (st) updateBars(); if (sheet === "settings") refresh(); }).catch(() => {});
+
+  // ---------- search: type a word, pick it, AND or OR, the next ----------
+  const STOP = new Set(["in", "of", "the", "and", "at", "on", "from", "to", "with", "a", "an", "for", "photos", "pictures"]);
+  const KIND_ICON = { "your word": "sparkle", keyword: "tag", person: "people", country: "pin", folder: "folder", year: "calendar" };
+  let picked = []; // { kind, label, query?, place?, year?, op }
+  let typed = "", countText = "";
+  const folderName = (p) => p.split("/").pop();
   function candidates() {
     const out = [];
     for (const [term, e] of Object.entries(words.words || {})) if (e.query) out.push({ kind: "your word", label: term, query: e.query, n: null, about: e.means });
@@ -159,19 +326,12 @@
     return scored.sort((a, b) => b[0] - a[0]).slice(0, 12).map((x) => x[1]);
   }
   function buildSource() {
-    const q = [];
-    const places = [], years = [];
-    picked.forEach((c, k) => {
-      if (c.query) {
-        const part = /\s/.test(c.query) && !/^dirall:/.test(c.query) && c.kind !== "your word" ? c.query : c.query;
-        if (q.length) q.push(c.op === "OR" ? "OR" : "");
-        q.push(part);
-      } else if (c.place) places.push(c.place);
-      else if (c.year) years.push(c.year);
+    const q = [], places = [], years = [];
+    picked.forEach((c) => {
+      if (c.query) { if (q.length) q.push(c.op === "OR" ? "OR" : ""); q.push(c.query); } else if (c.place) places.push(c.place); else if (c.year) years.push(c.year);
     });
     const query = q.filter(Boolean).join(" ").trim();
-    const label = picked.map((c, k) => (k ? (c.op === "OR" ? " or " : " + ") : "") + c.label).join("");
-    const src = { label };
+    const src = { label: picked.map((c, k) => (k ? (c.op === "OR" ? " or " : " + ") : "") + c.label).join("") };
     if (query) src.query = query;
     if (places.length) src.places = places;
     if (years.length) src.years = years;
@@ -182,164 +342,46 @@
     countText = "";
     if (src.query && !src.places && !src.years) {
       try { const r = await api("GET", `/api/count?q=${encodeURIComponent(src.query)}`); countText = `${r.results[0].count} photos`; } catch (e) { countText = e.message; }
-    } else if (picked.length) countText = "";
-    if (sheet === "search") render();
-  }
-  function searchPane() {
-    if (!vocab) { loadVocab().then(render); return h("div", {}, "Loading the words…"); }
-    const input = h("input", { type: "search", placeholder: "Type a word: a place, a person, a trip, a year…", value: typed, autocomplete: "off",
-      on: { input: (e) => { typed = e.target.value; const s = root.querySelector(".suggest"); if (s) s.replaceWith(suggestBox()); } } });
-    setTimeout(() => { if (sheet === "search" && document.activeElement !== input && !picked.length) input.focus(); }, 50);
-    return h("div", {}, input, suggestBox(),
-      h("div", { class: "picked" }, picked.map((c, k) => [
-        k ? h("button", { class: "op", on: { click: () => { c.op = c.op === "OR" ? "AND" : "OR"; updateCount(); render(); } } }, c.op === "OR" ? "or" : "and") : null,
-        h("span", { class: "chip" }, c.label, h("button", { class: "x", "aria-label": `Remove ${c.label}`, on: { click: () => { picked.splice(k, 1); updateCount(); render(); } } }, "✕"))])),
-      picked.length ? h("div", { class: "play-row" }, h("span", { class: "count" }, countText),
-        h("button", { on: { click: () => { picked = []; countText = ""; render(); } } }, "Clear"),
-        h("button", { class: "on", on: { click: playPicked } }, "Play")) : h("p", { class: "muted" }, "Pick words to combine them: \"and\" needs both, tap it to make it \"or\" (any of them)."));
+    }
+    const c = root.querySelector(".play-row .count"); // only the number: the person may be typing the next word
+    if (sheet === "search" && c) c.textContent = countText;
   }
   function suggestBox() {
-    return h("div", { class: "suggest" }, suggestions().map((c) => h("button", { on: { click: () => {
-      picked.push({ ...c, op: "AND" }); typed = ""; updateCount(); render();
-    } } }, h("span", {}, c.label), h("span", { class: "kind" }, `${c.kind}${c.n ? ` · ${c.n}` : ""}`))));
+    return h("div", { class: "suggest" }, suggestions().map((c) => h("button", { on: { click: () => { picked.push({ ...c, op: "AND" }); typed = ""; updateCount(); refresh(); } } },
+      h("span", { class: "chip-ic" }, icon(KIND_ICON[c.kind] || "pin")), h("span", { class: "row-text" }, h("span", { class: "row-label" }, c.label), h("small", { class: "kind" }, `${c.kind}${c.n ? ` · ${c.n.toLocaleString()}` : ""}`)))));
   }
-  async function playPicked() {
-    const src = buildSource();
-    closeSheet(); // at once: the answer can take a moment, and the sheet may be opened again meanwhile
-    say(`Starting ${src.label}…`);
-    await act(() => api("POST", "/api/player/source", { source: src }), (x) => (x.preparing ? `Getting ${src.label} ready…` : `Playing ${src.label}: ${x.count} photos`));
-  }
-  async function play(source, msg) {
-    closeSheet();
-    say(`Starting ${source.label}…`);
-    await act(() => api("POST", "/api/player/source", { source }), (x) => msg || (x.preparing ? `Getting ${source.label} ready…` : `Playing ${source.label}: ${x.count} photos`));
-  }
-
-  // ---------- browse: years, places, people, keywords, folders, specials ----------
-  const open = new Set();
-  let ratingCounts = null;
-  function browsePane() {
-    if (!vocab) { loadVocab().then(render); return h("div", {}, "Loading…"); }
-    if (!ratingCounts) { ratingCounts = {}; api("GET", "/api/ratings").then((r) => { ratingCounts = r; if (sheet === "browse") render(); }).catch(() => {}); }
-    const toggle = (k) => { if (open.has(k)) open.delete(k); else open.add(k); render(); };
-    const item = (label, n, onPlay, extra) => h("button", { on: { click: onPlay } }, h("span", {}, label), h("span", { class: "n" }, extra || (n ? `${n}` : "")));
-    const years = Object.entries(vocab.years || {}).sort();
-    const dateOrder = st.settings.order === "date-asc" || st.settings.order === "date-desc";
-    const tree = buildFolderTree(vocab.folders || []);
-    return h("div", { class: "list" },
-      h("h3", {}, dateOrder ? "Years: jump to" : "Years: play"),
-      h("div", { class: "years" }, years.map(([y, n]) => h("button", { on: { click: () => (dateOrder ? act(() => api("POST", "/api/player/jump", { year: Number(y) }), `Jumped to ${y}`) : play({ years: [Number(y)], label: y })) } }, `${y} `, h("span", { class: "n" }, n)))),
-      h("h3", {}, "Your choices"),
-      item("★ Favourites", ratingCounts.favourites, () => play({ favourites: true, label: "Favourites" })),
-      item("⊘ Skipped photos", ratingCounts.skipped, () => play({ skipped: true, label: "Skipped photos" })),
-      h("h3", {}, "Suggestions"),
-      item("This week in past years", null, () => play({ onThisDay: true, label: "This week in past years" })),
-      item("Not seen in a while (90 days)", null, () => play({ notSeenDays: 90, label: "Not seen in a while" })),
-      h("h3", {}, "Places"),
-      (vocab.places || []).length ? (vocab.places || []).map((c) => [
-        h("button", { on: { click: () => toggle(`c:${c.cc}`) } }, h("span", {}, `${open.has(`c:${c.cc}`) ? "▾" : "▸"} ${c.country}`), h("span", { class: "n" }, c.photos)),
-        open.has(`c:${c.cc}`) ? h("div", { class: "sub" }, item(`All of ${c.country}`, c.photos, () => play({ places: [c.key], label: c.country })),
-          c.cities.map((city) => item(city.city, city.photos, () => play({ places: [city.key], label: city.city })))) : null]) : h("p", {}, "No places yet (the nightly build adds them)."),
-      h("h3", {}, "People"),
-      (vocab.people || []).filter((p) => p.searchable).map((p) => item(p.word, p.photos, () => play({ query: p.word, label: p.word }))),
-      h("h3", {}, "Keywords"),
-      (vocab.keywords || []).filter((p) => p.searchable).map((p) => item(p.word, p.photos, () => play({ query: p.word, label: p.word }))),
-      h("h3", {}, "Folders"),
-      folderNodes(tree, toggle, item));
-  }
-  function buildFolderTree(folders) {
-    const root2 = { children: new Map() };
-    for (const f of folders) {
-      let node = root2;
-      for (const part of f.path.split("/")) {
-        if (!node.children.has(part)) node.children.set(part, { name: part, children: new Map() });
-        node = node.children.get(part);
-      }
-      node.folder = f;
-    }
-    return root2;
-  }
-  function folderNodes(node, toggle, item, depth = 0) {
-    return [...node.children.values()].sort((a, b) => (a.name < b.name ? 1 : -1)).map((n) => {
-      const key = `f:${n.folder ? n.folder.path : n.name}`;
-      const kids = n.children.size;
-      const row = kids
-        ? h("button", { on: { click: () => toggle(key) } }, h("span", {}, `${open.has(key) ? "▾" : "▸"} ${n.name}`), h("span", { class: "n" }, n.folder ? n.folder.photos : ""))
-        : item(n.name, n.folder && n.folder.photos, () => play({ query: n.folder.query, label: n.name }));
-      return [row, kids && open.has(key) ? h("div", { class: "sub" }, n.folder ? item(`All of ${n.name}`, n.folder.photos, () => play({ query: n.folder.query, label: n.name })) : null, folderNodes(n, toggle, item, depth + 1)) : null];
-    });
+  function searchPage() {
+    return { title: "Search", sub: "A place, a person, a trip, a year", render() {
+      if (!vocab || !words) { loadVocab().then(() => { if (sheet === "search") refresh(); }); return ui.loading("Loading your words…"); }
+      const input = h("input", { type: "search", class: "field", placeholder: "Try “Italy” or “2019”", value: typed, autocomplete: "off",
+        on: { input: (e) => { typed = e.target.value; root.querySelector(".suggest").replaceWith(suggestBox()); } } });
+      setTimeout(() => { if (sheet === "search" && input.isConnected && !picked.length) input.focus(); }, 50);
+      return h("div", { class: "search" }, h("div", { class: "search-box" }, icon("search"), input), suggestBox(),
+        picked.length ? h("div", { class: "picked" }, picked.map((c, k) => [
+          k ? h("button", { class: "op", on: { click: () => { c.op = c.op === "OR" ? "AND" : "OR"; updateCount(); refresh(); } } }, c.op === "OR" ? "or" : "and") : null,
+          h("span", { class: "chip" }, c.label, h("button", { class: "x", "aria-label": `Remove ${c.label}`, on: { click: () => { picked.splice(k, 1); updateCount(); refresh(); } } }, icon("close")))])) : null,
+        picked.length ? h("div", { class: "play-row" }, h("span", { class: "count" }, countText),
+          h("button", { class: "btn", on: { click: () => { picked = []; countText = ""; refresh(); } } }, "Clear"),
+          h("button", { class: "btn accent", on: { click: () => { const src = buildSource(); play(src); } } }, icon("play"), "Play"))
+          : h("p", { class: "hint" }, "Pick several words to combine them. “and” needs both; tap it to make it “or”."));
+    } };
   }
 
-  // ---------- settings ----------
-  let schedule = null;
-  function settingsPane() {
-    const s = st.settings;
-    const set = (change) => act(() => api("PATCH", "/api/player/settings", change));
-    const seg = (key, values, labels, sub) => h("div", { class: "seg" }, values.map((v, k) => {
-      const cur = sub ? s[key][sub] : s[key];
-      return h("button", { class: cur === v ? "on" : "", on: { click: () => set(sub ? { [key]: { [sub]: v } } : { [key]: v }) } }, labels ? labels[k] : String(v));
-    }));
-    const row = (label, control) => h("div", { class: "row" }, h("label", {}, label), control);
-    const onoff = (key, sub) => seg(key, [true, false], ["On", "Off"], sub);
-    if (!schedule) api("GET", "/api/schedule").then((x) => { schedule = x; if (sheet === "settings") render(); }).catch(() => {});
-    const styles = presets ? presets.overlayStyles : [];
-    return h("div", {},
-      h("h3", {}, "Presets"),
-      h("div", { class: "seg", style: "justify-content:flex-start" }, (presets ? presets.presets : []).map((p) =>
-        h("button", { class: s.preset === p.name ? "on" : "", title: p.about, on: { click: () => act(() => api("POST", "/api/player/preset", { name: p.name }), `${p.label}: ${p.about}`) } }, p.label))),
-      h("h3", {}, "Playing"),
-      row("Plays by itself", onoff("autoplay")),
-      row(`Each photo: ${s.interval} s`, h("div", { class: "seg" },
-        h("button", { on: { click: () => act(() => api("POST", "/api/player/nudge", { setting: "interval", by: -1 })) } }, "Faster"),
-        h("button", { on: { click: () => act(() => api("POST", "/api/player/nudge", { setting: "interval", by: 1 })) } }, "Slower"))),
-      row("Order", seg("order", ["random", "chapters", "date-asc", "date-desc"], ["Random", "Chapters", "Oldest first", "Newest first"])),
-      row("Upright photos", seg("upright", ["fill", "skip"], ["Show", "Skip"])),
-      row("One photo per burst", onoff("bursts")),
-      row("Favourites more often and longer", onoff("highlights")),
-      h("h3", {}, "Look"),
-      row("Motion", seg("motion", ["off", "subtle", "lively"], ["Off", "Subtle", "Lively"])),
-      row("Transition", seg("transition", ["fade", "slide", "zoom", "dip"], ["Fade", "Slide", "Zoom", "Dip"])),
-      row("Title cards", onoff("titleCards")),
-      row("Clock", onoff("clock")),
-      row("Night (dimmer)", onoff("night")),
-      h("h3", {}, "Words on screen"),
-      row("Date", seg("overlay", ["off", "absolute", "relative"], ["Off", "Date", "How long ago"], "date")),
-      row("Place", onoff("overlay", "place")),
-      row("Event", onoff("overlay", "event")),
-      row("People", onoff("overlay", "people")),
-      row(`Style: ${styles[s.overlayStyle] ? styles[s.overlayStyle].name : s.overlayStyle}`, h("button", { on: { click: () => act(() => api("POST", "/api/player/nudge", { setting: "overlayStyle" })) } }, "Next style")),
-      h("h3", {}, "Screen"),
-      row("Shelf screen", h("div", { class: "seg" },
-        h("button", { on: { click: () => act(() => api("POST", "/api/screen", { on: false }), "Screen off") } }, "Off"),
-        h("button", { on: { click: () => act(() => api("POST", "/api/screen", { on: false, minutes: 60 }), "Screen off for an hour") } }, "Off 1 h"),
-        h("button", { on: { click: () => act(() => api("POST", "/api/screen", { on: true }), "Screen on") } }, "On"))),
-      schedule ? row(`Every night: off ${schedule.off}, on ${schedule.on}`, h("div", { class: "seg" },
-        h("button", { class: schedule.enabled ? "on" : "", on: { click: async () => { schedule = await act(() => api("PUT", "/api/schedule", { enabled: !schedule.enabled }), (x) => (x.enabled ? "Nightly schedule on" : "Nightly schedule off")) || schedule; render(); } } }, schedule.enabled ? "On" : "Off"))) : null,
-      h("h3", {}, "Fallback"),
-      row("Shelf shows", seg("viewer", ["layer", "picapport"], ["This page", "Picapport's page"])));
-  }
-  function mapPane() { return window.ShowMap ? window.ShowMap.pane({ h, api, play, say }) : h("div", {}, "No map"); }
+  // ---------- the app the panels are built with ----------
+  const app = {
+    h, icon, api, say, act, ui, play, patch, pick, ask, promptText, push, replace, back, refresh, loadVocab, openSheet, closeSheet, loadPresets, closeMap: () => openSheet(lastTab),
+    get st() { return st; }, get vocab() { return vocab; }, get presets() { return presetData; },
+    isOpen: (name) => sheet === name, isTop: (page) => top() === page,
+  };
 
-  // ---------- render ----------
-  function render() {
-    if (!st) return;
-    const active = document.activeElement && document.activeElement.tagName === "INPUT" ? document.activeElement : null;
-    const scroll = root.querySelector(".pane") ? root.querySelector(".pane").scrollTop : 0;
-    root.replaceChildren(...renderBars(), ...(sheet ? [renderSheet()] : []));
-    const pane = root.querySelector(".pane");
-    if (pane) pane.scrollTop = scroll;
-    if (active) { const i = root.querySelector("input[type=search]"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
-  }
-  api("GET", "/api/presets").then((p) => { presets = p; render(); }).catch(() => {});
   Show.onState((s) => {
-    st = s;
-    // keep a typing person's sheet stable: re-render only the bars
-    if (sheet === "search" && document.activeElement && document.activeElement.tagName === "INPUT") {
-      const [top, bottom] = renderBars();
-      const bars = root.querySelectorAll(".bar");
-      if (bars.length === 2) { bars[0].replaceWith(top); bars[1].replaceWith(bottom); return; }
-    }
-    render();
+    st = unsent && st ? { ...s, settings: st.settings } : s; // an event from before a change must not undo it on screen
+    updateBars();
+    updateBackdrop();
+    if (s.presetsRev !== presetsRev) { presetsRev = s.presetsRev; loadPresets(); }
+    if (!sheet || sliding || top().full || keyOf() === settingsKey) return;
+    const typing = document.activeElement && ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName);
+    if (!typing && top().live) refresh(); else if (!typing) settingsKey = keyOf();
   });
-  window.ShowControls = { show, hide, openSheet, closeSheet, get picked() { return picked; } };
+  window.ShowControls = { show, hide, openSheet, closeSheet, busy: () => !!sheet || !!modal || visible(), get picked() { return picked; } };
 })();

@@ -1,8 +1,12 @@
-/* The slideshow page: photos, motion, transitions, overlay, title cards, clock, night look.
-   Only opacity and transform are animated (smooth on the Pi, M0.3); the blurred fill is a tiny
-   pre-blurred image stretched, never a CSS blur on a full-screen layer. */
+/* The slideshow page: photos, motion, transitions, captions, title cards, clock faces, night look.
+   Only opacity and transform are animated (smooth on the Pi, M0.3). Blur is never a CSS filter over
+   the moving photo: "frosted glass" is a pane showing the photo's small pre-blurred copy. */
+@font-face { font-family: "Inter"; src: url("/vendor/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("/vendor/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Oswald"; src: url("/vendor/fonts/oswald-latin-wght-normal.woff2") format("woff2"); font-weight: 200 700; font-display: swap; }
+
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: #fff;
-  font-family: "Segoe UI", Roboto, "Noto Sans", "DejaVu Sans", sans-serif; -webkit-tap-highlight-color: transparent; }
+  font-family: "Inter", "Segoe UI", Roboto, "Noto Sans", "DejaVu Sans", sans-serif; -webkit-tap-highlight-color: transparent; }
 body.kiosk { cursor: none; }
 .hidden { display: none !important; }
 
@@ -13,49 +17,131 @@ body.kiosk { cursor: none; }
 .slide .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 
 #dim { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 2s ease; }
+body.scrim-soft #dim { opacity: 0.28; }
+body.scrim-deep #dim { opacity: 0.6; }
 body.night #dim { opacity: 0.45; }
+body.night.scrim-deep #dim { opacity: 0.7; }
 
 /* Title card: the event's name and dates before its photos (R12). */
 #card { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, #1c1c1c 0%, #000 75%); opacity: 1; transition: opacity 1.2s ease; text-align: center; padding: 0 8vw; }
+  background: radial-gradient(ellipse at center, #1c1a1f 0%, #000 75%); opacity: 1; transition: opacity 1.2s ease; text-align: center; padding: 0 8vw; }
 #card.fade { opacity: 0; }
-#card .card-title { font-size: 7vh; font-weight: 300; letter-spacing: 0.02em; line-height: 1.15; }
-#card .card-dates { margin-top: 2.2vh; font-size: 3.4vh; color: #bbb; font-weight: 300; }
+#card .card-title { font-family: "Fraunces", Georgia, serif; font-size: 7vh; font-weight: 300; letter-spacing: 0.005em; line-height: 1.15; }
+#card .card-dates { margin-top: 2.2vh; font-size: 2.8vh; color: #bdb7ad; font-weight: 300; letter-spacing: .14em; text-transform: uppercase; }
 
-/* Overlay (R10): fields and style presets. */
-#overlay { position: fixed; pointer-events: none; line-height: 1.25; transition: opacity 0.8s ease; max-width: 70vw; }
-#overlay .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#overlay .main { font-weight: 600; }
-#overlay.size-small { font-size: 2.3vh; }
-#overlay.size-small .main { font-size: 2.8vh; }
-#overlay.size-large { font-size: 3.6vh; }
-#overlay.size-large .main { font-size: 4.6vh; }
-#overlay.pos-bottom-left { left: 3vw; bottom: 3.5vh; }
-#overlay.pos-bottom-right { right: 3vw; bottom: 3.5vh; text-align: right; }
-#overlay.pos-top-right { right: 3vw; top: 3.5vh; text-align: right; }
-#overlay.pos-bottom { left: 0; right: 0; bottom: 0; max-width: none; padding: 1.6vh 3vw; display: flex; gap: 2.5vw; align-items: baseline; flex-wrap: wrap; }
-#overlay.text-light { color: #fff; }
-#overlay.text-dark { color: #111; }
-#overlay.backing-shadow.text-light { text-shadow: 0 0 0.4em rgba(0,0,0,.9), 0 0.08em 0.2em rgba(0,0,0,.9); }
-#overlay.backing-shadow.text-dark { text-shadow: 0 0 0.4em rgba(255,255,255,.9); }
-#overlay.backing-strip.text-light { background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.45)); }
-#overlay.backing-strip.text-dark { background: rgba(255,255,255,.75); }
-#overlay.backing-none.text-dark { text-shadow: none; }
-#overlay.pos-bottom .line { flex: 0 1 auto; }
-#overlay.pos-bottom .line + .line::before { content: "·"; margin-right: 2.5vw; opacity: .7; }
+/* ---------- the layer over the photo: seven places, each stacking what is put there ---------- */
+.hud { --u: 1vmin; --w: 1vw; --edge-x: calc(var(--w) * 3); --edge-y: calc(var(--u) * 3.6); position: fixed; inset: 0; pointer-events: none; }
+.anchor { position: absolute; display: flex; flex-direction: column; gap: calc(var(--u) * 1.4); max-width: calc(100% - 2 * var(--edge-x)); }
+.at-top-left { top: var(--edge-y); left: var(--edge-x); align-items: flex-start; text-align: left; }
+.at-top-center { top: var(--edge-y); left: 0; right: 0; max-width: none; align-items: center; text-align: center; }
+.at-top-right { top: var(--edge-y); right: var(--edge-x); align-items: flex-end; text-align: right; }
+.at-center { top: 50%; left: 0; right: 0; max-width: none; transform: translateY(-50%); align-items: center; text-align: center; }
+.at-bottom-left { bottom: var(--edge-y); left: var(--edge-x); align-items: flex-start; text-align: left; flex-direction: column-reverse; }
+.at-bottom-center { bottom: var(--edge-y); left: 0; right: 0; max-width: none; align-items: center; text-align: center; flex-direction: column-reverse; }
+.at-bottom-right { bottom: var(--edge-y); right: var(--edge-x); align-items: flex-end; text-align: right; flex-direction: column-reverse; }
 
-body.carding #overlay { opacity: 0; }
-#clock { position: fixed; top: 3vh; left: 3vw; font-size: 3.4vh; font-weight: 300; text-shadow: 0 0 0.4em rgba(0,0,0,.9); pointer-events: none; }
+/* Looks, shared by caption groups and the clock. */
+.capgroup, .clock { position: relative; box-sizing: border-box; color: #fff; transition: opacity .8s ease; }
+.tone-light { color: #fff; --shadow: rgba(0,0,0,.85); }
+.tone-dark { color: #14120f; --shadow: rgba(255,255,255,.75); }
+.tone-gold { color: #f4cf86; --shadow: rgba(0,0,0,.85); }
+.look-shadow { text-shadow: 0 0 .45em var(--shadow, #000), 0 .06em .18em var(--shadow, #000); }
+.look-glass, .look-pill, .look-paper { padding: .55em .95em; border-radius: .7em; overflow: hidden; }
+.capgroup.look-glass, .capgroup.look-pill, .capgroup.look-paper { padding: calc(var(--u) * 1.5) calc(var(--u) * 2.4); border-radius: calc(var(--u) * 1.8); }
+.glass-pane { position: absolute; inset: 0; z-index: 0; background-repeat: no-repeat; }
+.glass-pane::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(150deg, rgba(255,255,255,.26), rgba(255,255,255,.07) 45%, rgba(255,255,255,.12)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.4); }
+.look-glass.tone-dark .glass-pane::after { background: linear-gradient(150deg, rgba(255,255,255,.62), rgba(255,255,255,.42)); }
+.look-glass > :not(.glass-pane), .look-glass.clock > * { position: relative; z-index: 1; }
+.look-glass > .glass-pane { position: absolute; z-index: 0; }
+.look-glass.tone-light { text-shadow: 0 .03em .3em rgba(0,0,0,.45); }
+.look-pill { background: rgba(14,12,16,.62); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.look-paper { background: #fbf8f2; box-shadow: 0 .2em 1em rgba(0,0,0,.35); }
+.look-paper.tone-light, .look-paper.tone-gold { color: #14120f; }
+.capgroup.look-rule { padding-left: calc(var(--u) * 1.8); border-left: calc(var(--u) * .35) solid #eebb63; text-shadow: 0 0 .45em rgba(0,0,0,.7); }
+.at-top-right .look-rule, .at-bottom-right .look-rule { border-left: 0; padding-left: 0; padding-right: calc(var(--u) * 1.8); border-right: calc(var(--u) * .35) solid #eebb63; }
+.capgroup.look-strip { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 calc(var(--w) * 2.4); align-self: stretch;
+  margin: 0; padding: calc(var(--u) * 1.5) var(--edge-x); background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.42)); }
+.at-bottom-center:has(.look-strip) { bottom: 0; }
+.at-top-center:has(.look-strip) { top: 0; }
+/* The corners stand clear of a full-width band. */
+.hud:has(.at-bottom-center .look-strip) .at-bottom-left, .hud:has(.at-bottom-center .look-strip) .at-bottom-right { bottom: calc(var(--u) * 11); }
+.hud:has(.at-top-center .look-strip) .at-top-left, .hud:has(.at-top-center .look-strip) .at-top-right { top: calc(var(--u) * 11); }
+.capgroup.look-strip.tone-dark { background: rgba(255,255,255,.78); }
+.look-strip .cap + .cap::before { content: "·"; margin-right: calc(var(--w) * 2.4); opacity: .7; }
+
+/* Captions. */
+.capgroup { max-width: 100%; line-height: 1.25; }
+.cap { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap.size-xs { font-size: calc(var(--u) * 1.9); }
+.cap.size-s { font-size: calc(var(--u) * 2.3); }
+.cap.size-m { font-size: calc(var(--u) * 2.9); }
+.cap.size-l { font-size: calc(var(--u) * 3.7); }
+.cap.size-xl { font-size: calc(var(--u) * 4.8); }
+.cap.size-xxl { font-size: calc(var(--u) * 7.4); line-height: 1.12; }
+.cap.font-bold { font-weight: 600; }
+.cap.font-light { font-weight: 300; }
+.cap.font-serif { font-family: "Fraunces", Georgia, serif; font-weight: 350; }
+.cap.font-caps { text-transform: uppercase; letter-spacing: .16em; font-weight: 500; font-size-adjust: none; }
+body.carding #hud .capgroup { opacity: 0; }
+
+/* ---------- the clock ---------- */
+.clock { line-height: 1; font-weight: 300; font-variant-numeric: tabular-nums; }
+.clock.size-s { font-size: calc(var(--u) * 3.6); }
+.clock.size-m { font-size: calc(var(--u) * 6.5); }
+.clock.size-l { font-size: calc(var(--u) * 11.5); }
+.clock.size-xl { font-size: calc(var(--u) * 21); }
+.clock.size-huge { font-size: min(calc(var(--u) * 44), calc(var(--w) * 29)); }
+.clock-date { font-size: max(.2em, calc(var(--u) * 2.1)); font-weight: 400; letter-spacing: .04em; margin-top: .55em; opacity: .9; }
+.clock.size-huge .clock-date, .clock.size-xl .clock-date { font-size: max(.11em, calc(var(--u) * 2.6)); }
+.face-classic .clock-time { letter-spacing: -.01em; }
+.face-thin .clock-time { font-weight: 100; letter-spacing: -.02em; }
+.face-editorial .clock-time { font-family: "Fraunces", Georgia, serif; font-weight: 300; letter-spacing: -.015em; }
+.face-editorial .clock-date { font-family: "Fraunces", Georgia, serif; font-weight: 350; font-style: normal; letter-spacing: .01em; }
+.face-condensed .clock-time { font-family: "Oswald", "Inter", sans-serif; font-weight: 300; letter-spacing: .005em; }
+.face-outline .clock-time { font-weight: 800; color: transparent; -webkit-text-stroke: max(1px, .018em) currentColor; }
+.face-outline.tone-light .clock-time { -webkit-text-stroke-color: #fff; }
+.face-outline.tone-dark .clock-time { -webkit-text-stroke-color: #14120f; }
+.face-outline.tone-gold .clock-time { -webkit-text-stroke-color: #f4cf86; }
+.face-outline.look-shadow { text-shadow: none; }
+.face-words .clock-time { font-family: "Fraunces", Georgia, serif; font-weight: 300; font-size: .46em; line-height: 1.12; max-width: 11em; }
+.face-analog .clock-time { width: 2em; height: 2em; }
+.dial { display: block; width: 100%; height: 100%; overflow: visible; filter: none; }
+.dial line { stroke: currentColor; stroke-linecap: round; }
+.dial .tick { stroke-width: .7; opacity: .55; }
+.dial .tick.major { stroke-width: 1.5; opacity: 1; }
+.dial .hour { stroke-width: 3; }
+.dial .minute { stroke-width: 1.8; }
+.dial .pivot { fill: #eebb63; }
+.look-shadow .dial { filter: drop-shadow(0 0 .04em rgba(0,0,0,.8)); }
+
+/* The flip clock: split-flap cards; only the flap's transform animates, once a minute. */
+.face-flip .clock-time { display: flex; align-items: center; gap: .07em; font-family: "Oswald", "Inter", sans-serif; font-weight: 400; font-size: .86em; text-shadow: none; perspective: 3em; }
+.flip { position: relative; display: block; width: .74em; height: 1.2em; border-radius: .09em; color: #f5f1e8; background: #1b191e; box-shadow: 0 .05em .16em rgba(0,0,0,.5); }
+.face-flip.tone-dark .flip { color: #17151a; background: #f3efe6; }
+.face-flip.tone-gold .flip { color: #f4cf86; }
+.flip .upper, .flip .lower { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: inherit; }
+.flip .upper { top: 0; border-radius: .09em .09em 0 0; }
+.flip .lower { bottom: 0; border-radius: 0 0 .09em .09em; }
+.flip b { position: absolute; left: 0; right: 0; height: 1.2em; line-height: 1.2em; text-align: center; font-weight: inherit; }
+.flip .upper b { top: 0; }
+.flip .lower b { bottom: 0; }
+.flip::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: max(1px, .012em); margin-top: -.006em; background: rgba(0,0,0,.55); z-index: 3; }
+.flap { z-index: 2; backface-visibility: hidden; will-change: transform; }
+.flap-top { transform-origin: 50% 100%; animation: flap-down .22s ease-in forwards; }
+.flap-bottom { transform-origin: 50% 0; transform: rotateX(90deg); animation: flap-up .24s .22s ease-out forwards; }
+@keyframes flap-down { to { transform: rotateX(-90deg); } }
+@keyframes flap-up { to { transform: rotateX(0); } }
+.face-flip .sep { display: block; width: .22em; text-align: center; line-height: 1.1; opacity: .9; }
+
 #status { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); font-size: 2.2vh; color: #ddd;
   background: rgba(0,0,0,.55); padding: .6em 1.1em; border-radius: 2em; pointer-events: none; white-space: nowrap; }
 #status.center { bottom: auto; top: 50%; transform: translate(-50%, -50%); font-size: 3vh; background: none; color: #999; }
-#pausemark { position: fixed; top: 3vh; right: 3vw; font-size: 3vh; color: #fff; opacity: .75; text-shadow: 0 0 .4em #000; pointer-events: none; letter-spacing: -0.1em; }
+#pausemark { font-size: calc(var(--u) * 3); color: #fff; opacity: .75; text-shadow: 0 0 .4em #000; letter-spacing: -0.1em; }
 /* Toast: a moment's confirmation of a control (the knob's speed, a star). */
-#toast { position: fixed; top: 4vh; left: 50%; transform: translateX(-50%); font-size: min(3.2vh, 4.6vw); color: #fff; background: rgba(0,0,0,.68);
-  padding: .55em 1.2em; border-radius: 2em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
+#toast { position: fixed; top: 4vh; left: 50%; transform: translateX(-50%); font-size: min(3vh, 4.4vw); color: #fff; background: rgba(16,14,18,.74);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); padding: .55em 1.2em; border-radius: 2em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s ease; z-index: 5; }
 #toast.show { opacity: 1; transition-duration: .1s; }
 body.controls-on #toast { top: 84px; } /* below the phone's top bar */
 /* A starred photo carries a small gold star; the toast takes its place for a moment. */
-#starmark { position: fixed; top: 2.6vh; left: 50%; transform: translateX(-50%); font-size: 4vh; line-height: 1; color: #ffd54a;
-  text-shadow: 0 0 .35em rgba(0,0,0,.9); pointer-events: none; transition: opacity .25s ease; }
-#toast.show + #starmark, body.carding #starmark { opacity: 0; }
+#starmark { font-size: calc(var(--u) * 4); line-height: 1; color: #f4c95d; text-shadow: 0 0 .35em rgba(0,0,0,.9); transition: opacity .25s ease; }
+body.toasting #starmark, body.carding #starmark { opacity: 0; }

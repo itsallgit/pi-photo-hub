@@ -45,6 +45,7 @@ module.exports = {
         playlist: path.join(stateDir, "playlist.json"), // the current order of photos
         history: path.join(stateDir, "history.json"), // photos and slideshows shown (R19)
         schedule: path.join(stateDir, "schedule.json"), // daily screen off/on (R18)
+        presets: path.join(stateDir, "presets.json"), // the owner's saved presets (B41)
     },
     // The one writer of photo metadata (scripts/photo-metadata.py, hard rule 1).
     photoMetadata: {

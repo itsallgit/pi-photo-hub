@@ -155,10 +155,44 @@ function setRating(filePath, rating) {
 
 function pathsWithRating(rating) { return paths((r, c) => r[c.f.rating] === rating); }
 
+// A photo to stand for each group on the phone's Browse pages (a year, a country, a person, a
+// folder...). The same choice all day, a new one tomorrow; wide photos preferred, skipped ones never.
+let coverCache = null;
+function covers(day) {
+    const c = load();
+    if (!c) return {};
+    if (coverCache && coverCache.day === day && coverCache.mtimeMs === c.mtimeMs) return coverCache.value;
+    const f = c.f, best = new Map();
+    const score = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+    const offer = (key, p, n) => { const b = best.get(key); if (!b || n < b.n) best.set(key, { n, p }); };
+    const root = c.root || "/mnt/photos/PHOTOS";
+    for (const [p, r] of c.byPath) {
+        const rating = r[f.rating];
+        if (rating === 1) { offer("skipped", p, score(day + p)); continue; }
+        const turned = [5, 6, 7, 8].includes(r[f.orientation]);
+        const wide = r[f.width] && r[f.height] && (turned ? r[f.height] > r[f.width] : r[f.width] > r[f.height]);
+        const n = score(day + p) + (wide ? 0 : 2 ** 32); // every wide photo ranks before every upright one
+        offer("all", p, n);
+        if (rating === 5) offer("favourites", p, n);
+        if (r[f.date]) offer(`y:${r[f.date].slice(0, 4)}`, p, n);
+        const city = c.places[r[f.city]];
+        if (city) { offer("places", p, n); offer(`c:${city.cc}`, p, n); offer(`t:${city.cc}/${city.name}`, p, n); }
+        for (const i of r[f.people] || []) { offer("people", p, n); if (c.people[i]) offer(`p:${c.people[i]}`, p, n); }
+        const dir = path.posix.dirname(p);
+        if (dir.startsWith(root + "/")) {
+            let sofar = "";
+            for (const part of dir.slice(root.length + 1).split("/")) { sofar = sofar ? `${sofar}/${part}` : part; offer(`f:${sofar}`, p, n); }
+        }
+    }
+    const value = Object.fromEntries([...best].map(([k, v]) => [k, v.p]));
+    coverCache = { day, mtimeMs: c.mtimeMs, value };
+    return value;
+}
+
 function summary() {
     const c = load();
     if (!c) return { loaded: false };
     return { loaded: true, photos: c.byPath.size, places: c.places.length, generatedAt: c.generatedAt };
 }
 
-module.exports = { load, info, paths, pathsInPlaces, pathsOnThisDay, pathsInBox, mapPoints, eventName, cleanFolderName, summary, setLogger, setRating, pathsWithRating };
+module.exports = { load, info, paths, pathsInPlaces, pathsOnThisDay, pathsInBox, mapPoints, eventName, cleanFolderName, summary, setLogger, setRating, pathsWithRating, covers };

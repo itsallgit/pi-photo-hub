@@ -1,5 +1,5 @@
 {
-  "_about": "Slideshow layer settings (B32, R4): the defaults and the named presets. A preset is a starting point: applying it sets these values on top of the defaults; changing a setting afterwards keeps the change. Current values live on the Pi in /var/lib/photo-api/player.json. Setting reference: docs/architecture.md, 'Slideshow layer'.",
+  "_about": "Slideshow layer settings (B32, R4; redesigned in B41): the defaults, the built-in presets, the classic overlay styles, and the catalog: every choice the clock, the captions and the transitions offer (the API checks settings against it and the phone builds its menus from it). A preset is a starting point: applying it sets these values on top of the defaults; the clock and your own caption layout carry over unless the preset has its own. Presets the owner saves live on the Pi in /var/lib/photo-api/presets.json, current values in player.json. Reference: docs/architecture.md, 'Slideshow layer'.",
   "defaults": {
     "autoplay": true,
     "interval": 20,
@@ -11,10 +11,28 @@
     "upright": "fill",
     "motion": "subtle",
     "transition": "fade",
-    "overlay": { "date": "relative", "place": true, "event": false, "people": false },
+    "overlay": {
+      "date": "relative",
+      "place": true,
+      "event": false,
+      "people": false
+    },
     "overlayStyle": 0,
+    "overlayMode": "styles",
+    "captions": null,
     "titleCards": false,
     "clock": false,
+    "clockStyle": {
+      "face": "classic",
+      "position": "top-left",
+      "size": "s",
+      "tone": "light",
+      "backing": "shadow",
+      "opacity": 100,
+      "hour12": false,
+      "date": false,
+      "scrim": "none"
+    },
     "night": false,
     "viewer": "layer"
   },
@@ -22,37 +40,615 @@
     "ambient": {
       "label": "Ambient",
       "about": "Background: plays by itself, gentle motion, a small date and place",
-      "settings": { "autoplay": true, "interval": 20, "order": "random", "motion": "subtle", "transition": "fade",
-        "overlay": { "date": "relative", "place": true, "event": false, "people": false }, "overlayStyle": 0,
-        "titleCards": false, "night": false }
+      "settings": {
+        "autoplay": true,
+        "interval": 20,
+        "order": "random",
+        "motion": "subtle",
+        "transition": "fade",
+        "overlay": {
+          "date": "relative",
+          "place": true,
+          "event": false,
+          "people": false
+        },
+        "overlayStyle": 0,
+        "titleCards": false,
+        "night": false
+      }
     },
     "present": {
       "label": "Present",
       "about": "Showing a trip: you step through, date order, title cards, date, place and event shown",
-      "settings": { "autoplay": false, "order": "date-asc", "motion": "subtle", "transition": "fade",
-        "overlay": { "date": "absolute", "place": true, "event": true, "people": true }, "overlayStyle": 1,
-        "titleCards": true, "night": false }
+      "settings": {
+        "autoplay": false,
+        "order": "date-asc",
+        "motion": "subtle",
+        "transition": "fade",
+        "overlay": {
+          "date": "absolute",
+          "place": true,
+          "event": true,
+          "people": true
+        },
+        "overlayStyle": 1,
+        "titleCards": true,
+        "night": false
+      }
     },
     "guests": {
       "label": "Guests",
       "about": "Livelier: chapters from different events, faster, more motion, how long ago",
-      "settings": { "autoplay": true, "interval": 12, "order": "chapters", "motion": "lively", "transition": "zoom",
-        "overlay": { "date": "relative", "place": false, "event": true, "people": true }, "overlayStyle": 1,
-        "titleCards": true, "night": false }
+      "settings": {
+        "autoplay": true,
+        "interval": 12,
+        "order": "chapters",
+        "motion": "lively",
+        "transition": "zoom",
+        "overlay": {
+          "date": "relative",
+          "place": false,
+          "event": true,
+          "people": true
+        },
+        "overlayStyle": 1,
+        "titleCards": true,
+        "night": false
+      }
     },
     "night": {
       "label": "Night",
       "about": "Evening: dimmer and slower, nothing written on screen",
-      "settings": { "autoplay": true, "interval": 40, "order": "random", "motion": "subtle", "transition": "fade",
-        "overlay": { "date": "off", "place": false, "event": false, "people": false },
-        "titleCards": false, "night": true }
+      "settings": {
+        "autoplay": true,
+        "interval": 40,
+        "order": "random",
+        "motion": "subtle",
+        "transition": "fade",
+        "overlay": {
+          "date": "off",
+          "place": false,
+          "event": false,
+          "people": false
+        },
+        "titleCards": false,
+        "night": true
+      }
     }
   },
   "overlayStyles": [
-    { "name": "small, bottom left", "position": "bottom-left", "backing": "shadow", "text": "light", "size": "small" },
-    { "name": "strip along the bottom", "position": "bottom", "backing": "strip", "text": "light", "size": "large" },
-    { "name": "large, top right", "position": "top-right", "backing": "shadow", "text": "light", "size": "large" },
-    { "name": "dark text, bottom right", "position": "bottom-right", "backing": "none", "text": "dark", "size": "small" },
-    { "name": "hidden", "position": "none", "backing": "none", "text": "light", "size": "small" }
-  ]
+    {
+      "name": "small, bottom left",
+      "position": "bottom-left",
+      "backing": "shadow",
+      "text": "light",
+      "size": "small"
+    },
+    {
+      "name": "strip along the bottom",
+      "position": "bottom",
+      "backing": "strip",
+      "text": "light",
+      "size": "large"
+    },
+    {
+      "name": "large, top right",
+      "position": "top-right",
+      "backing": "shadow",
+      "text": "light",
+      "size": "large"
+    },
+    {
+      "name": "dark text, bottom right",
+      "position": "bottom-right",
+      "backing": "none",
+      "text": "dark",
+      "size": "small"
+    },
+    {
+      "name": "hidden",
+      "position": "none",
+      "backing": "none",
+      "text": "light",
+      "size": "small"
+    }
+  ],
+  "catalog": {
+    "transitions": [
+      {
+        "name": "fade",
+        "label": "Fade",
+        "about": "The new photo melts in over the old one"
+      },
+      {
+        "name": "dip",
+        "label": "Dip to black",
+        "about": "Out to black, then up again"
+      },
+      {
+        "name": "slide",
+        "label": "Slide",
+        "about": "The photos travel sideways"
+      },
+      {
+        "name": "rise",
+        "label": "Rise",
+        "about": "The new photo lifts into place"
+      },
+      {
+        "name": "zoom",
+        "label": "Zoom",
+        "about": "A gentle push in"
+      },
+      {
+        "name": "bloom",
+        "label": "Bloom",
+        "about": "The new photo opens out from the centre"
+      },
+      {
+        "name": "drift",
+        "label": "Drift",
+        "about": "A slow sideways dissolve"
+      },
+      {
+        "name": "deck",
+        "label": "Deck of cards",
+        "about": "The old photo sinks back as the new one lands on top"
+      },
+      {
+        "name": "random",
+        "label": "Surprise me",
+        "about": "A different transition for each photo"
+      }
+    ],
+    "clockFaces": [
+      {
+        "name": "classic",
+        "label": "Classic",
+        "about": "Clean and modern"
+      },
+      {
+        "name": "thin",
+        "label": "Hairline",
+        "about": "Tall, very light numerals"
+      },
+      {
+        "name": "editorial",
+        "label": "Editorial",
+        "about": "A warm magazine serif"
+      },
+      {
+        "name": "condensed",
+        "label": "Poster",
+        "about": "Tall and condensed"
+      },
+      {
+        "name": "outline",
+        "label": "Outline",
+        "about": "Hollow numerals, the photo shows through"
+      },
+      {
+        "name": "flip",
+        "label": "Flip clock",
+        "about": "Split-flap cards that flip each minute"
+      },
+      {
+        "name": "words",
+        "label": "In words",
+        "about": "\"Ten past seven\""
+      },
+      {
+        "name": "analog",
+        "label": "Dial",
+        "about": "A minimal watch face"
+      }
+    ],
+    "clockPositions": [
+      {
+        "name": "top-left",
+        "label": "Top left"
+      },
+      {
+        "name": "top-center",
+        "label": "Top centre"
+      },
+      {
+        "name": "top-right",
+        "label": "Top right"
+      },
+      {
+        "name": "center",
+        "label": "Centre"
+      },
+      {
+        "name": "bottom-left",
+        "label": "Bottom left"
+      },
+      {
+        "name": "bottom-center",
+        "label": "Bottom centre"
+      },
+      {
+        "name": "bottom-right",
+        "label": "Bottom right"
+      }
+    ],
+    "clockSizes": [
+      {
+        "name": "s",
+        "label": "Small"
+      },
+      {
+        "name": "m",
+        "label": "Medium"
+      },
+      {
+        "name": "l",
+        "label": "Large"
+      },
+      {
+        "name": "xl",
+        "label": "Extra large"
+      },
+      {
+        "name": "huge",
+        "label": "Huge"
+      }
+    ],
+    "clockScrims": [
+      {
+        "name": "none",
+        "label": "Off"
+      },
+      {
+        "name": "soft",
+        "label": "A little"
+      },
+      {
+        "name": "deep",
+        "label": "A lot"
+      }
+    ],
+    "tones": [
+      {
+        "name": "auto",
+        "label": "Automatic",
+        "about": "Light or dark, whichever reads best on the photo"
+      },
+      {
+        "name": "light",
+        "label": "White"
+      },
+      {
+        "name": "dark",
+        "label": "Black"
+      },
+      {
+        "name": "gold",
+        "label": "Gold"
+      }
+    ],
+    "looks": [
+      {
+        "name": "shadow",
+        "label": "Soft shadow",
+        "about": "Words straight on the photo"
+      },
+      {
+        "name": "plain",
+        "label": "Bare",
+        "about": "No shadow at all"
+      },
+      {
+        "name": "glass",
+        "label": "Frosted glass",
+        "about": "A pane of the photo, blurred"
+      },
+      {
+        "name": "pill",
+        "label": "Dark capsule",
+        "about": "A translucent dark panel"
+      },
+      {
+        "name": "paper",
+        "label": "Paper card",
+        "about": "A crisp white card"
+      },
+      {
+        "name": "rule",
+        "label": "Accent line",
+        "about": "A slim gold line beside the words"
+      },
+      {
+        "name": "strip",
+        "label": "Full-width band",
+        "about": "Across the screen (top or bottom centre)"
+      }
+    ],
+    "captionCorners": [
+      {
+        "name": "top-left",
+        "label": "Top left"
+      },
+      {
+        "name": "top-center",
+        "label": "Top centre"
+      },
+      {
+        "name": "top-right",
+        "label": "Top right"
+      },
+      {
+        "name": "bottom-left",
+        "label": "Bottom left"
+      },
+      {
+        "name": "bottom-center",
+        "label": "Bottom centre"
+      },
+      {
+        "name": "bottom-right",
+        "label": "Bottom right"
+      }
+    ],
+    "captionSizes": [
+      {
+        "name": "xs",
+        "label": "Tiny"
+      },
+      {
+        "name": "s",
+        "label": "Small"
+      },
+      {
+        "name": "m",
+        "label": "Medium"
+      },
+      {
+        "name": "l",
+        "label": "Large"
+      },
+      {
+        "name": "xl",
+        "label": "Extra large"
+      },
+      {
+        "name": "xxl",
+        "label": "Headline"
+      }
+    ],
+    "captionFonts": [
+      {
+        "name": "sans",
+        "label": "Regular"
+      },
+      {
+        "name": "bold",
+        "label": "Bold"
+      },
+      {
+        "name": "light",
+        "label": "Light"
+      },
+      {
+        "name": "serif",
+        "label": "Serif"
+      },
+      {
+        "name": "caps",
+        "label": "Spaced capitals"
+      }
+    ],
+    "captionFields": [
+      {
+        "name": "date",
+        "label": "Date",
+        "icon": "calendar",
+        "formats": [
+          {
+            "name": "long",
+            "label": "19 September 2026"
+          },
+          {
+            "name": "short",
+            "label": "19 Sep 2026"
+          },
+          {
+            "name": "weekday",
+            "label": "Saturday, 19 September 2026"
+          },
+          {
+            "name": "month",
+            "label": "September 2026"
+          },
+          {
+            "name": "year",
+            "label": "2026"
+          },
+          {
+            "name": "ago",
+            "label": "How long ago"
+          }
+        ]
+      },
+      {
+        "name": "place",
+        "label": "Place",
+        "icon": "pin",
+        "formats": [
+          {
+            "name": "full",
+            "label": "Town and country"
+          },
+          {
+            "name": "name",
+            "label": "Town only"
+          },
+          {
+            "name": "country",
+            "label": "Country only"
+          }
+        ]
+      },
+      {
+        "name": "event",
+        "label": "Event",
+        "icon": "folder",
+        "formats": [
+          {
+            "name": "full",
+            "label": "Full name"
+          },
+          {
+            "name": "last",
+            "label": "Last part only"
+          },
+          {
+            "name": "first",
+            "label": "First part only"
+          }
+        ]
+      },
+      {
+        "name": "people",
+        "label": "People",
+        "icon": "people",
+        "formats": [
+          {
+            "name": "list",
+            "label": "Names"
+          },
+          {
+            "name": "with",
+            "label": "\"With\" and names"
+          }
+        ]
+      },
+      {
+        "name": "show",
+        "label": "Slideshow name",
+        "icon": "play",
+        "formats": [
+          {
+            "name": "name",
+            "label": "Name"
+          }
+        ]
+      }
+    ],
+    "clockLooks": [
+      {
+        "name": "quiet",
+        "label": "Quiet corner",
+        "style": {
+          "face": "classic",
+          "position": "top-left",
+          "size": "s",
+          "tone": "light",
+          "backing": "shadow",
+          "opacity": 100,
+          "date": false,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "living",
+        "label": "Living room",
+        "style": {
+          "face": "editorial",
+          "position": "bottom-right",
+          "size": "xl",
+          "tone": "light",
+          "backing": "shadow",
+          "opacity": 100,
+          "date": true,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "glass",
+        "label": "Frosted glass",
+        "style": {
+          "face": "thin",
+          "position": "bottom-left",
+          "size": "l",
+          "tone": "light",
+          "backing": "glass",
+          "opacity": 100,
+          "date": true,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "flip",
+        "label": "Flip clock",
+        "style": {
+          "face": "flip",
+          "position": "bottom-right",
+          "size": "l",
+          "tone": "light",
+          "backing": "plain",
+          "opacity": 100,
+          "date": false,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "ghost",
+        "label": "Ghost",
+        "style": {
+          "face": "thin",
+          "position": "center",
+          "size": "huge",
+          "tone": "light",
+          "backing": "plain",
+          "opacity": 30,
+          "date": false,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "hero",
+        "label": "Clock mode",
+        "style": {
+          "face": "editorial",
+          "position": "center",
+          "size": "huge",
+          "tone": "light",
+          "backing": "shadow",
+          "opacity": 100,
+          "date": true,
+          "scrim": "deep"
+        }
+      },
+      {
+        "name": "dial",
+        "label": "Dial",
+        "style": {
+          "face": "analog",
+          "position": "top-right",
+          "size": "l",
+          "tone": "light",
+          "backing": "glass",
+          "opacity": 100,
+          "date": false,
+          "scrim": "none"
+        }
+      },
+      {
+        "name": "words",
+        "label": "In words",
+        "style": {
+          "face": "words",
+          "position": "bottom-left",
+          "size": "l",
+          "tone": "light",
+          "backing": "shadow",
+          "opacity": 100,
+          "date": false,
+          "scrim": "soft"
+        }
+      }
+    ]
+  }
 }
