@@ -159,7 +159,7 @@
     return lines;
   }
   function renderOverlay(photo, st) {
-    starmark.classList.toggle("hidden", !(photo && photo.info && (photo.info.marks || []).includes("star")));
+    starmark.classList.toggle("hidden", !(photo && photo.info && photo.info.favourite));
     const style = styles[st.settings.overlayStyle] || styles[0];
     const lines = photo ? overlayLines(photo, st) : [];
     if (!style || style.position === "none" || !lines.length) { overlay.classList.add("hidden"); return; }

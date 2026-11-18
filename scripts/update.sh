@@ -161,6 +161,17 @@ if [ "$PHASE2" = 1 ]; then
   fi
   log "not restarted by design: mount-hdd (photo HDD, hard rule 1), Picapport (backlog Q11)"
 
+  # Read-only check of the photo drive; saving ratings into photos needs a recent pass.
+  if [ -f "$SRC/scripts/photo-drive-check.py" ]; then
+    if [ "$DRY_RUN" = 1 ]; then
+      log "drive check: WOULD run the read-only photo drive check"
+    elif timeout 300 $SUDO nice -n 19 ionice -c3 python3 "$SRC/scripts/photo-drive-check.py" --out "$STATE_DIR/drive-check.json" --lock "$HOME/metadata-survey/.refresh.lock" >/dev/null; then
+      log "drive check: passed"
+    else
+      log "[WARN] drive check: did not pass or could not run; photos will not be changed (see $STATE_DIR/drive-check.json)"
+    fi
+  fi
+
   # --- things this script deliberately does not apply ---------------------------------
   echo
   log "Needs a separate, agreed step (NOT done by update.sh):"

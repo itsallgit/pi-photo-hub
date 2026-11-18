@@ -65,6 +65,13 @@ t("chapters: runs of at most chapterLength from one event, each starting with a 
         assert.ok(runs.slice(i).every((r) => r[0][0] === runs[i][0][0]));
     }
 });
+t("skipped photos are left out unless asked for; Favourites and Skipped show everything they hold", () => {
+    const rated = (p) => ({ ...info(p), rating: p === "B/1" ? 1 : info(p).rating });
+    assert.ok(!ps(order.build(all, base, { seed: 5, info: rated })).includes("B/1"));
+    assert.ok(ps(order.build(all, base, { seed: 5, info: rated, includeSkipped: true })).includes("B/1"));
+    const twice = ps(order.build(["B/2", "B/3"], { ...base, highlights: true, upright: "skip" }, { seed: 5, info, showAll: true }));
+    assert.deepEqual([...twice].sort(), ["B/2", "B/3"]);
+});
 t("highlights: rated photos come twice, never twice in a row", () => {
     const r = ps(order.build(all, { ...base, highlights: true }, { seed: 5, info }));
     assert.equal(r.filter((p) => p === "B/2").length, 2);

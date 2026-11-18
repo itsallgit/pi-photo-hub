@@ -13,7 +13,7 @@ Replaces the per-change agreement of `CLAUDE.md` "Working with the owner" **for 
 
 - **Small change** (the look or layout of the pages, a new setting or setting value, wording, a preset, a button mapping, a new read-only or slideshow API call, a bug fix inside existing behaviour): no plan needed. Build it, test it, commit to `main`, deploy to the Pi, check it, then tell the owner what changed and what to try.
 - **Feature** (a new service or unit, a new package, a new state file or a change to one's format, a change to `update.sh`, `bootstrap.sh` or anything run as root, anything that writes outside `/var/lib/photo-api/` and `/var/cache/photo-api/`, a new outside service, or work of more than about a day): first agree the objective and a short plan with the owner (a few lines, readable on a phone; `CLAUDE.md`: understand the objective before extending). Then, without asking for each step: a branch `feat/<topic>`, commits and pushes, deploys of the branch to the Pi with `update.sh --branch`, tests on the Pi. **Merge to `main` only when the owner says "go"** (the `git-workflow` skill).
-- **Still needs the owner every time (unchanged):** anything that writes to the photo HDD (hard rule 1, including tags and ratings in photos), reboots and shutdowns (the `pi-power` skill), restarting or reconfiguring Picapport, `cleanup.sh`, `bootstrap.sh`, `picapport-db.sh` beyond `status`, fixing the Pi by hand, force-push, rebase, `reset --hard`, deleting branches, sending photo data or the private word list to any outside service.
+- **Still needs the owner every time (unchanged):** changing what the metadata writer may write, switching it on, any other write to the photo HDD (hard rule 1), reboots and shutdowns (the `pi-power` skill), restarting or reconfiguring Picapport, `cleanup.sh`, `bootstrap.sh`, `picapport-db.sh` beyond `status`, fixing the Pi by hand, force-push, rebase, `reset --hard`, deleting branches, sending photo data or the private word list to any outside service.
 - If a change turns out bigger than it looked, stop and say so before going on.
 
 ## Orient (read-only, a few minutes)
@@ -47,6 +47,7 @@ Each fact has one master page (`docs/overview.md`, "Where each kind of fact is k
 | adds or changes an API call, a setting, a preset, a module, a file path or state file | `docs/architecture.md` (endpoint table, settings list, module table, code map, state files); `config/` file comments |
 | changes something a person would do by hand (install, check, control, recover) | `README.md`, manual and automated forms |
 | lets Paseo do something new, or changes a call it uses | the `slideshow-control` skill (and `docs/slideshow-experience.md` if the agreed experience changes) |
+| changes what is stored in photos, or how | the `photo-metadata` skill, `docs/image-metadata.md`, principles 1 and 11 (with the owner) |
 | touches the buttons | `config/buttons.json` `_about`, the `button-board` skill, README "Button board" |
 | changes a procedure that has a skill (update, power, database, access) | that skill (and its "Last verified") |
 | changes a rule, the mandate or the working style | `CLAUDE.md` and `docs/principles.md`: **only with the owner** |
@@ -70,7 +71,7 @@ A bad change on `main`: revert the commit (`git revert`, never `reset`), push, `
 
 ## Do not
 
-- Write to photos to "tag" them, or call a feature done that needs it (hard rule 1; manual tagging needs the owner's decision first, backlog).
+- Write to photos any way other than `scripts/photo-metadata.py` (hard rule 1), or keep facts about photos in a list beside them (principle 11; the `photo-metadata` skill).
 - Talk to Picapport from the page or the phone (viewers only call the photo API, principle 12).
 - Skip the screenshot review for a visual change, or deploy without the tests passing.
 - Grow a small change into a feature without saying so.

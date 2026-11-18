@@ -12,11 +12,12 @@ A living photo wall. The owner's photo library (an external HDD, about 63,000 JP
 
 | Part | Where | What it does | Details |
 |---|---|---|---|
-| Photo library | USB HDD on the Pi, `/mnt/photos` (read-only for the project, hard rule 1) | The photos and their own metadata, the lasting store of everything (principle 11) | [image-metadata.md](image-metadata.md), [hardware.md](hardware.md) |
+| Photo library | USB HDD on the Pi, `/mnt/photos` (changed only by the metadata writer, hard rule 1) | The photos and their own metadata, the lasting store of everything (principle 11) | [image-metadata.md](image-metadata.md), [hardware.md](hardware.md) |
 | Picapport | Pi, Java, port 8080 | Indexes the photos; answers searches; resizes images. A disposable index; its own slideshow page is retired (emergency fallback only) | [architecture.md](architecture.md) "Picapport queries", [picapport-db.md](picapport-db.md) |
 | Nightly scan | Pi, cron 03:30 | Reads the photos' metadata (read-only) into the vocabulary (searchable words) and the catalogue (date, upright, place, rating, people per photo); places from an offline GeoNames list | [architecture.md](architecture.md) "Vocabulary refresh" |
+| Metadata writer | `scripts/photo-metadata.py`, used by the API | The only thing that changes a photo: the rating in its embedded XMP (favourite, skipped), verified before and after; needs a passing read-only drive check | `photo-metadata` skill, [architecture.md](architecture.md) "Photo metadata" |
 | Photo API | Pi, Node, port 3000 (`api/`) | Holds the one slideshow (order, position, settings), serves the page, photos and every control; the only control route (principle 12) | [architecture.md](architecture.md) "Photo API", "Slideshow layer" |
-| The page `/show` | served by the API; shown by the shelf's kiosk Chromium and any browser | Shows the slideshow (motion, overlay, title cards); on a phone, the controls (search, browse, map, settings, marks) | [architecture.md](architecture.md) "The page" |
+| The page `/show` | served by the API; shown by the shelf's kiosk Chromium and any browser | Shows the slideshow (motion, overlay, title cards); on a phone, the controls (search, browse, map, settings, favourites and skipped photos) | [architecture.md](architecture.md) "The page" |
 | Button board | USB keypad on the Pi; `photo-buttons` service | Back, pause, next, slower/faster, overlay style, screen | `button-board` skill, README "Button board" |
 | Phone, TV | the owner's phone on the home network; the LG TV by mirroring the phone | Watch and steer; show a trip on the TV | [slideshow-experience.md](slideshow-experience.md) |
 | Paseo (agent) | the owner's PC or phone, Claude Code sessions in this repo | Plain-word requests (`slideshow-control` skill); building and maintaining the project (`make-changes` and the other skills) | [CLAUDE.md](../CLAUDE.md) |
@@ -44,7 +45,7 @@ Update the master; other pages link to it, they do not copy it. If you find a fa
 | How to do something (person) | [README.md](../README.md), manual and automated forms |
 | Why a phase was built the way it was (requirements, decisions, test evidence) | its phase pages, kept as history: release 1 is [slideshow-layer.md](slideshow-layer.md) and [slideshow-layer-build.md](slideshow-layer-build.md) |
 | Defaults and mappings | `config/` (each file says what it is for) |
-| Runtime state (what is playing, history, marks) | on the Pi only, `/var/lib/photo-api/` (principle 5) |
+| Runtime state (what is playing, history) | on the Pi only, `/var/lib/photo-api/` (principle 5) |
 | Whether all of the above still agree with the code | `python scripts/hygiene.py` and the `project-hygiene` skill; record below, "Hygiene" |
 
 ## How the project grows

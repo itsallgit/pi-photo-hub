@@ -20,7 +20,8 @@ const events = require("./lib/events");
 const library = require("./lib/library");
 const catalogue = require("./lib/catalogue");
 const settingsLib = require("./lib/settings");
-const marks = require("./lib/marks");
+const ratings = require("./lib/ratings");
+const order = require("./lib/order");
 const history = require("./lib/history");
 const schedule = require("./lib/schedule");
 
@@ -405,52 +406,83 @@ app.get("/api/photo/:id", wrap(async (req, res) => {
 app.get("/api/photo/:id/info", (req, res) => {
     const p = library.pathOf(req.params.id);
     if (!p) return res.status(404).json({ error: "unknown photo id" });
-    res.json({ ...player.info(p), marks: marks.of(p) });
+    res.json(player.info(p));
 });
 
-// ---------- Marks (R20): a review list, never written to a photo ----------
-function markTarget(b) {
+// ---------- Ratings: favourite and skipped live in the photo's own metadata (principle 11) ----------
+// 5 favourite, 1 skipped, 0 neither. Only scripts/photo-metadata.py changes a photo, and the screens
+// change only after it has verified the file.
+function ratingTarget(b) {
     if (b.id) return library.pathOf(b.id);
     if (b.path) return String(b.path);
     return player.current();
 }
-app.get("/api/marks", (req, res) => res.json({ marks: marks.list() }));
-app.post("/api/marks", wrap(async (req, res) => {
-    const b = req.body || {};
-    const p = markTarget(b);
-    if (!p) return res.status(404).json({ error: "no such photo" });
-    if (!marks.KINDS.includes(b.mark)) return res.status(400).json({ error: `mark must be one of: ${marks.KINDS.join(", ")}` });
-    marks.add(p, b.mark, b.by ? String(b.by).slice(0, 40) : null);
-    logger.info(`Marked ${b.mark}: ${p}`);
-    // A held button has nothing else to show that it worked; the phone lights its own icon.
-    if (b.by === "button") player.setToast(b.mark === "star" ? "★ Starred" : "Marked as a bad photo");
+function tell(text) {
+    player.setToast(text);
     events.broadcast("state", player.view());
-    res.json({ path: p, marks: marks.of(p) });
-}));
-// Turn a mark on or off (a held button): { mark, by?, id? or path? }; no id: the photo on screen.
-app.post("/api/marks/toggle", wrap(async (req, res) => {
-    const b = req.body || {};
-    const p = markTarget(b);
-    if (!p) return res.status(404).json({ error: "no such photo" });
-    if (!marks.KINDS.includes(b.mark)) return res.status(400).json({ error: `mark must be one of: ${marks.KINDS.join(", ")}` });
-    const on = !marks.of(p).includes(b.mark);
-    if (on) marks.add(p, b.mark, b.by ? String(b.by).slice(0, 40) : null);
-    else marks.remove(p, b.mark);
-    logger.info(`${on ? "Marked" : "Unmarked"} ${b.mark}: ${p}`);
-    if (b.by === "button") {
-        const words = b.mark === "star" ? ["★ Starred", "☆ Star removed"] : ["Marked as a bad photo", "Bad photo mark removed"];
-        player.setToast(words[on ? 0 : 1]);
+}
+async function saveRating(p, rating, doneText) {
+    const r = await ratings.set(p, rating);
+    if (r.ok) {
+        logger.info(`Rating ${rating}${r.changed ? "" : " (already set)"}: ${p}${r.seconds ? ` in ${r.seconds} s` : ""}`);
+        if (r.warning) logger.warn(r.warning);
+        catalogue.setRating(p, rating);
+        player.ratingChanged(p);
+        tell(doneText);
+    } else {
+        logger.warn(`Rating ${rating} not saved (${r.code}): ${p}: ${r.message}`);
+        tell(`Not saved: ${r.message}`);
     }
-    events.broadcast("state", player.view());
-    res.json({ path: p, on, marks: marks.of(p) });
-}));
-app.delete("/api/marks", wrap(async (req, res) => {
+    return r;
+}
+async function readyToSave(p, res) {
+    if (!p) { res.status(404).json({ error: "no such photo" }); return false; }
+    if (ratings.busy(p)) { tell("Still saving this photo"); res.status(409).json({ error: "this photo is still being saved" }); return false; }
+    const st = await ratings.status();
+    if (!st.writable) { tell(`Not saved: ${st.reason}`); res.status(409).json({ error: st.reason, code: st.code }); return false; }
+    return true;
+}
+const RATING_WORDS = { 5: "★ Starred", 1: "Skipped", 0: "Rating removed" };
+const TOGGLES = {
+    favourite: { value: order.FAVOURITE, saving: "★ Saving…", on: "★ Starred", off: "☆ Star removed" },
+    skip: { value: order.SKIPPED, saving: "Skipping…", on: "Skipped", off: "Back in your slideshows" },
+};
+
+app.get("/api/ratings", wrap(async (req, res) => res.json({
+    favourites: catalogue.pathsWithRating(order.FAVOURITE).length,
+    skipped: catalogue.pathsWithRating(order.SKIPPED).length,
+    ...await ratings.status(),
+})));
+
+// Set a rating and wait for the verified result: { rating: 0|1|5, id? or path? } (no id: the photo on screen).
+app.post("/api/photo/rating", wrap(async (req, res) => {
     const b = req.body || {};
-    const p = markTarget(b);
-    if (!p) return res.status(404).json({ error: "no such photo" });
-    marks.remove(p, b.mark);
-    events.broadcast("state", player.view());
-    res.json({ path: p, marks: marks.of(p) });
+    if (![0, 1, 5].includes(b.rating)) return res.status(400).json({ error: "rating must be 0, 1 (skipped) or 5 (favourite)" });
+    const p = ratingTarget(b);
+    if (!await readyToSave(p, res)) return;
+    const r = await saveRating(p, b.rating, RATING_WORDS[b.rating]);
+    res.status(r.ok ? 200 : 500).json({ path: p, ...r });
+}));
+
+// The buttons and the phone: { what: "favourite" or "skip", id?, wait? }. Answers at once; the toast
+// and the state event report the result. Skipping moves on immediately.
+app.post("/api/photo/toggle", wrap(async (req, res) => {
+    const b = req.body || {};
+    const t = TOGGLES[b.what];
+    if (!t) return res.status(400).json({ error: "what must be favourite or skip" });
+    const p = ratingTarget(b);
+    if (!await readyToSave(p, res)) return;
+    const turningOn = player.info(p).rating !== t.value;
+    player.setToast(turningOn ? t.saving : "Saving…");
+    if (b.what === "skip" && turningOn && p === player.current() && !(player.source() || {}).skipped) await player.step(1);
+    else events.broadcast("state", player.view());
+    const job = saveRating(p, turningOn ? t.value : 0, turningOn ? t.on : t.off);
+    if (b.wait) {
+        const r = await job;
+        return res.status(r.ok ? 200 : 500).json({ path: p, on: turningOn, ...r });
+    }
+    job.catch((err) => logger.error(`Rating failed: ${err.message}`));
+    res.status(202).json({ path: p, on: turningOn, accepted: true });
 }));
 
 // ---------- History and suggestions (R19) ----------

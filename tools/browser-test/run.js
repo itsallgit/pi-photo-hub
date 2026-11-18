@@ -49,7 +49,8 @@ async function startStack() {
     apiProc = spawn(process.execPath, [path.join(__dirname, "..", "..", "api", "server.js")], {
         env: { ...process.env, PORT: String(API_PORT), STATE_DIRECTORY: state, CACHE_DIRECTORY: path.join(state, "cache"), PHOTO_API_LOG_DIR: path.join(state, "log"),
             PICAPPORT_URL: `http://localhost:${PIC_PORT}`, CHROMIUM_BIN: process.execPath, BROWSER_CHECK_CMD: `${node} -e "process.exit(0)"`, BROWSER_KILL_CMD: `${node} -e "0"`,
-            WLR_RANDR_BIN: path.join(state, "none"), CHROMIUM_FLAGS_EXTRA: "" },
+            WLR_RANDR_BIN: path.join(state, "none"), CHROMIUM_FLAGS_EXTRA: "", PHOTO_METADATA_STATUS_TTL_MS: "0", FAKE_METADATA_DIR: state,
+            PHOTO_METADATA_CMD: JSON.stringify([process.execPath, path.join(__dirname, "..", "..", "api", "test", "fake-metadata-writer.js")]) },
         stdio: ["ignore", "pipe", "pipe"],
     });
     apiProc.stdout.on("data", (d) => (out += d));
@@ -248,12 +249,12 @@ async function main() {
         assert.equal(await toast(shelf), null, "pause and overlay style show no toast");
         const star = () => shelf.evaluate(() => { const s = document.getElementById("starmark"); return !s.classList.contains("hidden") && getComputedStyle(s).opacity !== "0"; });
         assert.equal(await star(), false);
-        await api("POST", "/api/marks/toggle", { mark: "star", by: "button" });
+        await api("POST", "/api/photo/toggle", { what: "favourite" });
         await until(async () => (await toast(shelf)) === "★ Starred", "the star toast", 3000);
         await until(async () => (await toast(shelf)) === null, "the star toast to go", 4000);
         await until(star, "the gold star on the starred photo", 1500);
         await shot(shelf, "shelf-starred");
-        await api("POST", "/api/marks/toggle", { mark: "star", by: "button" });
+        await api("POST", "/api/photo/toggle", { what: "favourite" });
         await until(async () => (await toast(shelf)) === "☆ Star removed", "the unstar toast", 3000);
         await until(async () => !(await shelf.evaluate(() => !document.getElementById("starmark").classList.contains("hidden"))), "the gold star to go", 1500);
         await until(async () => (await toast(shelf)) === null, "the unstar toast to go", 4000);
@@ -366,13 +367,41 @@ async function main() {
         await shot(phone, "phone-settings");
         await clickLabel(phone, "Close");
     });
-    await ok("phone: mark this photo (star, then remove)", async () => {
+    await ok("phone: star a photo and remove the star", async () => {
+        await api("POST", "/api/player/source", { source: { query: "honeymoon", label: "Honeymoon" }, preset: "ambient" });
+        await until(async () => (await api("GET", "/api/player")).source.label === "Honeymoon", "honeymoon");
+        await until(async () => (await shownId(phone)) === (await api("GET", "/api/player")).current.id, "the phone on the photo");
+        await showControls(phone);
+        const lit = () => phone.evaluate(() => document.querySelector("#controls button[aria-label=Star]").classList.contains("on"));
+        assert.equal(await lit(), false);
+        await clickLabel(phone, "Star");
+        await until(lit, "the star lit");
+        assert.equal((await api("GET", "/api/player")).current.info.favourite, true);
         await showControls(phone);
         await clickLabel(phone, "Star");
-        await until(async () => (await api("GET", "/api/marks")).marks.length === 1, "a mark");
-        await until(() => phone.evaluate(() => document.querySelector("#controls button[aria-label=Star]").classList.contains("on")), "the star lit");
-        await clickLabel(phone, "Star");
-        await until(async () => (await api("GET", "/api/marks")).marks.length === 0, "the mark removed");
+        await until(async () => !(await lit()), "the star off");
+    });
+    await ok("phone: skip a photo, find it under Skipped photos, bring it back", async () => {
+        await api("PATCH", "/api/player/settings", { interval: 60 });
+        await showControls(phone);
+        const v = await api("GET", "/api/player");
+        await clickLabel(phone, "Skip this photo");
+        await until(async () => (await api("GET", "/api/ratings")).skipped === 1, "the photo skipped");
+        const after = await api("GET", "/api/player");
+        assert.notEqual(after.current.id, v.current.id);
+        assert.equal(after.count, v.count - 1);
+        await showControls(phone);
+        await clickLabel(phone, "Browse");
+        await until(() => phone.evaluate(() => /Skipped photos\s*1/.test(document.querySelector("#controls .list").innerText)), "the Skipped count");
+        await shot(phone, "phone-your-choices");
+        await clickText(phone, "#controls .list button", /Skipped photos/);
+        await until(async () => (await api("GET", "/api/player")).source.label === "Skipped photos", "the Skipped slideshow");
+        await until(async () => (await shownId(phone)) === v.current.id, "the skipped photo on the phone");
+        await showControls(phone);
+        await clickLabel(phone, "Skip this photo");
+        await until(async () => (await api("GET", "/api/ratings")).skipped === 0, "the photo restored");
+        await api("POST", "/api/player/source", { source: { query: "honeymoon", label: "Honeymoon" }, preset: "ambient" });
+        await until(async () => (await api("GET", "/api/player")).source.label === "Honeymoon", "honeymoon again");
     });
     await ok("phone in landscape (mirrored to the TV): the photo fills, controls hide by themselves", async () => {
         await phone.setViewport({ width: 915, height: 412, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6 });

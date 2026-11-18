@@ -5,6 +5,9 @@
 // build(paths, settings, { seed, info, lastShown, now }) -> [{ p, c? }]
 //   p: file path; c: { t: title, d: dates } when an event (chapter) starts there (title cards, R12)
 
+// The rating stored in each photo (principle 11): 5 favourite, 1 skipped, 0 neither.
+const FAVOURITE = 5, SKIPPED = 1;
+
 // Small, fast, seeded random numbers (mulberry32).
 function rng(seed) {
     let a = seed >>> 0;
@@ -29,7 +32,7 @@ function shuffle(arr, rnd) {
 const secs = (iso) => (iso ? Date.parse(iso + "Z") / 1000 : null); // local time as if UTC: only differences matter
 
 // Bursts: photos in one folder taken at most gap seconds after the previous one. Keep the middle
-// one of each burst (usually the steadiest), or a rated one if there is one.
+// one of each burst (usually the steadiest), or a favourite if there is one.
 function thinBursts(paths, info, gap = 5) {
     const byFolder = new Map();
     for (const p of paths) {
@@ -47,7 +50,7 @@ function thinBursts(paths, info, gap = 5) {
             if (k < list.length && list[k].t - list[k - 1].t <= gap) continue;
             const burst = list.slice(start, k);
             if (burst.length > 1) {
-                const keep = burst.find((x) => x.rating > 0) || burst[Math.floor((burst.length - 1) / 2)];
+                const keep = burst.find((x) => x.rating === FAVOURITE) || burst[Math.floor((burst.length - 1) / 2)];
                 for (const x of burst) if (x !== keep) drop.add(x.p);
             }
             start = k;
@@ -141,11 +144,14 @@ function pushBackRecent(items, lastShown, recentDays, now) {
     return fresh.concat(recent.map((x) => x.it));
 }
 
-function build(paths, settings, { seed = 1, info, lastShown = null, now = Date.now() }) {
+// showAll: the Favourites and Skipped slideshows show every photo they hold. Otherwise skipped photos
+// are left out first, so another photo of the same burst can take a skipped one's place.
+function build(paths, settings, { seed = 1, info, lastShown = null, now = Date.now(), includeSkipped = false, showAll = false }) {
     const rnd = rng(seed);
     let list = [...new Set(paths)];
-    if (settings.upright === "skip") list = list.filter((p) => info(p).upright !== true);
-    if (settings.bursts) list = thinBursts(list, info);
+    if (!includeSkipped) list = list.filter((p) => info(p).rating !== SKIPPED);
+    if (!showAll && settings.upright === "skip") list = list.filter((p) => info(p).upright !== true);
+    if (!showAll && settings.bursts) list = thinBursts(list, info);
     let items;
     switch (settings.order) {
         case "date-asc":
@@ -157,7 +163,7 @@ function build(paths, settings, { seed = 1, info, lastShown = null, now = Date.n
             break;
         default: {
             let pool = list;
-            if (settings.highlights) pool = pool.concat(list.filter((p) => info(p).rating > 0)); // rated photos come twice as often
+            if (settings.highlights && !showAll) pool = pool.concat(list.filter((p) => info(p).rating === FAVOURITE)); // favourites come twice as often
             items = pushBackRecent(shuffle(pool, rnd).map((p) => ({ p })), lastShown, settings.recentDays, now);
             // never the same photo twice in a row (highlights)
             for (let i = 1; i < items.length; i++) {
@@ -188,4 +194,4 @@ function pushBackChapters(items, lastShown, recentDays, now) {
     return fresh.concat(recent).flat();
 }
 
-module.exports = { build, rng, shuffle, thinBursts, chapters, pushBackRecent, dateRange, fmtMonth };
+module.exports = { FAVOURITE, SKIPPED, build, rng, shuffle, thinBursts, chapters, pushBackRecent, dateRange, fmtMonth };

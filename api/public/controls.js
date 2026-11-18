@@ -81,7 +81,6 @@
   function renderBars() {
     const cur = st.current;
     const i = (cur && cur.info) || {};
-    const marked = (k) => (i.marks || []).includes(k);
     const top = h("div", { class: "bar top" },
       h("div", { class: "title" },
         h("div", { class: "t1" }, st.source && st.source.label ? st.source.label : "Slideshow"),
@@ -97,24 +96,21 @@
       i.people && i.people.length ? h("div", { class: "muted" }, i.people.join(", ")) : null);
     const bottom = h("div", { class: "bar bottom" }, info,
       h("div", { class: "buttons" },
-        h("button", { class: `big${marked("star") ? " on" : ""}`, "aria-label": "Star", on: { click: () => mark("star") } }, "★"),
+        h("button", { class: `big${i.favourite ? " on" : ""}`, "aria-label": "Star", on: { click: () => rate("favourite") } }, "★"),
         h("button", { class: "big", "aria-label": "Back", on: { click: () => act(() => api("POST", "/api/player/back")) } }, "⏮"),
         h("button", { class: "big", "aria-label": st.playing ? "Pause" : "Play", on: { click: () => act(() => api("POST", "/api/player/toggle")) } }, st.playing ? "❚❚" : "▶"),
         h("button", { class: "big", "aria-label": "Next", on: { click: () => act(() => api("POST", "/api/player/next")) } }, "⏭"),
-        h("button", { class: `big bad${marked("bad") ? " on" : ""}`, "aria-label": "Bad photo", on: { click: () => mark("bad") } }, "⚑")));
+        h("button", { class: `big bad${i.skipped ? " on" : ""}`, "aria-label": "Skip this photo", on: { click: () => rate("skip") } }, "⊘")));
     return [top, bottom];
   }
-  async function mark(kind) {
-    const cur = st.current;
-    if (!cur) return;
-    const has = (cur.info.marks || []).includes(kind);
-    await act(() => api(has ? "DELETE" : "POST", "/api/marks", { id: cur.id, mark: kind, by: "phone" }),
-      has ? "Mark removed" : kind === "star" ? "Starred: on the review list for your pipeline" : "Marked as a bad photo: on the review list");
+  // The result arrives as a toast on every screen, also when saving is refused.
+  function rate(what) {
+    if (st.current) api("POST", "/api/photo/toggle", { what, id: st.current.id }).catch(() => {});
   }
   const presetLabel = (n) => (presets && (presets.presets.find((p) => p.name === n) || {}).label) || n;
 
   // ---------- the sheet ----------
-  function openSheet(name) { sheet = name; clearTimeout(hideTimer); render(); }
+  function openSheet(name) { sheet = name; clearTimeout(hideTimer); if (name === "browse") ratingCounts = null; render(); }
   function closeSheet() { sheet = null; render(); poke(); }
   function renderSheet() {
     const tab = (name, label) => h("button", { class: sheet === name ? "on" : "", on: { click: () => openSheet(name) } }, label);
@@ -221,8 +217,10 @@
 
   // ---------- browse: years, places, people, keywords, folders, specials ----------
   const open = new Set();
+  let ratingCounts = null;
   function browsePane() {
     if (!vocab) { loadVocab().then(render); return h("div", {}, "Loading…"); }
+    if (!ratingCounts) { ratingCounts = {}; api("GET", "/api/ratings").then((r) => { ratingCounts = r; if (sheet === "browse") render(); }).catch(() => {}); }
     const toggle = (k) => { if (open.has(k)) open.delete(k); else open.add(k); render(); };
     const item = (label, n, onPlay, extra) => h("button", { on: { click: onPlay } }, h("span", {}, label), h("span", { class: "n" }, extra || (n ? `${n}` : "")));
     const years = Object.entries(vocab.years || {}).sort();
@@ -231,6 +229,9 @@
     return h("div", { class: "list" },
       h("h3", {}, dateOrder ? "Years: jump to" : "Years: play"),
       h("div", { class: "years" }, years.map(([y, n]) => h("button", { on: { click: () => (dateOrder ? act(() => api("POST", "/api/player/jump", { year: Number(y) }), `Jumped to ${y}`) : play({ years: [Number(y)], label: y })) } }, `${y} `, h("span", { class: "n" }, n)))),
+      h("h3", {}, "Your choices"),
+      item("★ Favourites", ratingCounts.favourites, () => play({ favourites: true, label: "Favourites" })),
+      item("⊘ Skipped photos", ratingCounts.skipped, () => play({ skipped: true, label: "Skipped photos" })),
       h("h3", {}, "Suggestions"),
       item("This week in past years", null, () => play({ onThisDay: true, label: "This week in past years" })),
       item("Not seen in a while (90 days)", null, () => play({ notSeenDays: 90, label: "Not seen in a while" })),
@@ -294,7 +295,7 @@
       row("Order", seg("order", ["random", "chapters", "date-asc", "date-desc"], ["Random", "Chapters", "Oldest first", "Newest first"])),
       row("Upright photos", seg("upright", ["fill", "skip"], ["Show", "Skip"])),
       row("One photo per burst", onoff("bursts")),
-      row("Starred photos more often", onoff("highlights")),
+      row("Favourites more often and longer", onoff("highlights")),
       h("h3", {}, "Look"),
       row("Motion", seg("motion", ["off", "subtle", "lively"], ["Off", "Subtle", "Lively"])),
       row("Transition", seg("transition", ["fade", "slide", "zoom", "dip"], ["Fade", "Slide", "Zoom", "Dip"])),

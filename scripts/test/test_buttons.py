@@ -24,8 +24,8 @@ class MapperTest(unittest.TestCase):
         self.assertTrue({"KEY_F13", "KEY_F14", "KEY_F15", "KEY_F16", "KEY_F17", "KEY_F18"} <= self.m.keys())
 
     def test_key_without_long_fires_on_press(self):
-        self.assertEqual(self.paths(self.m.event("KEY_F13", 1, 10.0)), ["/api/player/back"])
-        self.assertEqual(self.m.event("KEY_F13", 0, 10.1), [])
+        self.assertEqual(self.paths(self.m.event("KEY_F16", 1, 10.0)), ["/api/player/nudge"])
+        self.assertEqual(self.m.event("KEY_F16", 0, 10.1), [])
 
     def test_short_press_of_a_key_with_long(self):
         self.assertEqual(self.m.event("KEY_F14", 1, 10.0), [])

@@ -7,7 +7,7 @@ description: Use when the owner talks about the button board or knob ("the butto
 
 A small USB board (3 keys and a knob that also clicks) in front of the shelf. `photo-buttons.service` on the Pi reads it directly, takes it exclusively (its keys never reach Chromium), and turns each input into a photo API call (principle 12). The mapping is `config/buttons.json`; the service is `scripts/photo-buttons.py`. Facts: `docs/architecture.md`, "Slideshow layer", "Buttons". Requirements: R17 in `docs/slideshow-layer-build.md`.
 
-**Agreed first map:** KEY1 back, KEY2 pause/play (long: screen off/on), KEY3 next (long: star on or off), knob left slower, knob right faster, knob press next overlay style. Every screen shows a brief toast for the knob's new speed and for KEY3's star on or off, a starred photo shows a small gold star, and back and next snap to the photo. The board is programmed to send F13 to F18 (`config/button-board.yaml`, "Program the board" below); its multimedia keys are mapped the same way in case a board sends those.
+**Agreed first map:** KEY1 back (long: skip this photo, or bring it back), KEY2 pause/play (long: screen off/on), KEY3 next (long: favourite on or off), knob left slower, knob right faster, knob press next overlay style. Every screen shows a brief toast for the knob's new speed and for KEY1's and KEY3's holds, a favourite shows a small gold star, and back and next snap to the photo. The board is programmed to send F13 to F18 (`config/button-board.yaml`, "Program the board" below); its multimedia keys are mapped the same way in case a board sends those.
 
 ## Check (read-only, the `pi-access` skill)
 

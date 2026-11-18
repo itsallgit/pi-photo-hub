@@ -13,7 +13,6 @@ const library = require("./library");
 const settingsLib = require("./settings");
 const order = require("./order");
 const history = require("./history");
-const marks = require("./marks");
 
 const CARD_MS = 4000; // a title card shows this long before the event's first photo
 const LOOK_AHEAD = 2;
@@ -63,8 +62,8 @@ function changed(what) {
 function checkSource(src) {
     if (!src || typeof src !== "object") return "source must be an object";
     const picapport = require("./picapport");
-    const has = ["query", "places", "years", "onThisDay", "notSeenDays", "box"].some((k) => src[k] !== undefined && src[k] !== null);
-    if (!has) return "source needs at least one of: query, places, years, onThisDay, notSeenDays, box";
+    const has = ["query", "places", "years", "onThisDay", "notSeenDays", "box", "favourites", "skipped"].some((k) => src[k] !== undefined && src[k] !== null);
+    if (!has) return "source needs at least one of: query, places, years, onThisDay, notSeenDays, box, favourites, skipped";
     if (src.query !== undefined && src.query !== null) {
         const err = picapport.validateQuery(src.query);
         if (err) return err;
@@ -74,6 +73,8 @@ function checkSource(src) {
     if (src.onThisDay !== undefined && typeof src.onThisDay !== "boolean") return "onThisDay must be true or false";
     if (src.notSeenDays !== undefined && (!Number.isInteger(src.notSeenDays) || src.notSeenDays < 1 || src.notSeenDays > 3650)) return "notSeenDays must be 1 to 3650";
     if (src.box !== undefined && (!Array.isArray(src.box) || src.box.length !== 4 || src.box.some((n) => typeof n !== "number" || !Number.isFinite(n)))) return "box must be [minLat, minLon, maxLat, maxLon]";
+    for (const k of ["favourites", "skipped"]) if (src[k] !== undefined && typeof src[k] !== "boolean") return `${k} must be true or false`;
+    if (src.favourites && src.skipped) return "a photo cannot be both a favourite and skipped";
     if (src.label !== undefined && src.label !== null && (typeof src.label !== "string" || src.label.length > 200)) return "label must be text of at most 200 characters";
     return null;
 }
@@ -87,6 +88,8 @@ function describeSource(src) {
     if (src.onThisDay) parts.push("this week in past years");
     if (src.notSeenDays) parts.push(`not seen in ${src.notSeenDays} days`);
     if (src.box) parts.push("an area on the map");
+    if (src.favourites) parts.push("favourites");
+    if (src.skipped) parts.push("skipped photos");
     return parts.join(", ");
 }
 
@@ -105,6 +108,8 @@ async function resolveSource(src, onProgress) {
     }
     if (src.onThisDay) and(catalogue.pathsOnThisDay());
     if (src.box) and(catalogue.pathsInBox(src.box));
+    if (src.favourites) and(catalogue.pathsWithRating(order.FAVOURITE));
+    if (src.skipped) and(catalogue.pathsWithRating(order.SKIPPED));
     if (list === null) list = catalogue.paths();
     if (src.notSeenDays) list = history.notSeen(list, src.notSeenDays);
     return list;
@@ -125,14 +130,15 @@ function info(p) {
 }
 
 function makeOrder(seed) {
-    return order.build(paths, s.settings, { seed, info, lastShown: history.lastShown });
+    const src = s.source || {};
+    return order.build(paths, s.settings, { seed, info, lastShown: history.lastShown, includeSkipped: !!src.skipped, showAll: !!(src.skipped || src.favourites) });
 }
 
 function durationMs(i) {
     const it = items[i];
     if (!it) return s.settings.interval * 1000;
     let ms = s.settings.interval * 1000;
-    if (s.settings.highlights && info(it.p).rating > 0) ms *= 1.5;
+    if (s.settings.highlights && info(it.p).rating === order.FAVOURITE) ms *= 1.5;
     if (s.settings.titleCards && it.c) ms += CARD_MS;
     return Math.round(ms);
 }
@@ -176,6 +182,36 @@ function dropMissing(p) {
     s.count = items.length;
     savePlaylist();
     changed("order");
+}
+
+// Does a photo belong in what is playing, going by its rating?
+function belongs(p) {
+    const r = info(p).rating, src = s.source || {};
+    if (src.skipped) return r === order.SKIPPED;
+    if (r === order.SKIPPED) return false;
+    return !src.favourites || r === order.FAVOURITE;
+}
+
+// A photo's rating changed: take it out of the slideshow if it no longer belongs.
+function ratingChanged(p) {
+    if (!s || !items.some((it) => it.p === p) || belongs(p)) return;
+    const cur = items[s.position];
+    const wasCurrent = cur && cur.p === p;
+    moveSeq++;
+    items = items.filter((it) => it.p !== p);
+    paths = paths.filter((x) => x !== p);
+    const k = items.indexOf(cur);
+    s.position = k >= 0 ? k : Math.min(s.position, Math.max(0, items.length - 1));
+    s.count = items.length;
+    if (wasCurrent) {
+        s.moveKind = "manual";
+        s.startedAt = Date.now();
+        s.elapsedAtPause = 0;
+        showing();
+    }
+    savePlaylist();
+    changed("order");
+    schedule();
 }
 
 function showing() {
@@ -405,8 +441,9 @@ function photoView(i) {
             event: inf.event,
             people: inf.people,
             rating: inf.rating,
+            favourite: inf.rating === order.FAVOURITE,
+            skipped: inf.rating === order.SKIPPED,
             upright: inf.upright,
-            marks: marks.of(it.p),
             file: it.p.split("/").pop(),
         },
         card: s.settings.titleCards && it.c ? it.c : null,
@@ -507,6 +544,6 @@ function stop() {
 }
 
 module.exports = {
-    start, stop, view, step, jump, pause, play, toggle, setToast, setSource, setSettings, applyPreset, checkSource, describeSource,
+    start, stop, view, step, jump, pause, play, toggle, setToast, ratingChanged, setSource, setSettings, applyPreset, checkSource, describeSource,
     current, source, settings, itemsCount, info, setSourceLabel,
 };

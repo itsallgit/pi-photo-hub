@@ -6,6 +6,7 @@
 const fs = require("fs");
 const path = require("path");
 const config = require("./config");
+const { writeText } = require("./state");
 
 let cat = null; // { mtimeMs, byPath: Map(path -> row), rows, folders, places, people, fields }
 let logger = console;
@@ -27,7 +28,7 @@ function load() {
         const f = Object.fromEntries(raw.fields.map((name, i) => [name, i]));
         const byPath = new Map();
         for (const r of raw.photos) byPath.set(`${raw.folders[r[f.folder]]}/${r[f.file]}`, r);
-        cat = { mtimeMs: st.mtimeMs, byPath, rows: raw.photos, folders: raw.folders, places: raw.places || [],
+        cat = { raw, mtimeMs: st.mtimeMs, byPath, rows: raw.photos, folders: raw.folders, places: raw.places || [],
             people: raw.people || [], f, generatedAt: raw.generatedAt, root: raw.root };
         logger.info(`Catalogue loaded: ${byPath.size} photos (built ${raw.generatedAt})`);
     } catch (err) {
@@ -140,10 +141,24 @@ function mapPoints(precision = 2) {
     return [...m].map(([key, n]) => [...key.split(",").map(Number), n]);
 }
 
+// A photo's rating was changed and verified in the file: keep this rebuildable index in step until
+// the nightly scan reads it from the photo again.
+function setRating(filePath, rating) {
+    const c = load();
+    const r = c && c.byPath.get(filePath);
+    if (!r) return false;
+    r[c.f.rating] = rating;
+    writeText(config.files.catalogue, JSON.stringify(c.raw));
+    c.mtimeMs = fs.statSync(config.files.catalogue).mtimeMs;
+    return true;
+}
+
+function pathsWithRating(rating) { return paths((r, c) => r[c.f.rating] === rating); }
+
 function summary() {
     const c = load();
     if (!c) return { loaded: false };
     return { loaded: true, photos: c.byPath.size, places: c.places.length, generatedAt: c.generatedAt };
 }
 
-module.exports = { load, info, paths, pathsInPlaces, pathsOnThisDay, pathsInBox, mapPoints, eventName, cleanFolderName, summary, setLogger };
+module.exports = { load, info, paths, pathsInPlaces, pathsOnThisDay, pathsInBox, mapPoints, eventName, cleanFolderName, summary, setLogger, setRating, pathsWithRating };

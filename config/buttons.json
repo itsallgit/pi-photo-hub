@@ -4,16 +4,16 @@
   "api": "http://localhost:3000",
   "long_press_ms": 700,
   "map": {
-    "KEY_F13": { "press": { "method": "POST", "path": "/api/player/back" } },
+    "KEY_F13": { "press": { "method": "POST", "path": "/api/player/back" }, "long": { "method": "POST", "path": "/api/photo/toggle", "body": { "what": "skip" } } },
     "KEY_F14": { "press": { "method": "POST", "path": "/api/player/toggle" }, "long": { "method": "POST", "path": "/api/screen/toggle" } },
-    "KEY_F15": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/marks/toggle", "body": { "mark": "star", "by": "button" } } },
+    "KEY_F15": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/photo/toggle", "body": { "what": "favourite" } } },
     "KEY_F16": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": 1 } } },
     "KEY_F17": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "overlayStyle" } } },
     "KEY_F18": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": -1 } } },
 
-    "KEY_PREVIOUSSONG": { "press": { "method": "POST", "path": "/api/player/back" } },
+    "KEY_PREVIOUSSONG": { "press": { "method": "POST", "path": "/api/player/back" }, "long": { "method": "POST", "path": "/api/photo/toggle", "body": { "what": "skip" } } },
     "KEY_PLAYPAUSE": { "press": { "method": "POST", "path": "/api/player/toggle" }, "long": { "method": "POST", "path": "/api/screen/toggle" } },
-    "KEY_NEXTSONG": { "press": { "method": "POST", "path": "/api/player/next" } },
+    "KEY_NEXTSONG": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/photo/toggle", "body": { "what": "favourite" } } },
     "KEY_VOLUMEDOWN": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": 1 } } },
     "KEY_MUTE": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "overlayStyle" } } },
     "KEY_VOLUMEUP": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": -1 } } }

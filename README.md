@@ -183,13 +183,13 @@ curl -s -X POST $API/api/player/preset -H 'content-type: application/json' -d '{
 curl -s -X PATCH $API/api/player/settings -H 'content-type: application/json' -d '{"upright":"skip","motion":"lively"}'
 curl -s -X POST $API/api/player/source -H 'content-type: application/json' \
      -d '{"source":{"places":["IT"],"label":"Italy"}}'          # also: query, years, onThisDay, notSeenDays, box
-curl -s -X POST $API/api/marks -H 'content-type: application/json' -d '{"mark":"star"}'  # review list only; never written to a photo
+curl -s -X POST $API/api/photo/rating -H 'content-type: application/json' -d '{"rating":5}'  # favourite, saved in the photo itself (1 skipped, 0 neither)
 curl -s -X PATCH $API/api/player/settings -H 'content-type: application/json' -d '{"viewer":"picapport"}'  # fallback: Picapport's own page ("layer" to come back)
 ```
 
 **On the phone:** open `http://pi.local:3000/show` in Chrome (bookmark it, or "Add to home screen"), tap once for the controls and full screen, swipe for next and back; Search, Browse (years, places, people, keywords, folders, this week in past years, not seen in a while), Map, Settings; ★ and ⚑ put the photo on the review list. Mirror the phone to the TV in landscape to show a trip there.
 
-State on the Pi: `/var/lib/photo-api/player.json` (now playing, settings) and `playlist.json` (the order), `history.json`, `marks.json`, `schedule.json`, `catalogue.json` (built nightly with the vocabulary). Disposable cache: `/var/cache/photo-api/` (resized photos, capped at 2 GB, and listed query results); deleting it is safe. Defaults and presets: `config/slideshow-presets.json`.
+State on the Pi: `/var/lib/photo-api/player.json` (now playing, settings) and `playlist.json` (the order), `history.json`, `schedule.json`, `catalogue.json` (built nightly with the vocabulary). Disposable cache: `/var/cache/photo-api/` (resized photos, capped at 2 GB, and listed query results); deleting it is safe. Defaults and presets: `config/slideshow-presets.json`.
 
 Manual alternative on the Pi, without the API: the screen with `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr --output HDMI-A-1 --off` (or `--on`). The vocabulary and the photo catalogue are rebuilt nightly at 03:30; by hand: `bash ~/pi-photo-hub/scripts/refresh-vocabulary.sh` (about 40 minutes) or `--build-only` (seconds, from the last scan). Place names (country, city) come from GPS with an offline list from GeoNames (place data © GeoNames, https://www.geonames.org, licensed CC BY 4.0), downloaded once by `scripts/fetch-places.sh` into `~/metadata-survey/places/` (`--refresh` to download it again).
 
@@ -199,11 +199,17 @@ The private word list and the other API state are only on the Pi's SD card (`/va
 
 ## Button board
 
-A USB "3 key + knob" keypad in front of the shelf (slideshow layer R17). The Pi's `photo-buttons` service reads it and calls the photo API; nothing else on the Pi sees its keys. What each input does is in `config/buttons.json` (first map: KEY1 back, KEY2 pause/play and hold for screen off/on, KEY3 next and hold to star or unstar the photo, knob slower/faster, knob press changes the overlay style). Back and next snap straight to the photo, the screen briefly shows the new speed or the star change, and a starred photo carries a small gold star.
+A USB "3 key + knob" keypad in front of the shelf (slideshow layer R17). The Pi's `photo-buttons` service reads it and calls the photo API; nothing else on the Pi sees its keys. What each input does is in `config/buttons.json` (first map: KEY1 back and hold to skip the photo, KEY2 pause/play and hold for screen off/on, KEY3 next and hold to star or unstar the photo, knob slower/faster, knob press changes the overlay style). Back and next snap straight to the photo, the screen briefly shows the new speed or what a hold did, and a favourite carries a small gold star.
 
 **Program the board (once per board; the setting is stored in it).** A new board sends the same letter from every input, so this is required. **Automated, from the Pi with the board plugged in:** the `button-board` skill, "Program the board", writes `config/button-board.yaml` with the open-source `ch57x-keyboard-tool`. **Manual, on a Windows PC:** install its settings tool (`MINI KeyBoard.exe`, from the QR code in the manual or `szxiaozi.com`), plug the board into the PC, and set KEY1 = F13, KEY2 = F14, KEY3 = F15, knob left = F16, knob press = F17, knob right = F18 (keys nothing else uses), download the setting into the board, and optionally set the LED mode to 0 (off). Then plug it into the Pi. If the tool cannot send F13 to F18, set the multimedia keys instead (previous, play/pause, next, volume down, mute, volume up for the same six inputs); those are mapped too.
 
 **Check it (automated: the `button-board` skill):** `journalctl -u photo-buttons -n 30 --no-pager` shows "board found ... taken exclusively" and one line per press. **Find out what a board sends** (manual): `sudo systemctl stop photo-buttons; python3 ~/pi-photo-hub/scripts/photo-buttons.py --learn 60; sudo systemctl start photo-buttons`, then press each key. **Test without the board:** `sudo python3 ~/pi-photo-hub/scripts/test/buttons-virtual.py`. **Change a key:** edit `config/buttons.json`, check with `python3 scripts/photo-buttons.py --check`, commit and update the Pi.
+
+## Favourite and skipped photos
+
+A favourite or skipped photo is recorded **in the photo itself**: XMP rating 5 is a favourite, 1 is skipped, 0 is neither. Every slideshow leaves out skipped photos; on the phone, ☰ then "Your choices" plays **Favourites** or **Skipped photos**. To bring a photo back, play Skipped photos and press ⊘ (or hold KEY1) on it. Ratings set in another photo program count too, after the next nightly scan.
+
+**Automated:** hold KEY3 (favourite) or KEY1 (skip), the phone's ★ and ⊘, or `curl -X POST http://pi.local:3000/api/photo/rating -H 'content-type: application/json' -d '{"rating":5}'` (the photo on screen). **Manual, on the Pi:** `python3 ~/pi-photo-hub/scripts/photo-metadata.py set-rating "<photo path>" 5`, never `exiftool` directly. Saving needs `writesEnabled` in `config/photo-metadata.json` and a recent pass of the read-only drive check; `photo-metadata.py status` says why it is refused. After a power cut during a save, `photo-metadata.py strays` lists leftovers: the `photo-metadata` skill, "Recovery".
 
 ## Logs
 

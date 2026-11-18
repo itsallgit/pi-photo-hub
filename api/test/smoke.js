@@ -18,6 +18,8 @@ const queries = [];
 const state = fs.mkdtempSync(path.join(os.tmpdir(), "photo-api-test-"));
 const cache = path.join(state, "cache");
 const launches = path.join(state, "launches.log");
+const metadata = path.join(state, "fake-metadata");
+fs.mkdirSync(metadata);
 const node = JSON.stringify(process.execPath);
 const env = {
     ...process.env,
@@ -31,6 +33,9 @@ const env = {
     BROWSER_KILL_CMD: `${node} -e "require('fs').appendFileSync(process.argv[1],'launch\\n')" ${JSON.stringify(launches)}`,
     WLR_RANDR_BIN: path.join(state, "no-wlr-randr"), // screen calls fail and are reported, not fatal
     CHROMIUM_FLAGS_EXTRA: "",
+    PHOTO_METADATA_CMD: JSON.stringify([process.execPath, path.join(__dirname, "fake-metadata-writer.js")]),
+    PHOTO_METADATA_STATUS_TTL_MS: "0",
+    FAKE_METADATA_DIR: metadata,
 };
 
 async function api(method, p, body) {
@@ -388,33 +393,96 @@ async function main() {
         const r = await fetch(`http://localhost:${API_PORT}${v.current.thumb}`);
         assert.equal(r.status, 200);
     });
-    await ok("marks: star and bad photo go into the review list only", async () => {
-        const v = await player();
-        const toastBefore = v.toast && v.toast.id;
-        const r = await api("POST", "/api/marks", { mark: "star" });
-        assert.deepEqual(r.body.marks, ["star"]);
-        await api("POST", "/api/marks", { id: v.current.id, mark: "bad", by: "phone" });
-        assert.equal(((await player()).toast || {}).id, toastBefore, "only a button's mark sends a toast");
-        const list = (await api("GET", "/api/marks")).body.marks;
-        assert.equal(list.length, 2);
-        assert.equal(list[1].by, "phone");
-        assert.deepEqual((await player()).current.info.marks, ["star", "bad"]);
-        assert.equal((await api("POST", "/api/marks", { mark: "delete" })).status, 400);
-        await api("DELETE", "/api/marks", { id: v.current.id, mark: "bad" });
-        assert.equal((await api("GET", "/api/marks")).body.marks.length, 1);
-        await api("POST", "/api/marks", { mark: "star", by: "button" });
+    const photoPath = (folder, file) => `${fake.ROOT}/${folder}/${file}`;
+    const writes = () => { const f = path.join(metadata, "writes.log"); return fs.existsSync(f) ? fs.readFileSync(f, "utf8").trim().split("\n") : []; };
+    const steer = (name, on) => { const f = path.join(metadata, name); if (on) fs.writeFileSync(f, ""); else fs.rmSync(f, { force: true }); };
+    const toggle = (what, extra = {}) => api("POST", "/api/photo/toggle", { what, wait: true, ...extra });
+    await ok("ratings: holding the key turns a favourite on and off, through the writer", async () => {
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "Noosa" }, settings: { order: "date-asc" } });
+        const v = await ready(10, "Noosa");
+        const before = (await api("GET", "/api/ratings")).body;
+        assert.deepEqual([before.favourites, before.skipped, before.writable], [1, 0, true]); // f1.jpg is rated 5 in its file
+        const on = await toggle("favourite");
+        assert.deepEqual([on.status, on.body.on, on.body.rating], [200, true, 5]);
+        assert.equal((await player()).current.id, v.current.id, "a star does not move on");
+        assert.equal((await player()).current.info.favourite, true);
         assert.equal((await player()).toast.text, "★ Starred");
-        assert.equal((await api("GET", "/api/marks")).body.marks.length, 1);
-    });
-    await ok("marks: a held button toggles the star on the photo on screen", async () => {
-        const off = (await api("POST", "/api/marks/toggle", { mark: "star", by: "button" })).body;
-        assert.deepEqual([off.on, off.marks], [false, []]);
+        assert.equal(writes().at(-1), `5 ${on.body.path}`);
+        const saved = JSON.parse(fs.readFileSync(path.join(state, "catalogue.json"), "utf8"));
+        assert.equal(saved.photos.filter((r) => r[saved.fields.indexOf("rating")] === 5).length, 2, "the rebuildable index follows");
+        const off = await toggle("favourite");
+        assert.deepEqual([off.body.on, off.body.rating], [false, 0]);
         assert.equal((await player()).toast.text, "☆ Star removed");
-        assert.deepEqual((await player()).current.info.marks, []);
-        const on = (await api("POST", "/api/marks/toggle", { mark: "star", by: "button" })).body;
-        assert.deepEqual([on.on, on.marks], [true, ["star"]]);
-        assert.equal((await player()).toast.text, "★ Starred");
-        assert.equal((await api("POST", "/api/marks/toggle", { mark: "delete" })).status, 400);
+        assert.equal((await player()).current.info.favourite, false);
+    });
+    await ok("ratings: skip moves on at once and the photo leaves every slideshow; restore from Skipped", async () => {
+        await api("POST", "/api/player/jump", { position: 2 });
+        const v = await player();
+        const r = await toggle("skip");
+        assert.deepEqual([r.status, r.body.on, r.body.rating], [200, true, 1]);
+        const after = await player();
+        assert.notEqual(after.current.id, v.current.id);
+        assert.equal(after.count, 9);
+        assert.equal(after.toast.text, "Skipped");
+        assert.ok(!playlist().items.some((it) => it.p === r.body.path));
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "Noosa again" } });
+        await ready(9, "Noosa again");
+        assert.ok(!playlist().items.some((it) => it.p === r.body.path), "a new slideshow leaves it out");
+        await api("POST", "/api/player/source", { source: { skipped: true, label: "Skipped photos" } });
+        const sk = await ready(1, "Skipped photos");
+        assert.equal(sk.current.info.skipped, true);
+        const back = await toggle("skip");
+        assert.deepEqual([back.body.on, back.body.rating, back.body.path], [false, 0, r.body.path]);
+        assert.equal((await player()).count, 0, "it leaves the Skipped slideshow");
+        assert.equal((await player()).toast.text, "Back in your slideshows");
+        assert.equal((await api("GET", "/api/ratings")).body.skipped, 0);
+    });
+    await ok("ratings: a skipped burst photo gives way to another of the burst; Favourites is a slideshow", async () => {
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "N" }, settings: { bursts: true } });
+        await ready(10, "N");
+        const kept = playlist().items.map((it) => it.p).filter((p) => /n0[123]\.jpg$/.test(p));
+        assert.equal(kept.length, 1);
+        assert.equal((await api("POST", "/api/photo/rating", { path: kept[0], rating: 1 })).status, 200);
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "N2" } });
+        await ready(10, "N2");
+        const replaced = playlist().items.map((it) => it.p).filter((p) => /n0[123]\.jpg$/.test(p));
+        assert.equal(replaced.length, 1);
+        assert.notEqual(replaced[0], kept[0]);
+        await api("POST", "/api/photo/rating", { path: kept[0], rating: 0 });
+        await api("POST", "/api/photo/rating", { path: photoPath("2021.05 - Noosa", "n05.jpg"), rating: 5 });
+        await api("POST", "/api/player/source", { source: { favourites: true, label: "Favourites" } });
+        const fav = await ready(2, "Favourites");
+        assert.equal(fav.current.info.favourite, true);
+        await api("POST", "/api/photo/rating", { path: photoPath("2021.05 - Noosa", "n05.jpg"), rating: 0 });
+        assert.equal((await player()).count, 1, "an unstarred photo leaves Favourites");
+        assert.equal((await api("POST", "/api/player/source", { source: { favourites: true, skipped: true } })).status, 400);
+        assert.equal((await api("POST", "/api/player/source", { source: { favourites: "yes" } })).status, 400);
+    });
+    await ok("ratings: refusals and failures change nothing and say so", async () => {
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "N3" } });
+        const v = await ready(10, "N3");
+        assert.equal((await api("POST", "/api/photo/toggle", { what: "nothing" })).status, 400);
+        assert.equal((await api("POST", "/api/photo/rating", { rating: 3 })).status, 400);
+        const n = writes().length;
+        steer("off", true);
+        const off = await toggle("skip");
+        assert.deepEqual([off.status, off.body.code], [409, "switched-off"]);
+        assert.equal((await player()).position, v.position, "a refused skip does not move on");
+        assert.equal((await player()).toast.text, "Not saved: Saving to the photos is not switched on yet.");
+        steer("off", false);
+        steer("fail", true);
+        const bad = await toggle("favourite");
+        assert.deepEqual([bad.status, bad.body.ok, bad.body.code], [500, false, "verify-failed"]);
+        assert.equal((await player()).current.info.favourite, false);
+        assert.match((await player()).toast.text, /^Not saved: /);
+        const skipped = await toggle("skip");
+        assert.equal(skipped.status, 500);
+        assert.equal((await player()).count, 10, "a skip that failed keeps the photo in the slideshow");
+        steer("fail", false);
+        assert.equal(writes().length, n);
+        assert.equal((await api("GET", "/api/marks")).status, 404, "no list outside the photos");
+        await api("POST", "/api/player/source", { source: { query: "singapore", label: "S2" } });
+        await ready(10, "S2");
     });
 
     // ---------- schedule, history, suggestions, map ----------

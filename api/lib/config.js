@@ -44,8 +44,13 @@ module.exports = {
         player: path.join(stateDir, "player.json"), // now playing: source, settings, position
         playlist: path.join(stateDir, "playlist.json"), // the current order of photos
         history: path.join(stateDir, "history.json"), // photos and slideshows shown (R19)
-        marks: path.join(stateDir, "marks.json"), // review list: star / bad photo (R20)
         schedule: path.join(stateDir, "schedule.json"), // daily screen off/on (R18)
+    },
+    // The one writer of photo metadata (scripts/photo-metadata.py, hard rule 1).
+    photoMetadata: {
+        command: process.env.PHOTO_METADATA_CMD ? JSON.parse(process.env.PHOTO_METADATA_CMD)
+            : ["python3", path.join(__dirname, "..", "..", "scripts", "photo-metadata.py")],
+        statusTtlMs: Number(process.env.PHOTO_METADATA_STATUS_TTL_MS ?? 30000),
     },
     presetsFile: process.env.PRESETS_FILE || path.join(__dirname, "..", "..", "config", "slideshow-presets.json"),
     buttonsFile: process.env.BUTTONS_FILE || path.join(__dirname, "..", "..", "config", "buttons.json"),

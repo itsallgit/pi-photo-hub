@@ -74,6 +74,11 @@ other="$(printf '%s\n' "$cron" | grep -v -e '^#' -e '^$' -e 'pi-photo-hub' || tr
 [ "$(git for-each-ref refs/heads | wc -l)" -le 2 ] && ok "no stale local branches" || info "local branches: $(git for-each-ref --format='%(refname:short)' refs/heads | tr '\n' ' ')"
 
 # --- photo HDD -----------------------------------------------------------------------------------------
+if [ -f /var/lib/photo-api/drive-check.json ]; then
+  python3 -c 'import json,sys;sys.exit(0 if json.load(open("/var/lib/photo-api/drive-check.json")).get("ok") else 1)' && ok "photo drive check: last result passed" || dr "photo drive check: last result did not pass (photos will not be changed)"
+else info "photo drive check: no result yet"; fi
+strays="$(python3 "$REPO/scripts/photo-metadata.py" strays 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("count","?"))' 2>/dev/null || echo '?')"
+[ "$strays" = 0 ] && ok "no leftover files from interrupted photo changes" || dr "leftover files from interrupted photo changes: $strays (photo-metadata skill, Recovery)"
 pin="$(bash "$REPO/scripts/mount-hdd.sh" --check 2>/dev/null)"
 dev="$(printf '%s\n' "$pin" | sed -n 's/^present: yes (\(.*\))$/\1/p')"
 src="$(findmnt -n -o SOURCE /mnt/photos 2>/dev/null || true)"

@@ -41,7 +41,7 @@ On the Pi, against Picapport on `localhost:8080` (no login needed today):
 | People | Face regions (XMP `mwg-rs:RegionName`, Microsoft `RegionPersonDisplayName`) and `Iptc4xmpExt:PersonInImage`, 383 files, all in `PHOTOS/2025/...`; these also repeat the names as keywords (XMP, Windows, IPTC) | 672 indexed photos have a person (`$noperson` 63,065), the rest mostly one 2014 subfolder of photos from a friend's camera | Yes, each of `PersonInImage`, MWG face regions and Microsoft face regions on its own (test set) | a first name; `-$noperson` = has a person. A name query also matches the same word in folders and keywords | 2026-11-16 |
 | Title | Windows `XPTitle` or XMP `dc:title` (both indexed); IPTC `ObjectName` not indexed. The survey found almost none in the library, so the 289 come from another source (mostly that same 2014 subfolder; not investigated) | 289 indexed photos (`$notitle` 63,448) | Yes | title words; `-$notitle` | 2026-11-16 (test set) |
 | Description | XMP `dc:description` (44 files), EXIF `ImageDescription` (863, mostly camera text such as "OLYMPUS DIGITAL CAMERA") | 333 indexed photos (`$nodesc` 63,404) | Only XMP `dc:description`. **Not indexed:** EXIF `ImageDescription`, `UserComment`, Windows `XPComment`, `XPSubject`, IPTC `Caption-Abstract` | description words; `-$nodesc` | 2026-11-16 (test set) |
-| Rating | XMP `xmp:Rating`: 58 files (57 with 5 stars) | Few | Stored (`rating` in `GetMetaData`) | **not searchable by text** (test set: rating 5 is stored but adds no word; `rating:5`, `stars:5` give 0). Possibly a sort or filter in the web UI, untested | 2026-11-16 (test set) |
+| Rating | XMP `xmp:Rating`: **5 favourite, 1 skipped, 0 neither** ("Ratings" below). 57 files had 5 stars on 2026-11-16 | Few | Stored (`rating` in `GetMetaData`) | **not searchable by text** (test set: rating 5 is stored but adds no word; `rating:5`, `stars:5` give 0). The photo API filters by it through its catalogue | 2026-11-18 |
 | Picapport "MyTags", likes | Picapport's database only | | | Not to be used: not in the photo (principle 11) | n/a |
 n## Field test (test set, 2026-11-16)
 
@@ -61,6 +61,12 @@ A photo with no date metadata gets the file's date and `$nodate`. The year match
 ## Read by our own scan for the slideshow layer (2026-11-18)
 
 Besides what Picapport indexes, the nightly scan (`scripts/metadata-survey.sh`, read-only) now also records the **rotate tag** (EXIF Orientation; 5 to 8 mean the photo is turned a quarter), the **stored pixel size** and **GPS as signed decimal degrees**. The photo API's catalogue uses them: a photo is upright when, after the rotate tag, it is taller than wide (15,783 of 63,307, 2026-11-18); GPS becomes a place (nearest town within 15 km, biggest town within 25 km, and its country) with an offline GeoNames list (42,512 photos with a place). Picapport's own `$portrait`/`$landscape` ignore the rotate tag (B31), so "skip upright" is done by the photo API, not by a query. Places are not Picapport words: the phone and the skill play them as a `places` source. The rating (XMP) feeds "highlights" (58 rated photos so far).
+
+## Ratings: favourite and skipped (2026-11-18)
+
+The rating embedded in the photo is the only record of these choices (principle 11): XMP `xmp:Rating` **5 = favourite, 1 = skipped, 0 = neither**. It is written only by `scripts/photo-metadata.py` (hard rule 1, the `photo-metadata` skill), to JPEGs. "Neither" is written as 0, never by clearing the field: 44 wedding photos hold their 5 under a misspelled XMP namespace (`ns.abobe.com`), and the standard field must override it. Picapport cannot search ratings, so the photo API uses its catalogue, which the nightly scan rebuilds from the photos and the writer updates after each verified change: skipped photos are left out of every slideshow, and `favourites` and `skipped` are slideshow sources. Replacing the file gives it a new creation date on the drive; the modified date is kept.
+
+Tested on copies with exiftool 12.57: Lightroom, Samsung, Apple, Canon and WhatsApp files, keywords and face regions. Every byte outside the XMP blocks stayed identical, including the data Samsung adds after the image, and every other XMP value survived. How Windows and Picapport show ratings 0 and 1 is not tested.
 
 ## Query syntax (tested 2026-11-16)
 
@@ -100,6 +106,6 @@ The words a query matches can come from any source at once: `croatia` matches 2,
 4. **People are face regions plus `PersonInImage`**, as in the 2025 folders (proven); a name query also matches the same word anywhere else.
 5. **Every tag and name has 3 or more letters** and is not a common word you would also use in folder names, unless you mean it to match both. `LB` (the name of the owner's home) is to be retagged with its full name by the owner (decided 2026-11-16).
 6. **JPEG for anything that should play.** HEIC and PNG are not indexed; the owner accepts that they are not shown (decided 2026-11-16). Video is a possible later addition (backlog L8).
-7. **No sidecars, nothing only in Picapport** (principle 11): no Picapport "MyTags", likes or ratings set in its web UI.
+7. **No sidecars, no lists, nothing only in Picapport** (principle 11): no Picapport "MyTags", likes or ratings set in its web UI. Ratings: 5 favourite, 1 skipped.
 
 Still open: searching by rating is not possible by text (only sorting or the web UI, untested). GPS areas work with `within:` (found 2026-11-16).
