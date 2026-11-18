@@ -95,7 +95,7 @@ Status per task: `[ ]` todo, `[~]` in progress (with a note), `[x]` done (date, 
 ### M1: Catalogue and places (R8 data, R11)
 - [x] M1.1 (2026-11-18; fixture test `scripts/test/test_vocabulary.py`, run by `check.sh`) Scan: add the rotate tag, pixel size and GPS longitude to `metadata-survey.sh` (read-only, hard rule 1 comment kept); tests with a fixture.
 - [x] M1.2 (2026-11-18; `scripts/fetch-places.sh`, `scripts/places.py`, catalogue in `build-vocabulary.py --catalogue`; 6 Python tests. Decision: GeoNames changes the file daily, so instead of a pinned checksum the download is checked for its shape and its sha256 recorded, see the script) Place list: repo script to fetch the pinned GeoNames file onto the Pi; offline nearest-city lookup in `build-vocabulary.py`; catalogue file and places in the vocabulary; Python tests.
-- [ ] M1.3 Deploy; run the full scan on the Pi; check counts (upright, with place) and the vocabulary's places. Docs: architecture "Vocabulary refresh", README, `image-metadata.md`.
+- [x] M1.3 (2026-11-18; the full scan ran on the Pi (03:30 run, 39 min): 63,307 photos, 15,783 upright, 42,512 with a place, 28 countries; docs: architecture "Vocabulary refresh", README, `image-metadata.md`) Deploy; run the full scan on the Pi; check counts (upright, with place) and the vocabulary's places. Docs: architecture "Vocabulary refresh", README, `image-metadata.md`.
 
 ### M2: Player engine (R1 to R8, R12 data, R19, R21 compatibility)
 - [x] M2.1 (2026-11-18; `api/lib/player.js`, `events.js`; smoke: lockstep, resume after a restart, controls) Now-playing state, seeded order, persistence, resume (R2); controls (R3); the event stream (R1).

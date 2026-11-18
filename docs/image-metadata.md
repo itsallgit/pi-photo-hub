@@ -58,6 +58,10 @@ n## Field test (test set, 2026-11-16)
 
 A photo with no date metadata gets the file's date and `$nodate`. The year matches a query although it is not in `textSearch` (it is stored as `creationYear`). Removing test files: Picapport drops them about 2.5 minutes after its next start (or at its midnight scan); until then they stay in query results.
 
+## Read by our own scan for the slideshow layer (2026-11-18)
+
+Besides what Picapport indexes, the nightly scan (`scripts/metadata-survey.sh`, read-only) now also records the **rotate tag** (EXIF Orientation; 5 to 8 mean the photo is turned a quarter), the **stored pixel size** and **GPS as signed decimal degrees**. The photo API's catalogue uses them: a photo is upright when, after the rotate tag, it is taller than wide (15,783 of 63,307, 2026-11-18); GPS becomes a place (nearest town within 15 km, biggest town within 25 km, and its country) with an offline GeoNames list (42,512 photos with a place). Picapport's own `$portrait`/`$landscape` ignore the rotate tag (B31), so "skip upright" is done by the photo API, not by a query. Places are not Picapport words: the phone and the skill play them as a `places` source. The rating (XMP) feeds "highlights" (58 rated photos so far).
+
 ## Query syntax (tested 2026-11-16)
 
 | Form | Meaning | Example |
