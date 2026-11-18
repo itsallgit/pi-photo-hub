@@ -176,7 +176,7 @@ Inside the photo API (`api/`); no new service. Modules in `api/lib/`:
 |---|---|
 | `GET /api/events?role=<shelf/phone>` | Server-Sent Events, event `state` with the view below, on connect and on every change. |
 | `GET /api/player` | The view: `status` (`playing`, `preparing`, `empty`), `preparing` progress, `playing`, `paused`, `position`, `count`, `manualMove` (the current photo came from next, back or jump, so viewers snap to it; autoplay's moves are `false` and use the transition), `toast` (`{ id, text }`, the latest short message; `id` is its server time in ms, viewers show each id once and ignore one older than 2.2 s), `startedAt`, `elapsed`, `duration` (ms), `current`, `next` (2), `prev` (each `{ id, url, thumb, info: { date, place, city, country, event, people, rating, upright, marks, file }, card }`), `source`, `settings`, `preset`, `serverTime`. |
-| `POST /api/player/next`, `POST /api/player/back` | Body `{ steps? }` (1 to 1000). |
+| `POST /api/player/next`, `POST /api/player/back` | Body `{ steps? }` (1 to 1000). These, a jump, pause, a new slideshow and a new order all cancel an automatic move still waiting for its image. |
 | `POST /api/player/pause`, `POST /api/player/play`, `POST /api/player/toggle` | "Play" while autoplay is off turns autoplay on. |
 | `POST /api/player/jump` | `{ position }` or `{ year }` (the first photo of that year or later in the current order). |
 | `POST /api/player/source` | Start a slideshow (above). 422 if nothing matches. |

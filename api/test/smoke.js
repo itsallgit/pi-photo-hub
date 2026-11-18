@@ -232,6 +232,19 @@ async function main() {
         assert.equal((await player()).manualMove, false, "an automatic move uses the transition");
         await api("PATCH", "/api/player/settings", { interval: 20 });
     });
+    await ok("a jump wins over an automatic move still waiting for a slow image", async () => {
+        await api("POST", "/api/player/source", { source: { query: "cinque", label: "Slow" }, settings: { order: "date-asc", interval: 3, titleCards: false } });
+        await until(async () => (await player()).source.label === "Slow", "the slideshow");
+        pic.delayMs = 5000;
+        await api("POST", "/api/player/jump", { position: 5 }); // starts loading photo 6, slowly
+        await sleep(3500); // autoplay is now waiting for photo 6
+        await api("POST", "/api/player/jump", { position: 0 });
+        await sleep(2000); // photo 6 has arrived; the next real move is still a second away
+        pic.delayMs = 0;
+        assert.equal((await player()).position, 0);
+        await api("POST", "/api/player/source", { source: { query: "noosa", label: "Noosa" }, settings: { order: "random", interval: 20, titleCards: false } });
+        await until(async () => (await player()).source.label === "Noosa", "back on Noosa");
+    });
     await ok("resume after an API restart: same order, same photo (R2)", async () => {
         await api("POST", "/api/player/jump", { position: 6 });
         const before = await player();

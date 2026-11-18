@@ -235,6 +235,7 @@ function moveTo(target, { manual = true } = {}) {
 }
 
 function jump({ position, year }) {
+    moveSeq++; // an automatic move still waiting for its image must not undo this
     if (year !== undefined) {
         const y = String(year);
         let k = items.findIndex((it) => (info(it.p).date || "").slice(0, 4) >= y && (info(it.p).date || "") !== "");
@@ -246,6 +247,7 @@ function jump({ position, year }) {
 
 function pause() {
     if (!s.playing) return view();
+    moveSeq++;
     s.playing = false;
     s.elapsedAtPause = Math.max(0, Date.now() - s.startedAt);
     clearTimer();
@@ -309,6 +311,7 @@ async function setSource(src, { settings, preset } = {}) {
             changed("error");
             return { count: 0 };
         }
+        moveSeq++;
         paths = list;
         s.source = src;
         s.settings = nextSettings;
@@ -365,6 +368,7 @@ function applySettings(next, change) {
     s.settings = next;
     const reorder = ORDER_KEYS.some((k) => JSON.stringify(prev[k]) !== JSON.stringify(next[k]));
     if (reorder && paths.length) {
+        moveSeq++;
         const cur = items[s.position] && items[s.position].p;
         items = makeOrder(s.seed);
         s.count = items.length;
