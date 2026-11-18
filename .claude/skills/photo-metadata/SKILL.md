@@ -64,4 +64,4 @@ Agree it with the owner first. Add it to `FIELDS` with its exact XMP tag and all
 
 ## Last verified
 
-2026-11-18: written with the writer. Unit tests on the PC. Results on the Pi: `docs/backlog.md`, B40. Not cold-tested.
+2026-11-18: written with the writer. Unit tests on the PC; `photo-metadata-pi.py` passed on the Pi (exFAT image, simulated power cuts). No real photo has been changed yet. Not cold-tested.
