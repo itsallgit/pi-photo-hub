@@ -1,19 +1,19 @@
 # Pi Photo Hub — Project Instructions
 
-A Raspberry Pi 4 that plays the owner's photo library as a slideshow on an attached monitor (the shelf screen). **Release 1 (tag `v1.0`, 2026-11-18) is the slideshow layer:** the Node.js photo API (`photo-api`, port 3000) holds the one slideshow (order, position, settings) and serves the page that shows it (`/show`); the shelf shows it in a kiosk browser, the owner's phone opens the same page to watch and steer it (and mirrors it to the TV), a USB button board and Paseo (the `slideshow-control` skill) steer it too, all through the API. Picapport (Java) only indexes the photos on an attached HDD and supplies search results and resized images; its own slideshow page is retired (kept only as an emergency fallback setting). This repo is the **whole project**: install scripts, Pi configuration, the API and pages, documentation and the AI agent configuration used to manage it.
+A living photo wall: a Raspberry Pi 4 plays the owner's photo library on a shelf monitor, and the phone, a button board and Paseo steer it. **What the solution is, its parts and releases, and which page owns which fact: [docs/overview.md](docs/overview.md) (read it first).** This repo is the **whole project**: install scripts, Pi configuration, the API and pages, documentation and the AI agent configuration used to manage it. This file holds only the always-on rules, the working style and the skills list.
 
-**The owner changes the project by just saying what they want** in a new session ("add a random transition", "the settings page should use drop-downs"). Use the `make-changes` skill: it has the code map, the tests, the deploy and the owner's standing mandate.
+**The owner changes the project by just saying what they want** in a new session ("add a random transition", "the settings page should use drop-downs"). Use the `make-changes` skill: it has the owner's standing mandate, the tests, the deploy and the upkeep checklist (the code map is in `docs/architecture.md`).
 
-The Pi has **no keyboard or mouse** attached, only a monitor (see [docs/hardware.md](docs/hardware.md)). Never ask the owner to click, type or press a button on the Pi; plan everything to work over SSH, the API or the power button.
+The Pi has **no keyboard or mouse** attached, only a monitor (see [docs/hardware.md](docs/hardware.md)). Never ask the owner to click, type or press a key on the Pi; plan everything to work over SSH, the API or the power button. (The USB button board's keys are the exception: pressing them is how it is used and tested.)
 
 Project principle: **long-lasting information lives in the photos' own metadata.** Picapport's database is a disposable index that is rebuilt from the images and folder structure; nothing that must last may exist only there (see [docs/principles.md](docs/principles.md), principle 11).
 
-This file holds context and the always-on rules. **How to do things lives in skills** (see "Skills" below), not here.
+**How to do things lives in skills** (see "Skills" below), not here.
 
 ## Session start
 
 1. `git status` and `git log --oneline -5`: know what state the repo is in.
-2. Read [docs/backlog.md](docs/backlog.md): what is in progress, next, and still an open question.
+2. Read [docs/overview.md](docs/overview.md) (the solution and where each fact lives) and [docs/backlog.md](docs/backlog.md) (what is in progress, next, and still an open question).
 3. If the task involves the Pi, use the `pi-access` skill to reach it and read its state. The Pi's checkout at `/home/pi/pi-photo-hub` is changed only by `scripts/update.sh` (the `apply-changes` skill); it may be on a test branch (backlog B06). If it is dirty, report it; do **not** "fix" it with `git checkout`, `git clean`, `git stash` or `git reset` on the Pi.
 4. Never rely on chat history or personal memory for project facts. If a fact matters, it belongs in this repo.
 5. A request to build or change something: the `make-changes` skill. A request to see or steer photos: the `slideshow-control` skill.
@@ -32,7 +32,7 @@ These are non-negotiable. The reasoning and how each is enforced is in [docs/pri
 This is how every session should behave. It is a working style, not a technical control. The point is that the owner understands what is going to happen before it happens, and that you understand what they are trying to achieve before you build it.
 
 - **The owner understands a change before it happens.** For anything that changes the Pi (a database reset, restarting or reconfiguring services, files, cron, a reboot, any SSH command that writes) or changes how the project behaves, say what you propose, why, the risk, and how to undo it, and get the owner's agreement first. Keep it short enough to read on a phone.
-- **You understand the objective before extending the project.** For a new feature or a substantial extension (for example the planned knob-and-buttons board), first make sure you understand what the owner is trying to achieve, discuss the options and agree a plan. Do not go straight in.
+- **You understand the objective before extending the project.** For a new feature or a substantial extension (for example the ingestion pipeline), first make sure you understand what the owner is trying to achieve, discuss the options and agree a plan. Do not go straight in.
 - **Every reboot and shutdown goes through the `pi-power` skill.** It checks what is running, stops Picapport cleanly first and holds the agreement gate (a double confirmation if it would interrupt a job). Never reboot or power off the Pi any other way. Whenever the Pi needs to be switched off or restarted, say so and offer it, so the owner never has to remember to ask.
 - **Never suggest the power-cable button while the Pi is running.** Background: the owner used to switch the Pi off and on by the cable, a hard power cut that probably corrupted Picapport's database (backlog Q3). The cable is only for after a finished `pi-power` shutdown, and to switch the Pi back on.
 - **Development has a standing mandate (owner, 2026-11-18).** For changes to the project the owner asks for, the `make-changes` skill's mandate replaces the per-change agreement above: small changes are built, tested, committed to `main`, deployed and checked without asking; a feature gets a short agreed plan first, then is built on a branch and deployed to the Pi freely, and merged to `main` only on the owner's "go". Everything on that skill's "still needs the owner" list (the photo HDD, reboots, Picapport, `cleanup.sh`/`bootstrap.sh`, destructive git) is unchanged.
@@ -78,21 +78,8 @@ Kept deliberately simple; the owner is the only maintainer. No git hooks.
 
 ## Where things are
 
-| Need | Look at |
-|---|---|
-| What is in progress / next / unknown | [docs/backlog.md](docs/backlog.md) |
-| The rules and how they are enforced | [docs/principles.md](docs/principles.md) |
-| Components, services, paths, API | [docs/architecture.md](docs/architecture.md) |
-| Network layout (router, Deco, Pi) | [docs/network.md](docs/network.md) |
-| Picapport database facts and repair history | [docs/picapport-db.md](docs/picapport-db.md) |
-| What the photos carry and what Picapport can find (capability map) | [docs/image-metadata.md](docs/image-metadata.md) |
-| How asking for a slideshow should feel (agreed experience) | [docs/slideshow-experience.md](docs/slideshow-experience.md) |
-| The slideshow layer (Phase 2): requirements, delivery plan, build progress | [docs/slideshow-layer.md](docs/slideshow-layer.md), [docs/slideshow-layer-build.md](docs/slideshow-layer-build.md) |
-| Hardware | [docs/hardware.md](docs/hardware.md) |
-| The slideshow layer: modules, API, settings, page, buttons, known limits | [docs/architecture.md](docs/architecture.md), "Slideshow layer"; code map in the `make-changes` skill |
-| How to do things | `.claude/skills/` |
-| Runbooks for humans (install, SSH, DB fix, ...) | [README.md](README.md) |
+The map of which page owns which kind of fact is in [docs/overview.md](docs/overview.md), "Where each kind of fact is kept". Most used: [docs/backlog.md](docs/backlog.md) (work and open questions), [docs/architecture.md](docs/architecture.md) (technical reference and code map), [docs/principles.md](docs/principles.md) (the rules and their enforcement), [README.md](README.md) (runbooks for people), `.claude/skills/` (how to do things).
 
 ## Keeping this context current
 
-A new session must be able to pick up from the repo alone. When something about the project changes (a service, a path, the network, a decision, a discovered fact) update the matching doc, and the matching skill, in the same commit. When you learn something that is not yet verified, add it to the backlog as an open question.
+A new session must be able to pick up from the repo alone. When something about the project changes (a part, a service, a path, the network, a decision, a discovered fact) update its master page (docs/overview.md says which) and the matching skill, in the same commit; the checklist is in the `make-changes` skill, "Keep the project current". Copy a fact into a second place only as a link. When you learn something that is not yet verified, add it to the backlog as an open question.

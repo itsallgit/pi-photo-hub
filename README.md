@@ -1,6 +1,6 @@
 # Pi Photo Hub Setup
 
-> **Project context for people and AI agents:** start with [CLAUDE.md](CLAUDE.md), then [docs/backlog.md](docs/backlog.md) (what is in progress), [docs/principles.md](docs/principles.md), [docs/architecture.md](docs/architecture.md), [docs/network.md](docs/network.md) and [docs/hardware.md](docs/hardware.md). This README holds the runbooks.
+> **Project context for people and AI agents:** start with [docs/overview.md](docs/overview.md) (what the solution is, its parts, releases, and which page owns which fact) and [CLAUDE.md](CLAUDE.md) (the rules), then [docs/backlog.md](docs/backlog.md) (what is in progress), [docs/principles.md](docs/principles.md), [docs/architecture.md](docs/architecture.md), [docs/network.md](docs/network.md) and [docs/hardware.md](docs/hardware.md). This README holds the runbooks.
 
 ## Quick Reference (coming back after months)
 

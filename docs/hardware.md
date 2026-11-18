@@ -11,11 +11,13 @@ Verified facts only. Anything unverified is an open question in the [backlog](ba
 | Photo storage | External USB HDD, 1.8 TB, **exFAT**, label `Expansion`, mounted at `/mnt/photos`. **Never modified by agents** (see [principles](principles.md)). | read from the Pi |
 | Display | HP M22f FHD monitor over HDMI (`HDMI-A-1`) | read from the Pi |
 | Network | Wired ethernet (`eth0`). Wi-Fi (`wlan0`) exists but is down. | read from the Pi |
-| Input devices | **None. No keyboard and no mouse is connected to the Pi.** Nobody can click or type on the Pi, so an on-screen dialog (for example Picapport's "Network Error") cannot be dismissed locally. Everything is done over the network (SSH, the photo API) or by the power button. `GET /api/slideshow` relaunches Chromium on the saved slideshow, which replaces whatever is on screen. | stated by the owner, 2026-11-15 |
+| Input devices | **No keyboard and no mouse.** A USB button board (3 keys and a clicking knob, a keyboard to the Pi) is planned to sit in front of the shelf; the `photo-buttons` service takes it exclusively, so it never types into anything (README "Button board"; not plugged in as of 2026-11-18). Nobody can click or type on the Pi, so an on-screen dialog (for example Picapport's "Network Error") cannot be dismissed locally. Everything is done over the network (SSH, the photo API) or by the power button. `GET /api/slideshow` relaunches Chromium on the saved slideshow, which replaces whatever is on screen. | stated by the owner, 2026-11-15 |
 | Real-time clock | None. The clock is wrong until NTP syncs after boot. | Pi 4 has no RTC; observed a clock jump at boot |
 | Power | Supplied through a cable with an inline on/off button. Pressing it while the Pi runs cuts power without a shutdown (the past habit; now `scripts/pi-power.sh` shuts down first, backlog B10). After a software shutdown the switch is still on: one press switches the power off, a second press starts the Pi | stated by the owner; two presses observed 2026-11-17 |
 | Throttling | `vcgencmd get_throttled` = `0x0` (no under-voltage or overheating) on 2026-11-15 | read from the Pi |
 
-## Planned
+## Around the Pi
 
-- A small board with one volume knob and three buttons to be connected to the Pi, for local control. Model, connection (GPIO or USB) and the intended functions are undecided. See the backlog.
+- **Button board:** a generic USB-C "3 key + 1 knob" keypad (manual: "Custom keypad operation manual", Windows settings tool `MINI KeyBoard.exe`); six inputs, each programmable to a key or multimedia key, stored in the board. Mapping on the Pi: `config/buttons.json`.
+- **The owner's phone:** a Samsung (Android, Chrome) on the home network; opens `http://pi.local:3000/show`; can mirror its screen to the TV and fit the mirror to the TV's shape.
+- **TV:** LG 77" GX (Gallery Series), same home; shows the phone by mirroring. Not driven directly (owner's decision).

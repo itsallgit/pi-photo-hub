@@ -1,6 +1,23 @@
 # Architecture
 
-Verified from the repo and from the running Pi on 2026-11-15, unless a line says otherwise. If you change how the system works, update this page in the same commit.
+The technical reference of the **current** system (the master for components, paths, services, the API, settings, modules and the code map; `docs/overview.md` is the short "what it is" and the map of which page owns what). Verified from the repo and from the running Pi, first on 2026-11-15, the slideshow layer on 2026-11-18, unless a line says otherwise. If you change how the system works, update this page in the same commit. Notes marked "history" explain how something came to be; the current behaviour is what the other lines say.
+
+## Code map
+
+| Area | Files |
+|---|---|
+| The page every screen shows (`/show`): photos, motion, transitions, overlay, title cards, clock | `api/public/show.html`, `show.js`, `show.css` |
+| The phone's controls: bars, search, browse, settings, marks | `api/public/controls.js`, `controls.css`; map `api/public/map.js` |
+| The slideshow itself: state, timing, controls, resume | `api/lib/player.js`; orders and filters `api/lib/order.js`; settings and presets `api/lib/settings.js` + `config/slideshow-presets.json` |
+| Routes (the API) | `api/server.js` (reference: `docs/architecture.md`, "Photo API" and "Slideshow layer") |
+| Photos from Picapport, the image cache | `api/lib/picapport.js` (the only file that knows Picapport), `api/lib/library.js` |
+| What is known per photo (date, place, upright, people) | `api/lib/catalogue.js`, built nightly by `scripts/build-vocabulary.py` from `scripts/metadata-survey.sh`, places `scripts/places.py` |
+| Buttons | `scripts/photo-buttons.py`, `config/buttons.json` (the `button-board` skill) |
+| Screen, schedule, history, marks | `api/lib/screen.js`, `schedule.js`, `history.js`, `marks.js` |
+| Paseo's side | the `slideshow-control` skill |
+| Install, update, check | `bootstrap.sh` (fresh build), `scripts/update.sh` and `scripts/lib/apply-*.sh` (every update), `scripts/verify.sh` (drift), `scripts/check.sh` (before every commit) |
+| Tests | `api/test/smoke.js`, `unit.js`, `fake-picapport.js` (PC, no Pi); `scripts/test/` (Python); `tools/browser-test/run.js` (the page in headless Chrome; `--pi` against the Pi); `api/test/pi-check.js` (the API on the Pi); `scripts/test/buttons-virtual.py` (buttons on the Pi) |
+| Dev tools | `api/lib/dev.js` (open a page in the kiosk, test reports), `api/public/dev/motion-test.html` |
 
 ## What it does
 
@@ -10,7 +27,7 @@ Verified from the repo and from the running Pi on 2026-11-15, unless a line says
 4. On boot, a oneshot service waits for both servers and asks `photo-api` to show the slideshow; it resumes where it was.
 5. `photo-buttons` reads the USB button board and calls the photo API.
 
-Per the owner: Picapport's default indexing already supports queries based on the file path structure, and the Node API only builds the slideshow URL from the query it is given. Agents have not verified query behaviour.
+Queries (what Picapport can find) are tested and described in [image-metadata.md](image-metadata.md).
 
 ## Components and where they live
 
@@ -81,7 +98,7 @@ The control layer (principle 12): every client starts and changes the slideshow 
 |---|---|
 | `GET /api/status` | `{ slideshow: {query, label, sort, interval, startedAt}, screen: {on, wantedOff, offUntil}, browserRunning, picapportUp, sorts }` |
 | `GET /api/count?q=<query>[&q=<query>...]` | Photo count per query, `{ results: [{query, count}] }`. Changes nothing on screen. |
-| `POST /api/slideshow` | Body `{ query, label?, sort?, interval?, restart? }`. Plays a new slideshow and saves it. Settings not given are kept from the current slideshow (sort, interval); the label is reset. **A query that matches no photo is not played** (HTTP 422). **The same query, sort and interval while Chromium runs is not relaunched** (no reshuffle) unless `restart: true`. Turns the screen on (and cancels an "off" timer). Returns `{ played, relaunched, count, slideshow, screenTurnedOn }`. |
+| `POST /api/slideshow` | (Since release 1 these three older calls work on the player: see "Slideshow layer", "The older endpoints keep working"; the text in this row and the next two is how they behaved before.) Body `{ query, label?, sort?, interval?, restart? }`. Plays a new slideshow and saves it. Settings not given are kept from the current slideshow (sort, interval); the label is reset. **A query that matches no photo is not played** (HTTP 422). **The same query, sort and interval while Chromium runs is not relaunched** (no reshuffle) unless `restart: true`. Turns the screen on (and cancels an "off" timer). Returns `{ played, relaunched, count, slideshow, screenTurnedOn }`. |
 | `PATCH /api/slideshow` | Body `{ interval?, sort?, label? }`: change settings of the current slideshow and keep the rest (B17). A changed sort or interval relaunches (and so reshuffles). |
 | `GET /api/slideshow` | The older form, used by the boot launcher (`picapport-chromium.service`): with **no** parameters replays the saved slideshow and leaves the screen as it is (so a timed "off" survives a reboot); `q=`, `interval=`, `sort=` change only those settings, keep the others (B17 fixed) and turn the screen on. Answers text `Playing slideshow with URL: ...`. |
 | `GET /api/screen` | `{ on, wantedOff, offUntil }`: `on` read from `wlr-randr` (`null` and `error` if it cannot be read), `wantedOff`/`offUntil` the requested state. |
@@ -250,7 +267,7 @@ What the photos carry, what Picapport indexes, and the query syntax are in [imag
 - **Vocabulary from the index (2026-11-16):** `cmd=GetAllKeyWordChildren&idParent=0` returns Picapport's keyword tree, but it is **incomplete**: 28 entries, all of them real photo keywords (mostly names), while the photos carry 55 distinct keywords (topics such as work, uni and cooking are missing). `GetAutocompleteKeywords` fails ("KeywordTree root element not found"). `GetFoldersAsHtml` lists the roots; `GetTimeline` returns years and months as HTML. So the index cannot be the master list of searchable words; see backlog B29.
 - Other commands seen in the page code (not tested): `ScreenServerUpdate`, `updateSlide`, `startRemoteScreen` (a "remote screen" feature that might drive a running display without relaunching it), `GetRatingData`, `MapIndex`.
 
-## Picapport slideshow behaviour that matters (from Picapport 10.4.0's page code, and tested 2026-11-16)
+## Picapport slideshow behaviour (history: Picapport's own page was the slideshow until release 1; it is now only the emergency fallback, `viewer: picapport`. From Picapport 10.4.0's page code, tested 2026-11-16)
 
 - **What the slideshow URL can carry.** `http://localhost:8080/picapport#slideshow?query=<q>&sort=<sort>&viewtime=<seconds>&autostart=true`. The page code reads only these (plus session and offline-collection ids: `sid`, `atu`, `oid`, `vid`). There is no start position, transition or caption option in the URL; the photo-info overlay and rating bar exist but are toggled by keyboard, which the Pi does not have.
 - **Sort orders** (`sort=`): `random`, `randomsmart` ("Smart Random"), `datetimeascending`, `datetimedescending`, `importdatetimedescending`, `newestwithupdate` ("newest with auto update"), `nameascending`, `namedescending`, `titleascending`, `titledescending`.

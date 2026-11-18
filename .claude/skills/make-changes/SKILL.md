@@ -19,20 +19,7 @@ Replaces the per-change agreement of `CLAUDE.md` "Working with the owner" **for 
 ## Orient (read-only, a few minutes)
 
 1. `CLAUDE.md` "Session start": `git status`, `git log --oneline -5`, `docs/backlog.md` (the owner's idea may already be an item with notes).
-2. Where the code is:
-
-| Area | Files |
-|---|---|
-| The page every screen shows (`/show`): photos, motion, transitions, overlay, title cards, clock | `api/public/show.html`, `show.js`, `show.css` |
-| The phone's controls: bars, search, browse, settings, marks | `api/public/controls.js`, `controls.css`; map `api/public/map.js` |
-| The slideshow itself: state, timing, controls, resume | `api/lib/player.js`; orders and filters `api/lib/order.js`; settings and presets `api/lib/settings.js` + `config/slideshow-presets.json` |
-| Routes (the API) | `api/server.js` (reference: `docs/architecture.md`, "Photo API" and "Slideshow layer") |
-| Photos from Picapport, the image cache | `api/lib/picapport.js` (the only file that knows Picapport), `api/lib/library.js` |
-| What is known per photo (date, place, upright, people) | `api/lib/catalogue.js`, built nightly by `scripts/build-vocabulary.py` from `scripts/metadata-survey.sh`, places `scripts/places.py` |
-| Buttons | `scripts/photo-buttons.py`, `config/buttons.json` (the `button-board` skill) |
-| Screen, schedule, history, marks | `api/lib/screen.js`, `schedule.js`, `history.js`, `marks.js` |
-| Paseo's side | the `slideshow-control` skill |
-
+2. Where the code is: `docs/architecture.md`, "Code map". Which page owns which fact: `docs/overview.md`, "Where each kind of fact is kept".
 3. Look at the Pi if it matters (`pi-access`): what is playing, a screenshot.
 
 ## Build and test on the PC
@@ -50,9 +37,31 @@ Replaces the per-change agreement of `CLAUDE.md` "Working with the owner" **for 
 3. Check: `node api/test/pi-check.js` (API, lockstep, images; puts back what it changes), `cd tools/browser-test && node run.js --pi http://pi.local:3000` (a second viewer and a phone viewer against the real Pi), a screenshot of the shelf (`pi-access`), `verify.sh` for anything installed.
 4. Leave the shelf playing what the owner had (note `GET /api/player` `source` and `settings` before you start; put them back if you changed them).
 
-## Docs and report
+## Keep the project current (same commit as the change, hard rule 3)
 
-- Update in the same commit: `docs/architecture.md` (the API table, settings list or module table), README "Controlling the Slideshow" or "Button board" if a human would do it, the `slideshow-control` skill if Paseo can now do something new, `docs/backlog.md` (item done, or a new one for anything you found).
+Each fact has one master page (`docs/overview.md`, "Where each kind of fact is kept"); update the master, link from elsewhere, never copy. Go down this list for every change and update what applies:
+
+| If the change... | Update |
+|---|---|
+| adds, removes or reshapes a part (a service, a page, a device, something on the PC) | `docs/overview.md` "The parts"; `docs/architecture.md` (components table, its own section); `docs/hardware.md` for a device |
+| adds or changes an API call, a setting, a preset, a module, a file path or state file | `docs/architecture.md` (endpoint table, settings list, module table, code map, state files); `config/` file comments |
+| changes something a person would do by hand (install, check, control, recover) | `README.md`, manual and automated forms |
+| lets Paseo do something new, or changes a call it uses | the `slideshow-control` skill (and `docs/slideshow-experience.md` if the agreed experience changes) |
+| touches the buttons | `config/buttons.json` `_about`, the `button-board` skill, README "Button board" |
+| changes a procedure that has a skill (update, power, database, access) | that skill (and its "Last verified") |
+| changes a rule, the mandate or the working style | `CLAUDE.md` and `docs/principles.md`: **only with the owner** |
+| finishes, starts or discovers work | `docs/backlog.md`: tick the item with the date and commit, add new items or open questions (hard rule 4) |
+| adds a test, a tool or a code area | `docs/architecture.md` "Code map" |
+| adds a skill | the `skill-authoring` skill's method; the skills table in `CLAUDE.md` |
+
+`bash scripts/check.sh` warns when code changed without the docs it usually needs; treat a warning as a question to answer, not noise. If you notice any page or skill that is wrong or stale while working, fix it in the same session (or add a backlog item), even if it is not part of the change.
+
+## Releases
+
+When the owner calls something a release (or a phase is merged on their "go"): an annotated tag on `main` (`git tag -a vX.Y -m "..."`, `git push origin vX.Y`), a row in `docs/overview.md` "Releases", the backlog's "Where we are" updated. A phase's own pages (requirements, build plan) are marked as history at the top, and their lasting facts folded into the masters (`docs/overview.md`, "How the project grows").
+
+## Report
+
 - Tell the owner in a few lines: what changed, where to see it ("tap ⚙ on the phone"), anything they should decide, how to undo (`update.sh --ref <previous commit>`, the `apply-changes` skill).
 
 ## Undo

@@ -54,6 +54,7 @@ Keep it short. A skill that a session cannot skim in a minute is too long; move 
 - Changing a script changes its skill, runbook and backlog entry in the same commit (hard rule 3).
 - If you notice a skill is wrong or stale while using it, fix it or add it to the backlog. Do not work around it silently.
 - Add each new skill to the skills table in `CLAUDE.md`.
+- A skill holds procedure, not facts: code maps, paths, endpoint lists and settings live in their master page (`docs/overview.md`, "Where each kind of fact is kept") and the skill links to them, so a change updates one place. The upkeep checklist for any change is in the `make-changes` skill, "Keep the project current".
 
 ## Do not
 

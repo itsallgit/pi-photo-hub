@@ -90,7 +90,7 @@ The Pi runs a Wayland desktop as user `pi`. Stream a screenshot over SSH straigh
 ssh -i ~/.ssh/id_pi_photo_hub -o BatchMode=yes -o ConnectTimeout=10 pi@pi.local "XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 grim -t png -s 0.5 -" > /tmp/pi-screen.png
 ```
 
-Nobody can click on the Pi (no keyboard or mouse), and a dialog on screen is evidence: do not try to dismiss it. `GET http://pi.local:3000/api/slideshow` relaunches the slideshow and replaces what is on screen, which is a change to the Pi, so agree it first.
+Nobody can click on the Pi (no keyboard or mouse), and a dialog on screen is evidence: do not try to dismiss it. `GET http://pi.local:3000/api/slideshow` restarts the kiosk browser on the slideshow page (it resumes where it was); it is a change to the Pi, so agree it first unless the owner asked for the slideshow (`slideshow-control`).
 
 ## Do not
 

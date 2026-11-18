@@ -11,7 +11,8 @@
 # photo API smoke test (if node and api/node_modules are present); the Python tests in scripts/test;
 # docs-sync: a changed script,
 # unit, config or API file without any change to README.md, docs/ or a skill is reported (a
-# reminder of hard rule 3, not proof). Exit 1 if any FAIL; WARN does not fail.
+# reminder of hard rule 3, not proof), plus finer pairs (API without architecture.md, a unit without the
+# parts pages, buttons without their skill or runbook). Exit 1 if any FAIL; WARN does not fail.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 BASE=HEAD
@@ -99,6 +100,18 @@ if [ -z "$changed" ]; then ok "docs-sync: nothing changed against $BASE"
 elif [ -n "$code" ] && [ -z "$docs" ]; then warn "docs-sync: code/config changed against $BASE but no README, docs/ or skill change (hard rule 3): $(echo $code)"
 elif [ -n "$code" ] && ! echo "$changed" | grep -qx 'docs/backlog.md'; then warn "docs-sync: code changed but docs/backlog.md did not"
 else ok "docs-sync: $(echo "$changed" | wc -l) changed file(s) against $BASE, docs included"; fi
+# Finer pairs: an area of code and the page or skill that is its master (docs/overview.md, "Where
+# each kind of fact is kept"). A reminder to answer, not proof (the make-changes skill's checklist).
+pair() { # pair <code pattern> <doc pattern> <what to update>
+  if echo "$changed" | grep -qE "$1" && ! echo "$changed" | grep -qE "$2"; then warn "docs-sync: $(echo "$changed" | grep -E "$1" | head -3 | tr '
+' ' ')changed but not $3"; fi
+}
+if [ -n "$changed" ]; then
+  pair '^api/(server\.js|lib/)|^config/slideshow-presets\.json' '^docs/architecture\.md' 'docs/architecture.md (API, settings, modules)'
+  pair '^systemd/|^scripts/lib/apply-|^bootstrap\.sh' '^docs/(architecture|overview)\.md' 'docs/architecture.md or overview.md (parts, services)'
+  pair '^scripts/photo-buttons\.py|^config/buttons\.json' '^\.claude/skills/button-board/|^README\.md' 'the button-board skill or README "Button board"'
+  pair '^api/server\.js' '^\.claude/skills/slideshow-control/|^docs/architecture\.md' 'the slideshow-control skill (if Paseo can do something new)'
+fi
 
 echo "----"
 echo "$fails FAIL, $warns WARN"
