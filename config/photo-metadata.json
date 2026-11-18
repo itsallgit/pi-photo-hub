@@ -1,6 +1,6 @@
 {
   "_about": "Settings of scripts/photo-metadata.py, the one writer of photo metadata (hard rule 1, the photo-metadata skill). writesEnabled is the master switch. A passing, recent drive check (scripts/photo-drive-check.py) is required as well.",
-  "writesEnabled": false,
+  "writesEnabled": true,
   "root": "/mnt/photos/PHOTOS",
   "mount": "/mnt/photos",
   "driveCheckFile": "/var/lib/photo-api/drive-check.json",
