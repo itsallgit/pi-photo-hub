@@ -406,6 +406,16 @@ async function main() {
         assert.equal((await player()).toast.text, "★ Starred");
         assert.equal((await api("GET", "/api/marks")).body.marks.length, 1);
     });
+    await ok("marks: a held button toggles the star on the photo on screen", async () => {
+        const off = (await api("POST", "/api/marks/toggle", { mark: "star", by: "button" })).body;
+        assert.deepEqual([off.on, off.marks], [false, []]);
+        assert.equal((await player()).toast.text, "☆ Star removed");
+        assert.deepEqual((await player()).current.info.marks, []);
+        const on = (await api("POST", "/api/marks/toggle", { mark: "star", by: "button" })).body;
+        assert.deepEqual([on.on, on.marks], [true, ["star"]]);
+        assert.equal((await player()).toast.text, "★ Starred");
+        assert.equal((await api("POST", "/api/marks/toggle", { mark: "delete" })).status, 400);
+    });
 
     // ---------- schedule, history, suggestions, map ----------
     await ok("screen schedule: off by default, validated, saved", async () => {

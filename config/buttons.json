@@ -6,7 +6,7 @@
   "map": {
     "KEY_F13": { "press": { "method": "POST", "path": "/api/player/back" } },
     "KEY_F14": { "press": { "method": "POST", "path": "/api/player/toggle" }, "long": { "method": "POST", "path": "/api/screen/toggle" } },
-    "KEY_F15": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/marks", "body": { "mark": "star", "by": "button" } } },
+    "KEY_F15": { "press": { "method": "POST", "path": "/api/player/next" }, "long": { "method": "POST", "path": "/api/marks/toggle", "body": { "mark": "star", "by": "button" } } },
     "KEY_F16": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": 1 } } },
     "KEY_F17": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "overlayStyle" } } },
     "KEY_F18": { "press": { "method": "POST", "path": "/api/player/nudge", "body": { "setting": "interval", "by": -1 } } },

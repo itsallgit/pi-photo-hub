@@ -427,6 +427,23 @@ app.post("/api/marks", wrap(async (req, res) => {
     events.broadcast("state", player.view());
     res.json({ path: p, marks: marks.of(p) });
 }));
+// Turn a mark on or off (a held button): { mark, by?, id? or path? }; no id: the photo on screen.
+app.post("/api/marks/toggle", wrap(async (req, res) => {
+    const b = req.body || {};
+    const p = markTarget(b);
+    if (!p) return res.status(404).json({ error: "no such photo" });
+    if (!marks.KINDS.includes(b.mark)) return res.status(400).json({ error: `mark must be one of: ${marks.KINDS.join(", ")}` });
+    const on = !marks.of(p).includes(b.mark);
+    if (on) marks.add(p, b.mark, b.by ? String(b.by).slice(0, 40) : null);
+    else marks.remove(p, b.mark);
+    logger.info(`${on ? "Marked" : "Unmarked"} ${b.mark}: ${p}`);
+    if (b.by === "button") {
+        const words = b.mark === "star" ? ["★ Starred", "☆ Star removed"] : ["Marked as a bad photo", "Bad photo mark removed"];
+        player.setToast(words[on ? 0 : 1]);
+    }
+    events.broadcast("state", player.view());
+    res.json({ path: p, on, marks: marks.of(p) });
+}));
 app.delete("/api/marks", wrap(async (req, res) => {
     const b = req.body || {};
     const p = markTarget(b);

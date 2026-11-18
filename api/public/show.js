@@ -8,7 +8,7 @@
   const kiosk = params.get("kiosk") === "1";
   if (kiosk) document.body.classList.add("kiosk");
   const $ = (id) => document.getElementById(id);
-  const stage = $("stage"), overlay = $("overlay"), card = $("card"), clock = $("clock"), status = $("status"), pausemark = $("pausemark"), toast = $("toast");
+  const stage = $("stage"), overlay = $("overlay"), card = $("card"), clock = $("clock"), status = $("status"), pausemark = $("pausemark"), toast = $("toast"), starmark = $("starmark");
 
   let state = null;
   let offset = 0; // server time - local time
@@ -159,6 +159,7 @@
     return lines;
   }
   function renderOverlay(photo, st) {
+    starmark.classList.toggle("hidden", !(photo && photo.info && (photo.info.marks || []).includes("star")));
     const style = styles[st.settings.overlayStyle] || styles[0];
     const lines = photo ? overlayLines(photo, st) : [];
     if (!style || style.position === "none" || !lines.length) { overlay.classList.add("hidden"); return; }

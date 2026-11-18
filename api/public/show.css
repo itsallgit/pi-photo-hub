@@ -54,3 +54,7 @@ body.carding #overlay { opacity: 0; }
 #toast { position: fixed; top: 4vh; left: 50%; transform: translateX(-50%); font-size: min(3.2vh, 4.6vw); color: #fff; background: rgba(0,0,0,.68);
   padding: .55em 1.2em; border-radius: 2em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
 #toast.show { opacity: 1; transition-duration: .1s; }
+/* A starred photo carries a small gold star; the toast takes its place for a moment. */
+#starmark { position: fixed; top: 2.6vh; left: 50%; transform: translateX(-50%); font-size: 4vh; line-height: 1; color: #ffd54a;
+  text-shadow: 0 0 .35em rgba(0,0,0,.9); pointer-events: none; transition: opacity .25s ease; }
+#toast.show + #starmark, body.carding #starmark { opacity: 0; }
