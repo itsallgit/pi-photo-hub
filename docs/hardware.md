@@ -18,6 +18,6 @@ Verified facts only. Anything unverified is an open question in the [backlog](ba
 
 ## Around the Pi
 
-- **Button board:** a generic USB-C "3 key + 1 knob" keypad (manual: "Custom keypad operation manual", Windows settings tool `MINI KeyBoard.exe`); six inputs, each programmable to a key or multimedia key, stored in the board. Mapping on the Pi: `config/buttons.json`.
+- **Button board:** a generic USB-C "3 key + 1 knob" keypad, USB id `1189:8890` (manual: "Custom keypad operation manual", Windows settings tool `MINI KeyBoard.exe`); six inputs, each programmable to a key or multimedia key, stored in the board. As delivered, all six sent the letter C; it is programmed from the Pi to send F13 to F18 (`config/button-board.yaml`, the `button-board` skill). Mapping on the Pi: `config/buttons.json`.
 - **The owner's phone:** a Samsung (Android, Chrome) on the home network; opens `http://pi.local:3000/show`; can mirror its screen to the TV and fit the mirror to the TV's shape.
 - **TV:** LG 77" GX (Gallery Series), same home; shows the phone by mirroring. Not driven directly (owner's decision).

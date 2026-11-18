@@ -1,0 +1,16 @@
+# What the button board itself is programmed to send (stored in the board, USB id 1189:8890).
+# Written to the board with ch57x-keyboard-tool: the `button-board` skill, "Program the board".
+# What each key then does on the Pi is in config/buttons.json.
+orientation: normal
+rows: 1
+columns: 3
+knobs: 1
+layers:
+  - buttons:
+      # KEY1, KEY2, KEY3
+      - ["f13", "f14", "f15"]
+    knobs:
+      # ccw = turn left, cw = turn right
+      - ccw: "f16"
+        press: "f17"
+        cw: "f18"

@@ -63,7 +63,7 @@ Related: [slideshow-experience.md](slideshow-experience.md) (how asking for phot
 
 ### The button board (from its manual, 2026-11-17)
 
-A generic "3 key + 1 knob" USB-C keypad (the manual's title is "Custom keypad operation manual"; settings tool `MINI KeyBoard.exe`, Windows only, from the QR code or `szxiaozi.com`). It is a **USB keyboard**: each of **KEY1 to KEY3 and the knob's left turn, press and right turn** (6 inputs) can be set to a key combination (for example Ctrl+V) or a multimedia key (play/pause, previous, next, mute, volume up/down). The setting is downloaded into the board, so it keeps it on any computer. LEDs have selectable effect modes, and mode 0 switches the light off. Its default keys are not stated in the manual.
+A generic "3 key + 1 knob" USB-C keypad (the manual's title is "Custom keypad operation manual"; settings tool `MINI KeyBoard.exe`, Windows only, from the QR code or `szxiaozi.com`). It is a **USB keyboard**: each of **KEY1 to KEY3 and the knob's left turn, press and right turn** (6 inputs) can be set to a key combination (for example Ctrl+V) or a multimedia key (play/pause, previous, next, mute, volume up/down). The setting is downloaded into the board, so it keeps it on any computer. LEDs have selectable effect modes, and mode 0 switches the light off. Its default keys are not stated in the manual (found 2026-11-18: all six inputs sent the letter C until programmed; see `docs/hardware.md`).
 
 ### Round 5 (2026-11-17)
 
