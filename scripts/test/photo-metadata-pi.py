@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WRITER = os.path.join(HERE, "..", "photo-metadata.py")
 CHECK = os.path.join(HERE, "..", "photo-drive-check.py")
 SURVEY = os.path.expanduser("~/metadata-survey/survey.tsv")
-POINTS = ["after-temp", "before-swap", "after-move-old", "after-move-new", "after-verify", "after-unlink"]
+POINTS = ["after-temp", "before-backup", "after-backup", "mid-rewrite", "after-rewrite", "after-verify", "after-unlink"]
 
 
 def load(name, path):
@@ -107,6 +107,8 @@ def main():
             os.utime(dst, (1000000000, 1000000000))
             originals[name] = pm.read_file(dst)
         os.sync()
+        created = {name: pm.created_time(os.path.join(root, "A", f"{name}.jpg")) for name in originals}
+        time.sleep(3)  # a replaced file would now show a later created date
         rc, out = drive_check()
         ok("drive check passes on a fresh exFAT image", rc == 0 and out["ok"], out.get("failedChecks"))
         out["at"] = time.time()
@@ -124,11 +126,11 @@ def main():
                 tags = pm.xmp_tags(tool_cfg, now)
                 same = pm.outside_xmp_hash(now) == core and pm.comparable(tags, {"XMP-xmp:Rating"}) == before
                 read = writer("read", path)[1].get("rating")
-                if rc != 0 or not same or read != value or int(os.stat(path).st_mtime) != 1000000000:
+                if rc != 0 or not same or read != value or int(os.stat(path).st_mtime) != 1000000000 or pm.created_time(path) != created[name]:
                     good = False
                     detail = f"value {value}: rc {rc} {out} same={same} read={read}"
                 detail = detail or f"{out.get('seconds')} s, {len(now) - len(data):+d} bytes"
-            ok(f"real exiftool on exFAT: {name}: 5, 1, 0 read back, all else identical, date kept", good, detail)
+            ok(f"real exiftool on exFAT: {name}: 5, 1, 0 read back, all else identical, created and modified dates kept", good, detail)
         ok("no work files left", writer("strays")[1].get("count") == 0)
         os.sync()
         rc, out = drive_check()
@@ -169,16 +171,22 @@ def main():
                 sh("sudo", "-n", "rm", "-f", snapshot)
             ok(f"crash {point}: a complete photo survives a simulated power cut", rc == 99 and bool(whole), f"names {names}, complete {whole}, drive check {'passed' if crc == 0 else cres.get('failedChecks')}")
             live = sorted(os.listdir(folder))
-            if "p.jpg" not in live and ".p.jpg.pph-old" in live:  # the recovery in the photo-metadata skill
-                os.rename(os.path.join(folder, ".p.jpg.pph-old"), path)
-            ok(f"crash {point}: the photo is usable after recovery", pm.outside_xmp_hash(pm.read_file(path)) == core)
-            refused = writer("set-rating", path, "5")[1]
             if any(n.endswith((".pph-new", ".pph-old")) for n in live):
+                refused = writer("set-rating", path, "5")[1]
                 ok(f"crash {point}: leftovers are reported and block that photo", refused.get("code") == "needs-attention", refused.get("code"))
+                born = pm.created_time(path)
+                rc, out = writer("recover", path)
+                good = rc == 0 and sorted(os.listdir(folder)) == ["p.jpg"] and pm.created_time(path) == born
+                ok(f"crash {point}: recover finishes it", good, out.get("action") or out)
+            ok(f"crash {point}: the photo is complete", pm.outside_xmp_hash(pm.read_file(path)) == core)
+            ok(f"crash {point}: it can be changed again", writer("set-rating", path, "1")[0] == 0)
 
-        rc, out = writer("set-rating", os.path.join(root, "A", "canon.jpg"), "5", PHOTO_METADATA_TEST_CORRUPT="before-swap")
-        ok("damage found after the swap puts the original back", rc == 1 and out.get("code") == "verify-failed", out.get("code"))
-        ok("the original is back", pm.read_file(os.path.join(root, "A", "canon.jpg")) != b"" and writer("read", os.path.join(root, "A", "canon.jpg"))[1].get("rating") == 0)
+        canon = os.path.join(root, "A", "canon.jpg")
+        before_damage = pm.read_file(canon)
+        born = pm.created_time(canon)
+        rc, out = writer("set-rating", canon, "5", PHOTO_METADATA_TEST_CORRUPT="after-rewrite")
+        ok("damage found after the rewrite writes the original back", rc == 1 and out.get("code") == "verify-failed", out.get("code"))
+        ok("the original is back, with its created date and no work files", pm.read_file(canon) == before_damage and pm.created_time(canon) == born and not [n for n in os.listdir(os.path.dirname(canon)) if n.startswith(".")])
 
         sh("sudo", "-n", "umount", mnt)
         rc = subprocess.run(["sudo", "-n", "/usr/sbin/fsck.exfat", "-n", loop], capture_output=True, text=True)

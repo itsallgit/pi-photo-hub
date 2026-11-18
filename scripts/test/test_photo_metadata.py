@@ -109,6 +109,8 @@ class Base(unittest.TestCase):
 
 class Writing(Base):
     def test_sets_rating_and_keeps_everything_else(self):
+        created = pm.created_time(self.photo)
+        time.sleep(0.05)
         code, out = self.rate()
         self.assertEqual((code, out["ok"], out["changed"], out["rating"], out["previous"]), (0, True, True, 5, 0))
         self.assertEqual(self.files(), ["p.jpg"])
@@ -116,6 +118,7 @@ class Writing(Base):
         self.assertEqual(pm.outside_xmp_hash(new), pm.outside_xmp_hash(self.original))
         self.assertTrue(new.endswith(b"PHONE-TRAILER"))
         self.assertEqual(int(os.stat(self.photo).st_mtime), 1000000000)
+        self.assertEqual(pm.created_time(self.photo), created)
         self.assertEqual(self.run_tool("read", self.photo)[1]["rating"], 5)
 
     def test_every_allowed_value_round_trips(self):
@@ -149,37 +152,75 @@ class FailedChecks(Base):
                 self.assertEqual((rc, out["ok"], out["code"]), (1, False, code))
                 self.assert_untouched()
 
-    def test_damage_found_after_the_swap_restores_the_original(self):
-        rc, out = self.rate(PHOTO_METADATA_TEST_CORRUPT="before-swap")
+    def test_damage_found_after_the_rewrite_restores_the_original(self):
+        rc, out = self.rate(PHOTO_METADATA_TEST_CORRUPT="after-rewrite")
         self.assertEqual((rc, out["code"]), (1, "verify-failed"))
         self.assert_untouched()
 
-    def test_a_crash_always_leaves_one_complete_copy(self):
-        for point in ("after-temp", "before-swap", "after-move-old", "after-move-new", "after-verify", "after-unlink"):
-            with self.subTest(point):
-                with open(self.photo, "wb") as fh:
-                    fh.write(self.original)
-                folder = os.path.dirname(self.photo)
-                for name in os.listdir(folder):
-                    if name != "p.jpg":
-                        os.unlink(os.path.join(folder, name))
-                p = subprocess.run([sys.executable, SCRIPT, "set-rating", self.photo, "5"], capture_output=True,
-                                   env={**os.environ, "PHOTO_METADATA_CONFIG": self.config, "PHOTO_METADATA_TEST_CRASH": point})
-                self.assertEqual(p.returncode, 99)
-                names = os.listdir(folder)
-                core = pm.outside_xmp_hash(self.original)
-                self.assertTrue(any(pm.outside_xmp_hash(self.data(os.path.join(folder, n))) == core for n in names), names)
-                if point in ("after-temp", "before-swap", "after-move-old", "after-move-new", "after-verify"):
-                    self.assertTrue(self.run_tool("strays")[1]["count"] >= 1)
+    def test_a_bad_safety_copy_stops_before_the_photo_is_touched(self):
+        rc, out = self.rate(PHOTO_METADATA_TEST_CORRUPT="backup-written")
+        self.assertEqual((rc, out["code"]), (1, "verify-failed"))
+        self.assert_untouched()
 
-    def test_a_leftover_blocks_that_photo_and_is_not_removed(self):
+    def reset(self):
+        folder = os.path.dirname(self.photo)
+        for name in os.listdir(folder):
+            os.unlink(os.path.join(folder, name))
+        with open(self.photo, "wb") as fh:
+            fh.write(self.original)
+
+    def crash_at(self, point):
+        p = subprocess.run([sys.executable, SCRIPT, "set-rating", self.photo, "5"], capture_output=True,
+                           env={**os.environ, "PHOTO_METADATA_CONFIG": self.config, "PHOTO_METADATA_TEST_CRASH": point})
+        self.assertEqual(p.returncode, 99)
+
+    def test_a_crash_always_leaves_a_complete_copy_and_recover_finishes_it(self):
+        core = pm.outside_xmp_hash(self.original)
+        folder = os.path.dirname(self.photo)
+        for point in ("after-temp", "before-backup", "after-backup", "mid-rewrite", "after-rewrite", "after-verify"):
+            with self.subTest(point):
+                self.reset()
+                self.crash_at(point)
+                whole = []
+                for name in os.listdir(folder):
+                    try:
+                        whole += [name] if pm.outside_xmp_hash(self.data(os.path.join(folder, name))) == core else []
+                    except pm.Stop:
+                        pass
+                self.assertTrue(whole)
+                self.assertGreaterEqual(self.run_tool("strays")[1]["count"], 1)
+                self.assertEqual(self.rate()[1]["code"], "needs-attention", "the photo is left alone until recovered")
+                rc, out = self.run_tool("recover", self.photo)
+                self.assertEqual((rc, out["ok"]), (0, True), out)
+                self.assertEqual(self.files(), ["p.jpg"])
+                self.assertEqual(pm.outside_xmp_hash(self.data()), core)
+                self.assertEqual(self.rate()[0], 0, "and can be changed again")
+
+    def test_mid_rewrite_recovery_writes_the_original_back(self):
+        self.crash_at("mid-rewrite")
+        self.assertNotEqual(self.data(), self.original)
+        self.assertEqual(self.run_tool("recover", self.photo)[1]["action"], "the original was written back")
+        self.assert_untouched()
+
+    def test_leftovers_block_that_photo_and_are_not_removed(self):
+        for name in (".p.jpg.pph-old", ".p.jpg.pph-new"):
+            stray = os.path.join(os.path.dirname(self.photo), name)
+            with open(stray, "wb") as fh:
+                fh.write(b"keep me")
+            rc, out = self.rate()
+            self.assertEqual((rc, out["code"]), (1, "needs-attention"))
+            self.assertEqual(self.data(stray), b"keep me")
+            self.assertEqual(self.data(), self.original)
+            os.unlink(stray)
+
+    def test_recover_refuses_a_damaged_safety_copy(self):
+        self.crash_at("mid-rewrite")
         stray = os.path.join(os.path.dirname(self.photo), ".p.jpg.pph-old")
         with open(stray, "wb") as fh:
-            fh.write(b"keep me")
-        rc, out = self.rate()
-        self.assertEqual((rc, out["code"]), (1, "needs-attention"))
-        self.assertEqual(self.data(stray), b"keep me")
-        self.assertEqual(self.data(), self.original)
+            fh.write(b"damaged")
+        before = sorted(self.files())
+        self.assertEqual(self.run_tool("recover", self.photo)[1]["code"], "not-a-jpeg")
+        self.assertEqual(sorted(self.files()), before)
 
 
 class Refusals(Base):

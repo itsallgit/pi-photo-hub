@@ -9,20 +9,25 @@ adding a field (tags, for example) means extending FIELDS and its tests.
     photo-metadata.py read PATH                    the rating stored in a photo
     photo-metadata.py set-rating PATH 0|1|5        0 no rating, 1 skipped, 5 favourite
     photo-metadata.py strays                       leftover work files after an interruption
+    photo-metadata.py recover PATH                 finish cleaning up after an interruption (asked for
+                                                   by a person: the `photo-metadata` skill, "Recovery")
 
     --first-write  (set-rating) ignores only the "writesEnabled" switch, for the owner's agreed
                    first test photo. Every other check still applies.
 
 Prints one JSON object. Exit 0 when it worked, 1 when it did not; on failure the photo is as it was.
 
-How a change is made, all beside the photo on the same drive:
- 1. The new version is written to ".NAME.pph-new". The original is not touched.
+How a change is made. The photo's own file is kept, so its created and modified dates stay as they
+were (a replacement file would get a new created date, which cannot be set back on Linux):
+ 1. The new version is written beside the photo to ".NAME.pph-new". The photo is not touched.
  2. It is checked: the new value reads back, every byte outside the XMP blocks is identical
     (pixels, EXIF, the data phones add after the image), and every other XMP value is the same.
- 3. The original becomes ".NAME.pph-old", the new version becomes NAME, and NAME is checked again.
- 4. Only then is ".NAME.pph-old" removed. If a check fails, the original is put back.
-A full copy exists under one of these names at every moment. After a power cut, `strays` lists what
-is left; nothing removes those files automatically (the `photo-metadata` skill, "Recovery").
+ 3. A full copy of the photo is written to ".NAME.pph-old" and checked.
+ 4. The verified contents are written into the photo's existing file, and its modified date restored.
+ 5. The photo is checked again, dates included. If that fails, the original is written back.
+ 6. Both work files are removed.
+A complete copy exists at every moment. After a power cut, `strays` lists what is left; nothing is
+removed automatically, and that photo refuses changes until `recover` has been run for it.
 """
 import errno
 import hashlib
@@ -66,12 +71,12 @@ def load_config():
     return cfg
 
 
-def test_hook(point, temp=None):
+def test_hook(point, target=None):
     """Fault injection for the tests; does nothing unless a test sets these variables."""
     if os.environ.get("PHOTO_METADATA_TEST_CRASH") == point:
         os._exit(99)
-    if temp and os.environ.get("PHOTO_METADATA_TEST_CORRUPT") == point:
-        with open(temp, "r+b") as fh:
+    if target and os.environ.get("PHOTO_METADATA_TEST_CORRUPT") == point:
+        with open(target, "r+b") as fh:
             fh.seek(-1, os.SEEK_END)
             last = fh.read(1)
             fh.seek(-1, os.SEEK_END)
@@ -227,9 +232,58 @@ def read_file(path):
         return fh.read()
 
 
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def created_time(path):
+    """The file's created date as the file system reports it, or None if it does not."""
+    value = getattr(os.stat(path), "st_birthtime", None)
+    if value is None and os.name == "posix":
+        try:
+            value = int(subprocess.run(["stat", "-c", "%W", path], capture_output=True, text=True, check=True).stdout.strip())
+        except (OSError, ValueError, subprocess.CalledProcessError):
+            return None
+    return value or None
+
+
+def write_new_file(path, data, times_ns):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    with os.fdopen(fd, "wb") as out:
+        out.write(data)
+        out.flush()
+        os.fsync(out.fileno())
+    os.utime(path, ns=times_ns)
+
+
+def rewrite_in_place(path, data, times_ns):
+    """Put data into the existing file, so the file keeps its identity and created date."""
+    with open(path, "r+b") as fh:
+        half = len(data) // 2
+        fh.write(data[:half])
+        fh.flush()
+        test_hook("mid-rewrite")
+        fh.write(data[half:])
+        fh.truncate()
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.utime(path, ns=times_ns)
+    with open(path, "r+b") as fh:  # the restored date reaches the disk too
+        os.fsync(fh.fileno())
+
+
+def dates_of(path):
+    return os.stat(path).st_mtime_ns, created_time(path)
+
+
 # ---------------------------------------------------------------------------------------------
 # The change
 # ---------------------------------------------------------------------------------------------
+def work_files(photo):
+    folder, name = os.path.split(photo)
+    return folder, os.path.join(folder, f".{name}.{NEW}"), os.path.join(folder, f".{name}.{OLD}")
+
+
 def set_field(cfg, path, field, value, first_write=False):
     spec = FIELDS[field]
     if value not in spec["values"]:
@@ -239,13 +293,13 @@ def set_field(cfg, path, field, value, first_write=False):
     if blocked:
         raise Stop(*blocked)
     photo = checked_path(cfg, path)
-    folder, name = os.path.split(photo)
-    temp, old = (os.path.join(folder, f".{name}.{ext}") for ext in (NEW, OLD))
+    folder, temp, old = work_files(photo)
     lock = take_lock(cfg)
-    swapping = False
+    rewriting = False
+    made = []  # only work files this run created are ever cleaned up by it
 
     def on_signal(_signum, _frame):
-        if not swapping:  # before the swap, stop and tidy up; during it, finish first
+        if not rewriting:  # before the rewrite, stop and tidy up; during it, finish first
             raise Stop("interrupted", "The change was interrupted; the photo is unchanged.")
 
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -255,92 +309,138 @@ def set_field(cfg, path, field, value, first_write=False):
         for leftover in (temp, old):
             if os.path.lexists(leftover):
                 raise Stop("needs-attention", f"An interrupted change left {os.path.basename(leftover)} beside this photo.")
-        before_stat = os.stat(photo)
+        before = os.stat(photo)
+        times = (before.st_atime_ns, before.st_mtime_ns)
+        dates = dates_of(photo)
         original = read_file(photo)
+        original_hash = sha(original)
         original_core = outside_xmp_hash(original)
         original_tags = xmp_tags(cfg, original)
         previous = rating_of(original_tags)
         if tag in original_tags and float(original_tags[tag]) == value or (tag not in original_tags and previous == value):
             return {"ok": True, "changed": False, "path": photo, "rating": value, "previous": previous}
-        if shutil.disk_usage(folder).free < 2 * len(original) + 50 * 1024 * 1024:
+        if shutil.disk_usage(folder).free < 3 * len(original) + 50 * 1024 * 1024:
             raise Stop("no-space", "There is not enough free space on the photo drive.")
 
-        # 1. the new version, beside the original
+        # 1. the new version, beside the photo
         fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        made.append(temp)
+        with os.fdopen(fd, "wb") as out, open(photo, "rb") as src:
+            r = tool(cfg, ["-q", f"-{tag}={value}", "-"], stdin=src, stdout=out)
+            out.flush()
+            os.fsync(out.fileno())
+        if r.returncode != 0:
+            raise Stop("tool-failed", "The metadata tool reported an error: " + r.stderr.decode("utf-8", "replace").strip()[:200])
+        test_hook("after-temp", temp)
+
+        # 2. prove it before the photo is touched
+        new = read_file(temp)
+        if outside_xmp_hash(new) != original_core:
+            raise Stop("verify-failed", "The new version differed outside the metadata, so it was discarded.")
+        new_tags = xmp_tags(cfg, new)
+        if rating_of(new_tags) != value or float(new_tags.get(tag, -999)) != value:
+            raise Stop("verify-failed", "The new value did not read back, so it was discarded.")
+        if comparable(new_tags, {tag}) != comparable(original_tags, {tag}):
+            raise Stop("verify-failed", "Other metadata would have changed, so the new version was discarded.")
+        new_hash = sha(new)
+        test_hook("before-backup")
+
+        # 3. a complete, checked copy of the photo
+        made.append(old)
+        write_new_file(old, original, times)
+        sync_dir(folder)
+        test_hook("backup-written", old)
+        now = os.stat(photo)
+        if sha(read_file(old)) != original_hash or sha(read_file(photo)) != original_hash or (now.st_size, now.st_mtime_ns) != (before.st_size, before.st_mtime_ns):
+            raise Stop("verify-failed", "The safety copy did not match the photo, so nothing was changed.")
+        test_hook("after-backup")
+
+        # 4. and 5. the photo's own file: from here a signal cannot stop us half way
+        rewriting = True
         try:
-            with os.fdopen(fd, "wb") as out, open(photo, "rb") as src:
-                r = tool(cfg, ["-q", f"-{tag}={value}", "-"], stdin=src, stdout=out)
-                out.flush()
-                os.fsync(out.fileno())
-            if r.returncode != 0:
-                raise Stop("tool-failed", "The metadata tool reported an error: " + r.stderr.decode("utf-8", "replace").strip()[:200])
-            os.utime(temp, ns=(before_stat.st_atime_ns, before_stat.st_mtime_ns))
-            test_hook("after-temp", temp)
+            rewrite_in_place(photo, new, times)
+            test_hook("after-rewrite", photo)
+            if sha(read_file(photo)) != new_hash or rating_of(xmp_tags(cfg, read_file(photo))) != value:
+                raise Stop("verify-failed", "The saved photo did not match, so the original was written back.")
+            if dates_of(photo) != dates:
+                raise Stop("verify-failed", "The photo's dates would have changed, so the original was written back.")
+        except (Stop, OSError) as err:
+            restore(photo, old, original_hash, times)
+            rewriting = False  # the original is back and proved: the work files can go
+            raise err if isinstance(err, Stop) else Stop("write-failed", f"The drive reported an error ({err}); the original was written back.")
+        test_hook("after-verify")
 
-            # 2. prove it before the original is touched
-            new = read_file(temp)
-            if outside_xmp_hash(new) != original_core:
-                raise Stop("verify-failed", "The new version differed outside the metadata, so it was discarded.")
-            new_tags = xmp_tags(cfg, new)
-            if rating_of(new_tags) != value or float(new_tags.get(tag, -999)) != value:
-                raise Stop("verify-failed", "The new value did not read back, so it was discarded.")
-            if comparable(new_tags, {tag}) != comparable(original_tags, {tag}):
-                raise Stop("verify-failed", "Other metadata would have changed, so the new version was discarded.")
-            new_hash = hashlib.sha256(new).hexdigest()
-            now = os.stat(photo)
-            if (now.st_size, now.st_mtime_ns) != (before_stat.st_size, before_stat.st_mtime_ns):
-                raise Stop("changed-meanwhile", "The photo changed while it was being updated, so nothing was saved.")
-            test_hook("before-swap", temp)
-
-            # 3. swap: from here a signal cannot stop us half way
-            swapping = True
-            os.rename(photo, old)
-            test_hook("after-move-old")
-            try:
-                os.rename(temp, photo)
-                sync_dir(folder)
-                test_hook("after-move-new")
-                final = read_file(photo)
-                if hashlib.sha256(final).hexdigest() != new_hash or rating_of(xmp_tags(cfg, final)) != value:
-                    raise Stop("verify-failed", "The saved photo did not match, so the original was put back.")
-            except (Stop, OSError) as err:
-                restore(photo, temp, old, hashlib.sha256(original).hexdigest())
-                sync_dir(folder)
-                raise err if isinstance(err, Stop) else Stop("write-failed", f"The drive reported an error ({err}); the original was put back.")
-            test_hook("after-verify")
-
-            # 4. the verified photo is in place; the old version can go
-            warning = None
-            try:
-                os.unlink(old)
-                sync_dir(folder)
-            except OSError as err:
-                warning = f"Saved, but {os.path.basename(old)} could not be removed ({err})."
-            test_hook("after-unlink")
-            result = {"ok": True, "changed": True, "path": photo, "rating": value, "previous": previous, "seconds": round(time.time() - started, 2)}
-            if warning:
-                result["warning"] = warning
-            return result
-        finally:
-            if not swapping and os.path.lexists(temp):
-                os.unlink(temp)
+        # 6. the verified photo is in place; the work files can go
+        warning = None
+        try:
+            os.unlink(temp)
+            os.unlink(old)
+            sync_dir(folder)
+        except OSError as err:
+            warning = f"Saved, but a work file could not be removed ({err})."
+        test_hook("after-unlink")
+        result = {"ok": True, "changed": True, "path": photo, "rating": value, "previous": previous, "seconds": round(time.time() - started, 2)}
+        if warning:
+            result["warning"] = warning
+        return result
     finally:
+        if not rewriting:
+            for leftover in made:
+                if os.path.lexists(leftover):
+                    os.unlink(leftover)
+            sync_dir(folder)
         lock.close()
 
 
-def restore(photo, temp, old, original_hash):
-    """Put the original back after a failed swap; refuse to guess if that cannot be proved."""
+def restore(photo, old, original_hash, times):
+    """Write the original back into the photo's file; refuse to guess if that cannot be proved."""
     try:
-        if os.path.lexists(old):
-            if os.path.lexists(photo):
-                os.rename(photo, temp)
-            os.rename(old, photo)
-        if hashlib.sha256(read_file(photo)).hexdigest() != original_hash:
+        data = read_file(old)
+        if sha(data) != original_hash:
+            raise OSError("the safety copy does not match the original")
+        rewrite_in_place(photo, data, times)
+        if sha(read_file(photo)) != original_hash:
             raise OSError("the restored file does not match the original")
-        if os.path.lexists(temp):
-            os.unlink(temp)
     except OSError as err:
         raise Stop("needs-attention", f"The original could not be restored automatically ({err}). Nothing was deleted.")
+
+
+def recover(cfg, path):
+    """After an interruption: leave the photo complete, then remove its work files."""
+    if cfg["requireMount"] and not os.path.ismount(cfg["mount"]):
+        raise Stop("no-drive", "The photo drive is not mounted.")
+    photo = checked_path(cfg, path)
+    folder, temp, old = work_files(photo)
+    lock = take_lock(cfg)
+    try:
+        has_new, has_old = os.path.lexists(temp), os.path.lexists(old)
+        if not has_new and not has_old:
+            return {"ok": True, "path": photo, "action": "nothing to recover"}
+        current = read_file(photo)
+        if has_old:
+            saved = read_file(old)
+            core = outside_xmp_hash(saved)  # stops here if the safety copy is not a whole JPEG
+            new = read_file(temp) if has_new else None
+            if sha(current) == sha(saved):
+                action = "the original was intact"
+            elif new is not None and sha(current) == sha(new) and outside_xmp_hash(new) == core:
+                action = "the new version was complete"
+            else:
+                stat = os.stat(old)
+                rewrite_in_place(photo, saved, (stat.st_atime_ns, stat.st_mtime_ns))
+                if sha(read_file(photo)) != sha(saved):
+                    raise Stop("needs-attention", "The original could not be written back. Nothing was deleted.")
+                action = "the original was written back"
+        else:
+            outside_xmp_hash(current)  # the photo itself must be whole before its new version goes
+            action = "the original was intact"
+        for leftover in (temp, old):
+            if os.path.lexists(leftover):
+                os.unlink(leftover)
+        sync_dir(folder)
+        return {"ok": True, "path": photo, "action": action, "rating": rating_of(xmp_tags(cfg, read_file(photo)))}
+    finally:
+        lock.close()
 
 
 def strays(cfg):
@@ -365,6 +465,8 @@ def main(argv):
             out = {"ok": True, "path": photo, "rating": rating_of(xmp_tags(cfg, read_file(photo)))}
         elif args[:1] == ["set-rating"] and len(args) == 3 and args[2] in ("0", "1", "5"):
             out = set_field(cfg, args[1], "rating", int(args[2]), first_write)
+        elif args[:1] == ["recover"] and len(args) == 2:
+            out = recover(cfg, args[1])
         elif args[:1] == ["strays"] and len(args) == 1:
             found = strays(cfg)
             out = {"ok": True, "count": len(found), "files": found}

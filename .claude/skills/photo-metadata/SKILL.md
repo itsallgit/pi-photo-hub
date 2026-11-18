@@ -34,13 +34,13 @@ If it fails, leave saving off and tell the owner what `failedChecks` says. Never
 
 ## Recovery after an interruption
 
-`strays` lists `.NAME.pph-new` (the new version) and `.NAME.pph-old` (the original). Nothing removes them automatically, and a photo with a leftover refuses further changes. **Show the owner the list and agree each step; renaming or deleting these needs their yes.** Check with `exiftool` and by opening the file first.
+`strays` lists `.NAME.pph-new` (the checked new version) and `.NAME.pph-old` (a full copy of the original). Nothing removes them automatically, and a photo with a leftover refuses further changes. **Show the owner the list and get their yes first**, then for each photo:
 
-| What is in the folder | Meaning | Fix |
-|---|---|---|
-| `NAME` and `.NAME.pph-new` | stopped before the swap; `NAME` is the original | delete `.NAME.pph-new` |
-| `.NAME.pph-old` only, or with `.NAME.pph-new` | stopped during the swap | `mv .NAME.pph-old NAME`, then delete `.NAME.pph-new` if present |
-| `NAME` and `.NAME.pph-old` | the new version was in place | if `NAME` opens and `read` shows the expected rating, delete `.NAME.pph-old`; otherwise ask the owner |
+```
+python3 ~/pi-photo-hub/scripts/photo-metadata.py recover "<photo path>"
+```
+
+It keeps the photo's own file, so its dates stay. It compares the three files: if the photo is the complete original or the complete new version it keeps it; if the photo is incomplete it writes the original back from `.pph-old`; then it removes the work files and reports what it did. If the safety copy is damaged it stops and deletes nothing: tell the owner. Do not rename or delete these files by hand.
 
 ## Adding a field (tags, for example)
 
@@ -49,7 +49,7 @@ Agree it with the owner first. Add it to `FIELDS` with its exact XMP tag and all
 ## Test
 
 - PC: `bash scripts/check.sh` runs `scripts/test/test_photo_metadata.py`, with a stand-in for exiftool: bad results, crashes at every step, refusals.
-- Pi: `python3 ~/pi-photo-hub/scripts/test/photo-metadata-pi.py`: the real exiftool and an exFAT image in memory, simulated power cuts at every step, and the drive check against a damaged copy. It only reads the photo drive.
+- Pi: `python3 ~/pi-photo-hub/scripts/test/photo-metadata-pi.py`: the real exiftool and an exFAT image in memory, created and modified dates, simulated power cuts at every step with recovery, and the drive check against a damaged copy. It only reads the photo drive.
 
 ## Do not
 
