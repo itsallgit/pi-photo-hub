@@ -54,6 +54,7 @@ Operational procedures ("how to do X") are skills in `.claude/skills/<name>/SKIL
 | `apply-changes` | Get a change (or a branch, or a rollback) onto the Pi with `scripts/update.sh`, behind an agreement gate |
 | `pi-power` | Reboot or shut down the Pi cleanly with `scripts/pi-power.sh`: checks what is running, stops Picapport first, agreement gate |
 | `make-changes` | Build a feature, change or fix the owner asks for: code map, tests, deploy and check on the Pi, docs; holds the standing mandate |
+| `project-hygiene` | Check that docs, skills and README still match the code and the Pi, and fix drift in targeted edits (now and then, at a release, or on request) |
 | `skill-authoring` | Create or change a skill: where content belongs, the template, the build-and-cold-test method |
 | `picapport-db` | **Draft (B04).** Diagnose and repair Picapport's database on copies: status, snapshot, repair playbook, case history |
 | `button-board` | Check the button board, learn what it sends, change what a key does, test with a virtual board |

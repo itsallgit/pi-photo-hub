@@ -18,6 +18,8 @@ The technical reference of the **current** system (the master for components, pa
 | Install, update, check | `bootstrap.sh` (fresh build), `scripts/update.sh` and `scripts/lib/apply-*.sh` (every update), `scripts/verify.sh` (drift), `scripts/check.sh` (before every commit) |
 | Tests | `api/test/smoke.js`, `unit.js`, `fake-picapport.js` (PC, no Pi); `scripts/test/` (Python); `tools/browser-test/run.js` (the page in headless Chrome; `--pi` against the Pi); `api/test/pi-check.js` (the API on the Pi); `scripts/test/buttons-virtual.py` (buttons on the Pi) |
 | Dev tools | `api/lib/dev.js` (open a page in the kiosk, test reports), `api/public/dev/motion-test.html` |
+| Repo hygiene | `scripts/hygiene.py` (read-only consistency checks of docs against code; the `project-hygiene` skill), `scripts/hygiene-allow.txt` (reviewed exceptions) |
+| Rebuild and recovery (owner only) | `cleanup.sh` and `scripts/cleanup-picapport.sh` (installed by `bootstrap.sh` to `/opt/picapport/`; a full Picapport reset, README "Usage"), `scripts/sd-recover.ps1` with `scripts/sd-firstrun.sh.template` (reset the password and enable SSH from the SD card, README "Password Recovery") |
 
 ## What it does
 
@@ -174,8 +176,8 @@ Inside the photo API (`api/`); no new service. Modules in `api/lib/`:
 |---|---|
 | `GET /api/events?role=<shelf/phone>` | Server-Sent Events, event `state` with the view below, on connect and on every change. |
 | `GET /api/player` | The view: `status` (`playing`, `preparing`, `empty`), `preparing` progress, `playing`, `paused`, `position`, `count`, `startedAt`, `elapsed`, `duration` (ms), `current`, `next` (2), `prev` (each `{ id, url, thumb, info: { date, place, city, country, event, people, rating, upright, marks, file }, card }`), `source`, `settings`, `preset`, `serverTime`. |
-| `POST /api/player/next`, `/back` | Body `{ steps? }` (1 to 1000). |
-| `POST /api/player/pause`, `/play`, `/toggle` | "Play" while autoplay is off turns autoplay on. |
+| `POST /api/player/next`, `POST /api/player/back` | Body `{ steps? }` (1 to 1000). |
+| `POST /api/player/pause`, `POST /api/player/play`, `POST /api/player/toggle` | "Play" while autoplay is off turns autoplay on. |
 | `POST /api/player/jump` | `{ position }` or `{ year }` (the first photo of that year or later in the current order). |
 | `POST /api/player/source` | Start a slideshow (above). 422 if nothing matches. |
 | `PATCH /api/player/settings`, `POST /api/player/preset` | Above. |
@@ -188,6 +190,7 @@ Inside the photo API (`api/`); no new service. Modules in `api/lib/`:
 | `POST /api/screen/toggle` | Screen off if on, on if off. |
 | `GET /api/map/points` | `[[lat, lon, photos]]` on a 0.01 degree grid (R15). |
 | `GET /show` | The slideshow page (M3). |
+| `POST /api/dev/kiosk`, `POST /api/dev/report`, `GET /api/dev/report`, `GET /api/dev/sample/<n>` | Development tools (`api/lib/dev.js`): open a page of the API in the kiosk (with optional extra Chromium flags), collect and read test reports, a sample photo from Picapport for test pages. Not used by viewers. |
 
 **The older endpoints keep working** (R21): `POST /api/slideshow` starts a query source (sort names mapped onto orders: `randomsmart` is chapters, the date and name sorts are date orders) and returns at once with `preparing: true` while a big result is listed; the same query, sort and interval is not restarted; `PATCH /api/slideshow` changes settings without restarting (`relaunched` is now always `false`; the current photo stays); `GET /api/slideshow` without parameters shows the slideshow on the screen (the kiosk opens `/show`, or Picapport's page with `viewer: picapport`) and resumes; `/api/status` keeps its `slideshow` field and adds `player`, `settings`, `schedule`, `viewers`, `catalogue`, `imageCache`. `slideshow.json` and `slideshow_url.txt` are still written for a query slideshow, so a rollback to an older version replays it.
 

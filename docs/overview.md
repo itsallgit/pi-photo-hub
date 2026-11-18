@@ -45,12 +45,22 @@ Update the master; other pages link to it, they do not copy it. If you find a fa
 | Why a phase was built the way it was (requirements, decisions, test evidence) | its phase pages, kept as history: release 1 is [slideshow-layer.md](slideshow-layer.md) and [slideshow-layer-build.md](slideshow-layer-build.md) |
 | Defaults and mappings | `config/` (each file says what it is for) |
 | Runtime state (what is playing, history, marks) | on the Pi only, `/var/lib/photo-api/` (principle 5) |
+| Whether all of the above still agree with the code | `python scripts/hygiene.py` and the `project-hygiene` skill; record below, "Hygiene" |
 
 ## How the project grows
 
 - **Small changes and features:** the `make-changes` skill (standing mandate, tests, deploy, docs).
 - **A new phase** (a big piece such as the ingestion pipeline, L7): as release 1 was built. (1) Talk it through with the owner and write a phase page: what the owner said, the goal, requirements with IDs, decisions. (2) A build page: plan, mandate, milestones with a checklist and a build log, so any session can resume. (3) Build on a branch. (4) At the owner's "go": merge, tag a release, and **fold the lasting facts into the masters above** (this page's parts and releases, architecture, README, skills); the phase pages stay as history and say so at the top.
 - **Parts outside the Pi** (for example a PC side of the ingestion pipeline) get a row in "The parts", their own section in architecture, and the same rules: code in this repo, tested, documented, no secrets.
+
+## Keeping it true
+
+- **Every change** updates its master pages in the same commit (the `make-changes` skill, "Keep the project current"); `scripts/check.sh` checks links and paths and warns when code changed without its usual pages.
+- **Now and then, and at each release,** a hygiene run (the `project-hygiene` skill) checks the docs against the code and the Pi and fixes what drifted, in small targeted edits.
+
+## Hygiene
+
+Last hygiene run: 2026-11-18, commit `fc9c23e`; first run: 19 findings fixed or allowed with a reason (stale README paragraph on the saved slideshow, routes written in shorthand, undocumented dev routes and rebuild scripts); open: the deep clean of `docs/architecture.md` and the backlog's old "Done" items (backlog B38).
 
 ## Releases
 

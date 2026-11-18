@@ -394,9 +394,9 @@ Optional flags: `--reset-slideshow` (forget the saved slideshow; the API falls b
 git show origin/main:scripts/update.sh | ssh -i ~/.ssh/id_pi_photo_hub pi@<pi-ip> 'bash -s -- --dry-run'
 ```
 
-**Saved slideshow.** The last slideshow is kept in `/var/lib/photo-api/slideshow_url.txt` (created by systemd, outside the repo checkout), so an update never touches it. If you ever need to carry an old one over by hand, copy the old `api/slideshow_url.txt` there before the first update (`sudo mkdir -p /var/lib/photo-api && sudo chown pi:pi /var/lib/photo-api`).
+**Saved slideshow.** What is playing (the source, the order, the position, the settings) is kept in `/var/lib/photo-api/player.json` and `playlist.json` (outside the repo checkout), so an update never touches it and the slideshow resumes where it was. `slideshow.json` and `slideshow_url.txt` there are still written for a query slideshow, so a rollback to a version before release 1 replays it. (Before 2026-11-15 the saved slideshow was the tracked file `api/slideshow_url.txt`; to carry such an old one over by hand, copy it to `/var/lib/photo-api/slideshow_url.txt`.)
 
-**If the slideshow is not back after an update or a rollback** (a rollback runs the older commit's script, which may not relaunch it): `curl -s http://localhost:3000/api/slideshow` (no query string: it replays the saved slideshow).
+**If the slideshow is not back after an update or a rollback** (a rollback runs the older commit's script, which may not relaunch it): `curl -s http://localhost:3000/api/slideshow` (no query string: it shows the slideshow and resumes it).
 
 **Undo.** The script prints the commit it came from; `bash scripts/update.sh --ref <that sha>` goes back.
 

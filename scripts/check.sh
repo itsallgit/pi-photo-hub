@@ -92,6 +92,12 @@ else
   echo "SKIP  Python tests (no python3)"
 fi
 
+# --- links and paths in the docs (scripts/hygiene.py --quick; the full check is the project-hygiene skill) ---
+if [ -n "$py" ]; then
+  hq="$("$py" scripts/hygiene.py --quick 2>&1 | grep '^FIND' || true)"
+  if [ -z "$hq" ]; then ok "docs: links and repo paths resolve"; else warn "docs: $(echo "$hq" | wc -l) broken link(s) or missing path(s):"; echo "$hq" | sed 's/^/        /'; fi
+fi
+
 # --- docs-sync (hard rule 3) ------------------------------------------------------------------------
 changed="$( { git diff --name-only "$BASE" 2>/dev/null; git ls-files -o --exclude-standard; } | sort -u | grep -v 'package-lock.json$')"
 code="$(echo "$changed" | grep -E '^(scripts/|systemd/|initd/|config/|api/|bootstrap.sh|cleanup.sh)' || true)"

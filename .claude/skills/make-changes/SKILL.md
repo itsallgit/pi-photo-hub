@@ -58,7 +58,7 @@ Each fact has one master page (`docs/overview.md`, "Where each kind of fact is k
 
 ## Releases
 
-When the owner calls something a release (or a phase is merged on their "go"): an annotated tag on `main` (`git tag -a vX.Y -m "..."`, `git push origin vX.Y`), a row in `docs/overview.md` "Releases", the backlog's "Where we are" updated. A phase's own pages (requirements, build plan) are marked as history at the top, and their lasting facts folded into the masters (`docs/overview.md`, "How the project grows").
+When the owner calls something a release (or a phase is merged on their "go"): run the `project-hygiene` skill first, then an annotated tag on `main` (`git tag -a vX.Y -m "..."`, `git push origin vX.Y`), a row in `docs/overview.md` "Releases", the backlog's "Where we are" updated. A phase's own pages (requirements, build plan) are marked as history at the top, and their lasting facts folded into the masters (`docs/overview.md`, "How the project grows").
 
 ## Report
 

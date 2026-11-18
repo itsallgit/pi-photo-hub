@@ -1,0 +1,7 @@
+# hygiene-allow.txt - deliberate mentions that scripts/hygiene.py would otherwise report.
+# One per line: <file or *>|<exact path or text>|<why it is fine>. Keep it short; review it in each hygiene run.
+docs/principles.md|.claude/settings.json|names a file the owner decided not to create (Q10, no deny rules)
+README.md|api/slideshow_url.txt|explains the pre-2026-11-15 location for carrying an old saved slideshow over by hand
+docs/architecture.md|api/slideshow_url.txt|history line (B06): where the saved slideshow used to be
+.claude/skills/project-hygiene/SKILL.md|docs/backlog-done.md|names the file a future deep clean may create (B38)
+.claude/skills/project-hygiene/SKILL.md|placeholder|the skill describes the placeholder check itself
