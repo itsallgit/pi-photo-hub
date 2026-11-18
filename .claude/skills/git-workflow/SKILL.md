@@ -26,9 +26,9 @@ Use a short-lived `feat/<topic>` or `fix/<topic>` branch for code that could bre
 1. `git switch -c feat/<topic>`
 2. Commit as above. `git push -u origin feat/<topic>` so the Pi and any other clone can see it.
 3. **Test it on the Pi.** Use the `apply-changes` skill with the branch name (`update.sh --branch <branch>`). For work the owner asked for, the standing mandate in the `make-changes` skill covers these deploys; otherwise agree the deploy first ("Working with the owner").
-4. When it works **and the owner has said "go"**: `git switch main`, `git pull --ff-only`, `git merge --ff-only feat/<topic>`, `git push origin main`.
+4. When it works **and the owner has said "go"**: `git switch main`, `git pull --ff-only`, `git merge --ff-only feat/<topic>`, `git push origin main`, then step 6 in the same go.
 5. If `--ff-only` fails because `main` has moved: `git switch feat/<topic>`, `git merge main`, retest on the Pi, then repeat step 4.
-6. Ask the owner before deleting the branch (deleting branches needs explicit instruction).
+6. **Delete the merged branch, without asking** (owner's standing decision, 2026-11-19, overriding the global "ask before deleting branches" rule for this repo): `git branch -d feat/<topic>` and `git push origin --delete feat/<topic>`. `-d` refuses a branch that is not merged; never force it. The Pi's copy goes at its next `update.sh` (`scripts/lib/apply-git-tidy.sh`), so finish with the update that puts the Pi on `main`. A branch that is **not** merged is still deleted only on the owner's word.
 
 This repo-level rule (no pull request needed, fast-forward merge) overrides the global "use PRs for main" rule by the owner's decision. The global rule may still make a session ask first; that is fine.
 
@@ -45,4 +45,4 @@ This repo-level rule (no pull request needed, fast-forward merge) overrides the 
 
 ## Last verified
 
-Written 2026-11-15 from the Git standard previously in `CLAUDE.md`; not yet cold-tested.
+Written 2026-11-15 from the Git standard previously in `CLAUDE.md`. Merge and branch clean-up used 2026-11-19. Not yet cold-tested.
