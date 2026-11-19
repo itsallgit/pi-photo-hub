@@ -2,7 +2,7 @@
 
 The master description of **what the solution is**: its parts, how they connect, where each kind of fact is kept, and how the project grows. Kept current with every change that adds, removes or reshapes a part (the `make-changes` skill). Details live in the pages this one links to; nothing here is repeated elsewhere, and nothing elsewhere should repeat it.
 
-Current release: **v1.0, the slideshow layer** (2026-11-18). History: "Releases" below.
+Current release: **v1.1.0, the look and feel release** (2026-11-19). History: "Releases" below; how versions are numbered: the `git-workflow` skill.
 
 ## What it is
 
@@ -61,10 +61,11 @@ Update the master; other pages link to it, they do not copy it. If you find a fa
 
 ## Hygiene
 
-Last hygiene run: 2026-11-18, commit `fc9c23e`; first run: 19 findings fixed or allowed with a reason (stale README paragraph on the saved slideshow, routes written in shorthand, undocumented dev routes and rebuild scripts); open: the deep clean of `docs/architecture.md` and the backlog's old "Done" items (backlog B38).
+Last hygiene run: 2026-11-19, commit `dae39fb`, for `v1.1.0`: 4 stale lines fixed (the README and architecture still called the slideshow layer a branch; the README and experience page described the old way to reach skipped photos) and the skills' "Last verified" updated; open: the deep clean of `docs/architecture.md` and the backlog's old "Done" items (backlog B38), cold tests of most skills.
 
 ## Releases
 
 | Release | Date | What |
 |---|---|---|
+| v1.1.0 | 2026-11-19 | Look and feel (B41): redesigned phone menus for portrait and landscape; Browse tiles with cover photos and icons; Favourites and Skipped galleries; eight clock faces with their own settings; captions per data point (corner, size, style, order, the same field twice); saved and managed presets; more transitions, a drop-down and "Surprise me"; full-screen map; instant next and back from the phone; open pages reload after an update. |
 | v1.0 | 2026-11-18 | The slideshow layer (B32): the photo API holds the one slideshow; `/show` for the shelf and the phone; resume without reshuffle; orders, presets, overlay, upright fill, motion; offline places; search, browse, map on the phone; button board service; screen schedule; history and marks. Requirements R1 to R21 and test evidence: [slideshow-layer-build.md](slideshow-layer-build.md). Before it: Picapport's own slideshow page, the photo API v2 and the maintenance work of Phase 1 (backlog "Done"). |

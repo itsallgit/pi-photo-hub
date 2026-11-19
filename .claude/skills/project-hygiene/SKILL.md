@@ -66,3 +66,5 @@ For a page that has grown hard to read (for example `docs/architecture.md`, back
 ## Last verified
 
 2026-11-18: written with `scripts/hygiene.py`; first run found 19 items (11 path mentions, 4 routes, 3 undocumented scripts, a stale README paragraph about the saved slideshow), fixed or allowed with a reason; a planted broken link, missing path, undocumented route and undocumented script were all reported. Not yet cold-tested.
+
+2026-11-19: second run, for `v1.1.0`; scoped from the previous run's commit as described.

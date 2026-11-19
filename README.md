@@ -173,7 +173,7 @@ curl -s $API/api/words                                           # private word 
 curl -s $API/api/slideshow                                       # show the slideshow on the screen (what the boot does; it resumes, no reshuffle)
 ```
 
-**The slideshow layer (B32; on the branch `feat/slideshow-layer` until the owner says "go").** The Pi now holds the one slideshow itself (order, position, settings) and every screen is a window onto it: the shelf screen and any browser at `http://pi.local:3000/show`. The calls above keep working; the new ones (full list in `docs/architecture.md`, "Slideshow layer"):
+**The slideshow layer.** The Pi holds the one slideshow itself (order, position, settings) and every screen is a window onto it: the shelf screen and any browser at `http://pi.local:3000/show`. The calls above keep working; the new ones (full list in `docs/architecture.md`, "Slideshow layer"):
 
 ```bash
 curl -s $API/api/player                                          # now playing: photo, date, place, event, next photos, settings
@@ -207,7 +207,7 @@ A USB "3 key + knob" keypad in front of the shelf (slideshow layer R17). The Pi'
 
 ## Favourite and skipped photos
 
-A favourite or skipped photo is recorded **in the photo itself**: XMP rating 5 is a favourite, 1 is skipped, 0 is neither. Every slideshow leaves out skipped photos; on the phone, ☰ then "Your choices" plays **Favourites** or **Skipped photos**. To bring a photo back, play Skipped photos and press ⊘ (or hold KEY1) on it. Ratings set in another photo program count too, after the next nightly scan.
+A favourite or skipped photo is recorded **in the photo itself**: XMP rating 5 is a favourite, 1 is skipped, 0 is neither. Every slideshow leaves out skipped photos; on the phone, Browse has a **Favourites** and a **Skipped** gallery, each with "Play all". To bring a photo back, open it in Skipped and tap "Bring it back" (or play Skipped and press the skip button, or hold KEY1, on it). Ratings set in another photo program count too, after the next nightly scan.
 
 **Automated:** hold KEY3 (favourite) or KEY1 (skip), the phone's ★ and ⊘, or `curl -X POST http://pi.local:3000/api/photo/rating -H 'content-type: application/json' -d '{"rating":5}'` (the photo on screen). **Manual, on the Pi:** `python3 ~/pi-photo-hub/scripts/photo-metadata.py set-rating "<photo path>" 5`, never `exiftool` directly. Saving needs `writesEnabled` in `config/photo-metadata.json` and a recent pass of the read-only drive check; `photo-metadata.py status` says why it is refused. After a power cut during a save, `photo-metadata.py strays` lists leftovers and `photo-metadata.py recover "<photo path>"` finishes each one: the `photo-metadata` skill, "Recovery".
 

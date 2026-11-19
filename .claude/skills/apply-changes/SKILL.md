@@ -41,3 +41,5 @@ The script prints the previous commit. Roll back with `update.sh --ref <that sha
 ## Last verified
 
 2026-11-15: run on the Pi for every stage of B06: a branch, the app-restart change (the slideshow came back by itself), `main`, a rollback with `--ref` and the return to `main`, all verified. Not yet exercised on the Pi: `--discard-local-changes`, `--reset-slideshow`, a change that needs `npm install`. The skill is not yet cold-tested.
+
+2026-11-19: dry run and real run for a test branch, then back to `main`, for `v1.1.0`.

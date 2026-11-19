@@ -32,6 +32,23 @@ Use a short-lived `feat/<topic>` or `fix/<topic>` branch for code that could bre
 
 This repo-level rule (no pull request needed, fast-forward merge) overrides the global "use PRs for main" rule by the owner's decision. The global rule may still make a session ask first; that is fine.
 
+## Versions and releases
+
+A version is an annotated git tag on `main`, `vMAJOR.MINOR.PATCH` (semantic versioning, owner's rules, 2026-11-19). The tag is the only version number; `api/package.json`'s is not used. The first tag, `v1.0`, keeps its short name.
+
+| Part | When | Examples |
+|---|---|---|
+| **Patch** `v1.1.1` | A very small change: a fix or a small tweak | A wrong label, a spacing fix, a bug in something that exists |
+| **Minor** `v1.2.0` | A real update, cosmetic or functional, that improves what is already there | `v1.1.0`: the redesigned menus, clock faces, captions and presets |
+| **Major** `v2.0.0` | A whole new thing the project could not do before | The ingestion pipeline (L7); adding the button board would have been one |
+
+Choose the part yourself, and say which in the report. One finished request is one version, however many commits it took. Changes only to docs, skills or the backlog get no version.
+
+1. **When:** a patch is tagged when its work is on `main`, deployed and checked, without asking. A minor or major is tagged as part of merging it on the owner's "go".
+2. **Before a minor or major:** the `project-hygiene` skill. For any version: a row in `docs/overview.md` "Releases" and its "Current release" line, and the backlog item closed. Commit those on `main`.
+3. **Tag the commit that holds them:** `git tag -a vX.Y.Z -m "<what it is>"`, `git push origin main`, `git push origin vX.Y.Z`.
+4. **Put the Pi on `main`** (`update.sh`, the `apply-changes` skill). A tag is never moved or reused: a mistake gets the next patch.
+
 ## Do not
 
 - Force-push, rebase, `git reset --hard`, `git clean`, or skip checks (`--no-verify`) without the owner's explicit instruction.
@@ -45,4 +62,4 @@ This repo-level rule (no pull request needed, fast-forward merge) overrides the 
 
 ## Last verified
 
-Written 2026-11-15 from the Git standard previously in `CLAUDE.md`. Merge and branch clean-up used 2026-11-19. Not yet cold-tested.
+Written 2026-11-15 from the Git standard previously in `CLAUDE.md`. Branch, fast-forward merge, clean-up and the version steps used 2026-11-19 for `v1.1.0`. Not yet cold-tested.

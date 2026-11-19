@@ -59,15 +59,15 @@ Each fact has one master page (`docs/overview.md`, "Where each kind of fact is k
 
 ## Releases
 
-When the owner calls something a release (or a phase is merged on their "go"): run the `project-hygiene` skill first, then an annotated tag on `main` (`git tag -a vX.Y -m "..."`, `git push origin vX.Y`), a row in `docs/overview.md` "Releases", the backlog's "Where we are" updated. A phase's own pages (requirements, build plan) are marked as history at the top, and their lasting facts folded into the masters (`docs/overview.md`, "How the project grows").
+Every finished change to the code gets a version: which part goes up, when, and the steps are in the `git-workflow` skill, "Versions and releases". A small change is a patch, tagged without asking; a feature is a minor or major, tagged when it merges on the owner's "go". Update the backlog's "Where we are" with it. A phase's own pages (requirements, build plan) are marked as history at the top, and their lasting facts folded into the masters (`docs/overview.md`, "How the project grows").
 
 ## Report
 
-- Tell the owner in a few lines: what changed, where to see it ("tap ⚙ on the phone"), anything they should decide, how to undo (`update.sh --ref <previous commit>`, the `apply-changes` skill).
+- Tell the owner in a few lines: the version, what changed, where to see it ("tap ⚙ on the phone"), anything they should decide, how to undo (`update.sh --ref <previous commit>`, the `apply-changes` skill).
 
 ## Undo
 
-A bad change on `main`: revert the commit (`git revert`, never `reset`), push, `update.sh`. Release 1 is tag `v1.0`: `update.sh --ref v1.0` puts the Pi back on it (detached) while you fix `main`.
+A bad change on `main`: revert the commit (`git revert`, never `reset`), push, `update.sh`. Every release is a tag: `update.sh --ref <tag>` puts the Pi back on it (detached) while you fix `main`; the fix is the next patch.
 
 ## Do not
 
@@ -83,3 +83,5 @@ A bad change on `main`: revert the commit (`git revert`, never `reset`), push, `
 ## Last verified
 
 2026-11-18: written at release 1 from the procedure used to build it (every step was used during the build). Not yet cold-tested: the first new session with a feature request is the test.
+
+2026-11-19: used from a fresh session for B41 (a feature on a branch, deployed to the Pi, merged on the owner's "go", released as `v1.1.0`): the code map, tests, screenshot review and `--pi` check all worked; the `--pi` run caught a problem the PC tests could not (real thumbnail times).
