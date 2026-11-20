@@ -74,24 +74,53 @@
     const lookPage = () => live({ title: "Transitions", sub: "How one photo becomes the next", render: () => {
       const s = S();
       return [ui.group(null,
-        ui.select("Transition", (cat().transitions.find((t) => t.name === s.transition) || {}).about, cat().transitions, s.transition, (v) => patch({ transition: v }), { demo: true }),
+        transitionPicker(s),
         ui.stacked("Movement on the photo", ui.seg([{ name: "off", label: "Still" }, { name: "subtle", label: "Subtle" }, { name: "lively", label: "Lively" }], s.motion, (v) => patch({ motion: v })))),
       ui.group("Atmosphere",
         toggle("titleCards", "Title cards", "The event's name before its photos"),
-        toggle("night", "Night look", "Dims the whole picture")),
-      surpriseGroup(s)];
+        toggle("night", "Night look", "Dims the whole picture"))];
     } });
-    // Which transitions "Surprise me" picks from: one switch each, at least one stays on.
-    function surpriseGroup(s) {
-      const real = cat().transitions.filter((t) => t.name !== "random");
-      const skip = s.surpriseSkip || [];
-      const on = (t) => !skip.includes(t.name);
-      return ui.group(`Surprise me picks from (${real.filter(on).length} of ${real.length})`,
-        ...real.map((t) => ui.toggle(t.label, t.about, on(t), (v) => {
-          const next = v ? skip.filter((x) => x !== t.name) : [...skip, t.name];
-          if (next.length >= real.length) { say("Surprise me needs at least one transition"); return; }
-          patch({ surpriseSkip: next });
-        }, { demo: t.name })));
+
+    // One picker for the transitions (B43): tick none (a straight cut), one (always that one), some
+    // or all (a different one for each photo). Saved as the settings already were: none is transition
+    // "none", one is its name, several is "random" with the ones left out in surpriseSkip.
+    let pickerOpen = false;
+    const realTransitions = () => cat().transitions.filter((t) => t.name !== "random" && t.name !== "none");
+    function chosen(s) {
+      const real = realTransitions().map((t) => t.name);
+      if (s.transition === "random") { const skip = s.surpriseSkip || []; return real.filter((t) => !skip.includes(t)); }
+      return real.includes(s.transition) ? [s.transition] : [];
+    }
+    function choose(list) {
+      const real = realTransitions().map((t) => t.name);
+      const pick = real.filter((t) => list.includes(t));
+      if (!pick.length) patch({ transition: "none" });
+      else if (pick.length === 1) patch({ transition: pick[0] });
+      else patch({ transition: "random", surpriseSkip: real.filter((t) => !pick.includes(t)) });
+    }
+    function pickerSummary(c, real) {
+      if (!c.length) return "None: straight to the next photo";
+      if (c.length === 1) return `${(real.find((t) => t.name === c[0]) || {}).label}, every photo`;
+      if (c.length === real.length) return `All ${real.length}, a different one each photo`;
+      return `${c.length} of ${real.length}, a different one each photo`;
+    }
+    function transitionPicker(s) {
+      const real = realTransitions(), c = chosen(s);
+      const head = h("button", { class: `row tpick-head${pickerOpen ? " open" : ""}`, "aria-expanded": pickerOpen ? "true" : "false", on: { click: () => { pickerOpen = !pickerOpen; app.refresh(); } } },
+        h("span", { class: "row-text" }, h("span", { class: "row-label" }, "Transitions"), h("small", {}, pickerSummary(c, real))),
+        h("span", { class: "tpick-chev" }, icon("down")));
+      if (!pickerOpen) return head;
+      return h("div", { class: "tpick" }, head,
+        h("div", { class: "tpick-all" },
+          h("button", { class: `btn${c.length === real.length ? " on" : ""}`, on: { click: () => choose(real.map((t) => t.name)) } }, "All"),
+          h("button", { class: `btn${!c.length ? " on" : ""}`, on: { click: () => choose([]) } }, "None")),
+        h("div", { class: "tpick-grid" }, real.map((t) => {
+          const on = c.includes(t.name);
+          return h("button", { class: `tpick-tile${on ? " on" : ""}`, "aria-pressed": on ? "true" : "false", title: t.about,
+            on: { click: () => choose(on ? c.filter((x) => x !== t.name) : [...c, t.name]) } },
+          h("span", { class: `tdemo t-${t.name}` }, h("i"), h("i")), h("span", { class: "tpick-name" }, t.label), h("span", { class: "tpick-tick" }, icon("check")));
+        })),
+        h("small", { class: "tpick-hint" }, "Tick one to always use it, or several for a different one each photo."));
     }
 
     // ---------- the clock ----------

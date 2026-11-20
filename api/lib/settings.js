@@ -194,7 +194,7 @@ function check(partial) {
             out.overlayStyle = n;
         } else if (k === "surpriseSkip") {
             // The transitions "Surprise me" leaves out; at least one has to stay in.
-            const real = TRANSITIONS.filter((t) => t !== "random");
+            const real = TRANSITIONS.filter((t) => t !== "random" && t !== "none");
             if (!Array.isArray(v) || v.some((t) => !real.includes(t))) return { error: `surpriseSkip must be a list of: ${real.join(", ")}` };
             const skip = real.filter((t) => v.includes(t));
             if (skip.length === real.length) return { error: "Surprise me needs at least one transition" };

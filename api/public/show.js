@@ -103,6 +103,7 @@
     fade: 1500, slide: 900, zoom: 1300, dip: 1600, rise: 1000, bloom: 1400, drift: 1700, deck: 1100,
     cube: 1500, flip: 1400, louvres: 1700, mosaic: 1900, shatter: 2000, ripple: 1700, doors: 1700, vortex: 1500, glitch: 1100, snapshot: 2000,
   };
+  const msOf = (kind) => (kind === "none" ? 0 : TRANSITION_MS[kind] || 1500); // "none": a straight cut
   // "Surprise me": chosen from the photo's id, so every screen picks the same one; the owner's
   // surpriseSkip leaves some out.
   function transitionFor(settings, id) {
@@ -140,7 +141,7 @@
     slide.appendChild(frame);
     if (st.settings.motion !== "off") {
       const kind = transitionFor(st.settings, photo.id);
-      const total = st.duration + (TRANSITION_MS[kind] || 1500) + (st.settings.night ? 4000 : 0);
+      const total = st.duration + msOf(kind) + (st.settings.night ? 4000 : 0);
       const anim = frame.animate(motionFrames(photo.id, st.settings.motion), { duration: total, easing: "linear", fill: "forwards" });
       anim.currentTime = Math.min(total, Math.max(0, st.elapsed + (serverNow() - st.serverTime)));
       if (st.paused) anim.pause();
@@ -386,7 +387,7 @@
   function transitionIn(slide, kind, back, immediate) {
     const old = [...stage.children];
     stage.appendChild(slide);
-    const ms = immediate ? 0 : TRANSITION_MS[kind] || 1500;
+    const ms = immediate ? 0 : msOf(kind);
     const done = () => old.forEach((o) => o.remove());
     if (!ms) { done(); return; }
     const dir = back ? -1 : 1;
@@ -521,7 +522,7 @@
     transitionIn(makeSlide(photo, loaded, st), kind, back, immediate);
     // The words change halfway through the transition, when the new photo is mostly visible.
     clearTimeout(overlayTimer);
-    overlayTimer = setTimeout(() => { if (shownId === photo.id) renderOverlay(photo, state); }, immediate ? 0 : (TRANSITION_MS[kind] || 1500) / 2);
+    overlayTimer = setTimeout(() => { if (shownId === photo.id) renderOverlay(photo, state); }, immediate ? 0 : msOf(kind) / 2);
     if (immediate) { clearTimeout(overlayTimer); renderOverlay(photo, st); }
   }
 

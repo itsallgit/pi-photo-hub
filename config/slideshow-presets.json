@@ -247,9 +247,14 @@
         "about": "The new photo is tossed in like a print, then fills the screen"
       },
       {
+        "name": "none",
+        "label": "None",
+        "about": "Straight to the next photo, no transition"
+      },
+      {
         "name": "random",
         "label": "Surprise me",
-        "about": "A different transition for each photo, from the ones you pick"
+        "about": "A different transition for each photo, from the ones ticked (surpriseSkip leaves the others out)"
       }
     ],
     "clockFaces": [

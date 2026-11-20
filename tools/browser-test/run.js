@@ -268,7 +268,7 @@ async function main() {
     await ok("autoplay still uses each transition, also straight after a manual move", async () => {
         await shelf.bringToFront();
         await api("PATCH", "/api/player/settings", { interval: 3, titleCards: false }); // a title card replaces the transition
-        const all = (await api("GET", "/api/presets")).catalog.transitions.map((t) => t.name).filter((t) => t !== "random" && t !== "fade");
+        const all = (await api("GET", "/api/presets")).catalog.transitions.map((t) => t.name).filter((t) => t !== "random" && t !== "fade" && t !== "none");
         for (const tr of [...all, "random", "fade"]) {
             await api("PATCH", "/api/player/settings", { transition: tr });
             const manual = await api("POST", "/api/player/next");
@@ -476,7 +476,7 @@ async function main() {
         await until(async () => (await api("GET", "/api/player")).source.label === "2018", "2018 playing");
     });
     const openSettings = async () => { await showControls(phone); await clickLabel(phone, "Settings"); await until(() => phone.evaluate(() => document.querySelectorAll("#controls .subject").length === 6), "the settings home"); };
-    await ok("phone: settings: a preset, then a transition from its drop-down", async () => {
+    await ok("phone: settings: a preset, then the transition picker: none, one, two, all", async () => {
         await openSettings();
         await sleep(400);
         await shot(phone, "phone-settings-home");
@@ -486,21 +486,26 @@ async function main() {
         await until(() => phone.evaluate(() => /Transitions/.test(document.querySelector(".page-title h2").textContent)), "the page");
         await clickText(phone, "#controls .seg button", /Lively/);
         await until(async () => (await api("GET", "/api/player")).settings.motion === "lively", "lively");
-        await clickText(phone, "#controls .row.is-select", /Transition/);
-        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .option").length === 19), "the list of transitions");
+        // The picker (B43): opens into All / None and a tile per transition; ticking sets the settings.
+        const P = () => api("GET", "/api/player").then((v) => v.settings);
+        const summary = () => phone.evaluate(() => document.querySelector("#controls .tpick-head small").textContent);
+        await clickText(phone, "#controls .tpick-head", /Transitions/);
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .tpick-tile").length === 18), "a tile per transition");
+        await clickText(phone, "#controls .tpick-all .btn", /^None$/);
+        await until(async () => (await P()).transition === "none", "none: a straight cut");
+        await until(async () => /^None/.test(await summary()), "the summary says none");
+        await clickText(phone, "#controls .tpick-tile", /Shatter/);
+        await until(async () => (await P()).transition === "shatter", "one ticked: always that one");
+        await clickText(phone, "#controls .tpick-tile", /Cube/);
+        await until(async () => { const s = await P(); return s.transition === "random" && s.surpriseSkip.length === 16 && !s.surpriseSkip.includes("cube") && !s.surpriseSkip.includes("shatter"); }, "two ticked: random from those two");
+        await until(async () => /^2 of 18/.test(await summary()), "the summary counts them");
         await sleep(900);
         await shot(phone, "phone-transition-picker");
-        await clickText(phone, "#controls .option", /Surprise me/);
-        await until(async () => (await api("GET", "/api/player")).settings.transition === "random", "random");
-        // Surprise me's own list (B42): a switch per transition, and the last one cannot go off.
-        await until(() => phone.evaluate(() => /Surprise me picks from \(18 of 18\)/.test(document.querySelector("#controls .page-body").textContent)), "the Surprise me switches");
-        await clickText(phone, "#controls .row.is-toggle", /Glitch/);
-        await until(async () => JSON.stringify((await api("GET", "/api/player")).settings.surpriseSkip) === '["glitch"]', "glitch left out");
-        await until(() => phone.evaluate(() => /\(17 of 18\)/.test(document.querySelector("#controls .page-body").textContent)), "the count follows");
-        await phone.evaluate(() => document.querySelector("#controls .row.is-toggle:last-child").scrollIntoView({ block: "center" }));
-        await sleep(600);
-        await shot(phone, "phone-surprise-switches");
-        await api("PATCH", "/api/player/settings", { surpriseSkip: [] });
+        await clickText(phone, "#controls .tpick-all .btn", /^All$/);
+        await until(async () => { const s = await P(); return s.transition === "random" && s.surpriseSkip.length === 0; }, "all");
+        assert.equal(await phone.evaluate(() => document.querySelectorAll("#controls .tpick-tile.on").length), 18);
+        await clickText(phone, "#controls .tpick-head", /Transitions/);
+        await until(() => phone.evaluate(() => !document.querySelector("#controls .tpick-tile")), "the picker closes");
         await clickLabel(phone, "Close");
     });
     await ok("phone: clock page: pick a look and change it; the shelf follows", async () => {
