@@ -323,6 +323,24 @@
     },
   };
 
+  // A dev tool (/show?kiosk=1&measure=1, opened with POST /api/dev/kiosk): times every frame of each
+  // transition and posts it to /api/dev/report, as the motion test does (docs/architecture.md).
+  const measure = params.get("measure") === "1";
+  function timeFrames(kind, ms) {
+    const gaps = [];
+    let last = performance.now();
+    const end = last + ms + 150;
+    const tick = (t) => {
+      gaps.push(t - last);
+      last = t;
+      if (t < end) { requestAnimationFrame(tick); return; }
+      const sorted = [...gaps].sort((a, b) => a - b);
+      const body = { test: "transition", kind, fps: Math.round((1000 * gaps.length) / gaps.reduce((a, b) => a + b, 0)), p95ms: Math.round(sorted[Math.floor(sorted.length * 0.95)]), maxms: Math.round(sorted[sorted.length - 1]), over34ms: gaps.filter((g) => g > 34).length, frames: gaps.length };
+      fetch("/api/dev/report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    };
+    requestAnimationFrame(tick);
+  }
+
   // Runs a showpiece transition; false when there is no old photo to work with.
   function fancyIn(slide, kind, old, ms, dir, done) {
     const prev = old.filter((o) => o.classList.contains("slide")).pop();
@@ -365,6 +383,7 @@
     const done = () => old.forEach((o) => o.remove());
     if (!ms) { done(); return; }
     const dir = back ? -1 : 1;
+    if (measure) timeFrames(kind, ms);
     if (FANCY[kind] && fancyIn(slide, kind, old, ms, dir, done)) return;
     let inFrames, outFrames, outOpts = { duration: ms, fill: "forwards" }, inOpts = { duration: ms, fill: "both", easing: "ease-in-out" };
     switch (kind) {
