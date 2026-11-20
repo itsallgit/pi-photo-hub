@@ -21,7 +21,11 @@ body.kiosk { cursor: none; }
 .shard { position: absolute; transform-style: preserve-3d; will-change: transform, opacity; }
 .shard .face { position: absolute; inset: 0; overflow: hidden; }
 .shard.two .face { backface-visibility: hidden; }
-.ghost { position: absolute; overflow: hidden; }
+.ghost { position: absolute; overflow: hidden; background: #000; }
+/* Measured on the Pi (B42): a still copy must not be a layer of its own (one full-screen layer per
+   piece made the many-piece transitions stutter), and its dimmed fill is opacity over black, not a filter. */
+.ghost .frame { will-change: auto; }
+.ghost .fill { filter: none; opacity: 0.55; }
 /* Snapshot: the white border of a print, which fades as the photo grows to fill the screen. */
 .print-edge { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4.2vmin #f3efe6, inset 0 0 0 calc(4.2vmin + 2px) rgba(0,0,0,.18); }
 

@@ -348,7 +348,8 @@
     const anims = [], added = [], after = [];
     const fx = {
       slide, prev, ms, dir, rnd: seeded(hash(`fx${slide.dataset.id}`)),
-      run: (el, frames, opts) => { const a = el.animate(frames, opts); anims.push([el, a]); return a; },
+      // made paused: everything starts together once the pieces are on screen (below)
+      run: (el, frames, opts) => { const a = el.animate(frames, opts); a.pause(); anims.push([el, a]); return a; },
       add: (el) => { added.push(el); stage.insertBefore(el, slide); },
       hideOld: () => old.forEach((o) => { if (o.classList.contains("slide")) o.style.visibility = "hidden"; }),
       after: (fn) => after.push(fn),
@@ -367,6 +368,12 @@
     try {
       FANCY[kind](fx);
       Promise.all(anims.map(([, a]) => a.finished)).then(finish, finish);
+      // One still frame first, which looks exactly like the old photo: the Pi sets the pieces up
+      // then, not while they move (measured, B42).
+      let started = false;
+      const go = () => { if (started || finished) return; started = true; anims.forEach(([, a]) => a.play()); };
+      requestAnimationFrame(() => requestAnimationFrame(go));
+      setTimeout(go, 120); // a tab in the background has no frames: start anyway
       setTimeout(finish, ms + 1500); // never left half-way, whatever happens
     } catch (e) {
       console.error(e);
