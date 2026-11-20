@@ -2,7 +2,7 @@
 
 The master description of **what the solution is**: its parts, how they connect, where each kind of fact is kept, and how the project grows. Kept current with every change that adds, removes or reshapes a part (the `make-changes` skill). Details live in the pages this one links to; nothing here is repeated elsewhere, and nothing elsewhere should repeat it.
 
-Current release: **v1.1.0, the look and feel release** (2026-11-19). History: "Releases" below; how versions are numbered: the `git-workflow` skill.
+Current release: **v1.2.0, the showpiece transitions** (2026-11-20). History: "Releases" below; how versions are numbered: the `git-workflow` skill.
 
 ## What it is
 
@@ -67,5 +67,6 @@ Last hygiene run: 2026-11-19, commit `dae39fb`, for `v1.1.0`: 4 stale lines fixe
 
 | Release | Date | What |
 |---|---|---|
+| v1.2.0 | 2026-11-20 | Showpiece transitions (B42): cube, flip, louvres, mosaic, shatter, ripple, doors, vortex, glitch and snapshot, each with a moving demo in the phone's drop-down; a switch per transition for which ones Surprise me picks from; measured smooth on the Pi (48 to 58 fps). |
 | v1.1.0 | 2026-11-19 | Look and feel (B41): redesigned phone menus for portrait and landscape; Browse tiles with cover photos and icons; Favourites and Skipped galleries; eight clock faces with their own settings; captions per data point (corner, size, style, order, the same field twice); saved and managed presets; more transitions, a drop-down and "Surprise me"; full-screen map; instant next and back from the phone; open pages reload after an update. |
 | v1.0 | 2026-11-18 | The slideshow layer (B32): the photo API holds the one slideshow; `/show` for the shelf and the phone; resume without reshuffle; orders, presets, overlay, upright fill, motion; offline places; search, browse, map on the phone; button board service; screen schedule; history and marks. Requirements R1 to R21 and test evidence: [slideshow-layer-build.md](slideshow-layer-build.md). Before it: Picapport's own slideshow page, the photo API v2 and the maintenance work of Phase 1 (backlog "Done"). |
