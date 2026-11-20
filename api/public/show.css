@@ -18,7 +18,8 @@ body.kiosk { cursor: none; }
 /* The showpiece transitions (B42, show.js): the screen cut into pieces, each a window onto a still
    copy of a photo (.ghost); two-sided pieces carry the new photo on their backs. */
 .shards { position: absolute; inset: 0; z-index: 2; pointer-events: none; perspective: 1800px; }
-.shard { position: absolute; transform-style: preserve-3d; will-change: transform, opacity; }
+/* No will-change: opacity here: it flattens the 3D, and two-sided pieces then show their front mirrored. */
+.shard { position: absolute; transform-style: preserve-3d; will-change: transform; }
 .shard .face { position: absolute; inset: 0; overflow: hidden; }
 .shard.two .face { backface-visibility: hidden; }
 .ghost { position: absolute; overflow: hidden; background: #000; }
