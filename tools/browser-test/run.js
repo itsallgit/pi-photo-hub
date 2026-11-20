@@ -268,7 +268,8 @@ async function main() {
     await ok("autoplay still uses each transition, also straight after a manual move", async () => {
         await shelf.bringToFront();
         await api("PATCH", "/api/player/settings", { interval: 3, titleCards: false }); // a title card replaces the transition
-        for (const tr of ["slide", "zoom", "dip", "rise", "bloom", "drift", "deck", "random", "fade"]) {
+        const all = (await api("GET", "/api/presets")).catalog.transitions.map((t) => t.name).filter((t) => t !== "random" && t !== "fade");
+        for (const tr of [...all, "random", "fade"]) {
             await api("PATCH", "/api/player/settings", { transition: tr });
             const manual = await api("POST", "/api/player/next");
             await until(async () => (await shownId(shelf)) === manual.current.id, `next before ${tr}`);
@@ -279,6 +280,9 @@ async function main() {
             await sleep(500);
             await shot(shelf, `shelf-transition-${tr}`);
             await until(async () => (await slideCount(shelf)) === 1, `${tr} to finish`, 3000);
+            await until(() => shelf.evaluate(() => !document.querySelector("#stage .shards, #stage .ghost, #stage .print-edge")), `${tr}: its pieces are cleared away`, 2000);
+            const leftover = await shelf.evaluate(() => { const s = document.querySelector("#stage .slide:last-child"); const t = getComputedStyle(s).transform; return [s.style.visibility, t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)" ? "flat" : t]; });
+            assert.deepEqual(leftover, ["", "flat"], `${tr}: the new photo is left clean`);
         }
         await api("PATCH", "/api/player/settings", { interval: 40, transition: "fade" });
         await api("POST", "/api/player/next"); // a photo's motion is timed when it appears (backlog B39)
@@ -483,11 +487,20 @@ async function main() {
         await clickText(phone, "#controls .seg button", /Lively/);
         await until(async () => (await api("GET", "/api/player")).settings.motion === "lively", "lively");
         await clickText(phone, "#controls .row.is-select", /Transition/);
-        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .option").length === 9), "the list of transitions");
+        await until(() => phone.evaluate(() => document.querySelectorAll("#controls .option").length === 19), "the list of transitions");
         await sleep(900);
         await shot(phone, "phone-transition-picker");
         await clickText(phone, "#controls .option", /Surprise me/);
         await until(async () => (await api("GET", "/api/player")).settings.transition === "random", "random");
+        // Surprise me's own list (B42): a switch per transition, and the last one cannot go off.
+        await until(() => phone.evaluate(() => /Surprise me picks from \(18 of 18\)/.test(document.querySelector("#controls .page-body").textContent)), "the Surprise me switches");
+        await clickText(phone, "#controls .row.is-toggle", /Glitch/);
+        await until(async () => JSON.stringify((await api("GET", "/api/player")).settings.surpriseSkip) === '["glitch"]', "glitch left out");
+        await until(() => phone.evaluate(() => /\(17 of 18\)/.test(document.querySelector("#controls .page-body").textContent)), "the count follows");
+        await phone.evaluate(() => document.querySelector("#controls .row.is-toggle:last-child").scrollIntoView({ block: "center" }));
+        await sleep(600);
+        await shot(phone, "phone-surprise-switches");
+        await api("PATCH", "/api/player/settings", { surpriseSkip: [] });
         await clickLabel(phone, "Close");
     });
     await ok("phone: clock page: pick a look and change it; the shelf follows", async () => {

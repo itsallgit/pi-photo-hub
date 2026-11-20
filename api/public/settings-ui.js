@@ -78,8 +78,21 @@
         ui.stacked("Movement on the photo", ui.seg([{ name: "off", label: "Still" }, { name: "subtle", label: "Subtle" }, { name: "lively", label: "Lively" }], s.motion, (v) => patch({ motion: v })))),
       ui.group("Atmosphere",
         toggle("titleCards", "Title cards", "The event's name before its photos"),
-        toggle("night", "Night look", "Dims the whole picture"))];
+        toggle("night", "Night look", "Dims the whole picture")),
+      surpriseGroup(s)];
     } });
+    // Which transitions "Surprise me" picks from: one switch each, at least one stays on.
+    function surpriseGroup(s) {
+      const real = cat().transitions.filter((t) => t.name !== "random");
+      const skip = s.surpriseSkip || [];
+      const on = (t) => !skip.includes(t.name);
+      return ui.group(`Surprise me picks from (${real.filter(on).length} of ${real.length})`,
+        ...real.map((t) => ui.toggle(t.label, t.about, on(t), (v) => {
+          const next = v ? skip.filter((x) => x !== t.name) : [...skip, t.name];
+          if (next.length >= real.length) { say("Surprise me needs at least one transition"); return; }
+          patch({ surpriseSkip: next });
+        }, { demo: t.name })));
+    }
 
     // ---------- the clock ----------
     const clockPage = () => live({ title: "Clock", sub: "Time, in your style", render: () => {

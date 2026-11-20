@@ -27,7 +27,7 @@ const BOOLS = ["autoplay", "bursts", "highlights", "titleCards", "clock", "night
 const OVERLAY_DATE = ["off", "absolute", "relative"];
 const MAX_CAPTIONS = 12;
 // Not part of what a built-in preset decides: they stay as they are when one is applied.
-const CARRIED = ["clock", "clockStyle", "captions"];
+const CARRIED = ["clock", "clockStyle", "captions", "surpriseSkip"];
 
 // Picapport's sort names (the older API and the slideshow-control skill) mapped onto our orders.
 const SORT_TO_ORDER = {
@@ -192,6 +192,13 @@ function check(partial) {
             const n = Number(v);
             if (!Number.isInteger(n) || n < 0 || n >= overlayStyles().length) return { error: `overlayStyle must be 0 to ${overlayStyles().length - 1}` };
             out.overlayStyle = n;
+        } else if (k === "surpriseSkip") {
+            // The transitions "Surprise me" leaves out; at least one has to stay in.
+            const real = TRANSITIONS.filter((t) => t !== "random");
+            if (!Array.isArray(v) || v.some((t) => !real.includes(t))) return { error: `surpriseSkip must be a list of: ${real.join(", ")}` };
+            const skip = real.filter((t) => v.includes(t));
+            if (skip.length === real.length) return { error: "Surprise me needs at least one transition" };
+            out.surpriseSkip = skip;
         } else if (k === "clockStyle" || k === "captions") {
             const r = k === "clockStyle" ? checkClockStyle(v) : checkCaptions(v);
             if (r.error) return r;

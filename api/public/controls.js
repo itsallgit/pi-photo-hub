@@ -263,7 +263,7 @@
   const ui = {
     group: (title, ...rows) => h("section", { class: "group" }, title ? h("h3", {}, title) : null, h("div", { class: "group-card" }, rows)),
     row: (label, sub, control, opts = {}) => h(opts.click ? "button" : "div", { class: `row${opts.cls ? ` ${opts.cls}` : ""}`, on: opts.click ? { click: opts.click } : undefined },
-      opts.icon ? h("span", { class: "chip-ic" }, icon(opts.icon)) : null,
+      opts.demo ? h("span", { class: `tdemo t-${opts.demo}` }, h("i"), h("i")) : opts.icon ? h("span", { class: "chip-ic" }, icon(opts.icon)) : null,
       h("span", { class: "row-text" }, h("span", { class: "row-label" }, label), sub ? h("small", {}, sub) : null), control),
     toggle: (label, sub, value, onChange, opts = {}) => ui.row(label, sub,
       h("span", { class: `switch${value ? " on" : ""}`, role: "switch", "aria-checked": value ? "true" : "false" }, h("i")),

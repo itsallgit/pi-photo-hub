@@ -99,12 +99,25 @@
     const big = `scale(${1 + amt}) translate(${dx / (1 + amt)}%, ${dy / (1 + amt)}%)`;
     return zoomIn ? [{ transform: "scale(1)" }, { transform: big }] : [{ transform: big }, { transform: "scale(1)" }];
   }
-  const TRANSITION_MS = { fade: 1500, slide: 900, zoom: 1300, dip: 1600, rise: 1000, bloom: 1400, drift: 1700, deck: 1100 };
-  // "Surprise me": chosen from the photo's id, so every screen picks the same one.
-  function transitionFor(kind, id) {
+  const TRANSITION_MS = {
+    fade: 1500, slide: 900, zoom: 1300, dip: 1600, rise: 1000, bloom: 1400, drift: 1700, deck: 1100,
+    cube: 1500, flip: 1400, louvres: 1700, mosaic: 1900, shatter: 2000, ripple: 1700, doors: 1700, vortex: 1500, glitch: 1100, snapshot: 2000,
+  };
+  // "Surprise me": chosen from the photo's id, so every screen picks the same one; the owner's
+  // surpriseSkip leaves some out.
+  function transitionFor(settings, id) {
+    const kind = settings && settings.transition;
     if (kind !== "random") return kind;
-    const list = transitions.filter((t) => t !== "random" && TRANSITION_MS[t]);
-    return list.length ? list[hash(`t${id}`) % list.length] : "fade";
+    const skip = settings.surpriseSkip || [];
+    const all = transitions.filter((t) => t !== "random" && TRANSITION_MS[t]);
+    const list = all.filter((t) => !skip.includes(t));
+    const from = list.length ? list : all;
+    return from.length ? from[hash(`t${id}`) % from.length] : "fade";
+  }
+  // The same "random" numbers on every screen: seeded from the photo's id.
+  function seeded(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
 
   function makeSlide(photo, loaded, st) {
@@ -126,7 +139,7 @@
     frame.appendChild(img);
     slide.appendChild(frame);
     if (st.settings.motion !== "off") {
-      const kind = transitionFor(st.settings.transition, photo.id);
+      const kind = transitionFor(st.settings, photo.id);
       const total = st.duration + (TRANSITION_MS[kind] || 1500) + (st.settings.night ? 4000 : 0);
       const anim = frame.animate(motionFrames(photo.id, st.settings.motion), { duration: total, easing: "linear", fill: "forwards" });
       anim.currentTime = Math.min(total, Math.max(0, st.elapsed + (serverNow() - st.serverTime)));
@@ -136,6 +149,215 @@
     return slide;
   }
 
+  // ---------- the showpiece transitions (B42) ----------
+  // Still only opacity and transform (smooth on the Pi). Two kinds: whole-photo moves in 3D (cube,
+  // flip, vortex, snapshot), and "pieces": the screen cut into tiles, each a window onto a still copy
+  // of the old photo (and, two-sided, of the new one on its back), frozen where the pan and zoom are,
+  // so the hand-over to the real photo underneath is seamless.
+  function frameTransform(slide, ahead) {
+    const f = slide.querySelector(".frame");
+    if (!f) return "none";
+    const a = slide._anim;
+    if (!ahead || !a || a.currentTime === null) return getComputedStyle(f).transform;
+    const t = a.currentTime;
+    a.currentTime = t + ahead; // where the pan and zoom will be when the transition ends
+    const tr = getComputedStyle(f).transform;
+    a.currentTime = t;
+    return tr;
+  }
+  function ghost(slide, transform, x, y) {
+    const g = slide.cloneNode(true); // a still copy: not a .slide, so it never counts as one
+    g.className = "ghost";
+    g.removeAttribute("data-id");
+    Object.assign(g.style, { left: `${-x}px`, top: `${-y}px`, width: `${innerWidth}px`, height: `${innerHeight}px`, visibility: "visible" });
+    const f = g.querySelector(".frame");
+    if (f) f.style.transform = transform;
+    return g;
+  }
+  function cutUp(fx, cols, rows, backTurn) {
+    const W = innerWidth, H = innerHeight;
+    const layer = document.createElement("div");
+    layer.className = "shards";
+    const tOld = frameTransform(fx.prev), tNew = backTurn ? frameTransform(fx.slide, fx.ms) : null;
+    const list = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x = Math.round((c * W) / cols), y = Math.round((r * H) / rows);
+      const w = Math.round(((c + 1) * W) / cols) - x, h = Math.round(((r + 1) * H) / rows) - y;
+      const el = document.createElement("div");
+      el.className = backTurn ? "shard two" : "shard";
+      Object.assign(el.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+      const face = (s, t, back) => {
+        const f = document.createElement("div");
+        f.className = "face";
+        if (back) f.style.transform = backTurn;
+        f.appendChild(ghost(s, t, x, y));
+        el.appendChild(f);
+      };
+      face(fx.prev, tOld, false);
+      if (backTurn) face(fx.slide, tNew, true);
+      layer.appendChild(el);
+      list.push({ el, c, r, x: (x + w / 2) / W, y: (y + h / 2) / H });
+    }
+    fx.hideOld();
+    fx.add(layer);
+    return list;
+  }
+  const P = () => Math.round(Math.max(innerWidth, innerHeight) * 1.25); // perspective for the 3D moves
+
+  const FANCY = {
+    cube(fx) { // the two photos are sides of a turning cube, pulled back a little at the turn
+      const half = innerWidth / 2, d = fx.dir, pull = -innerWidth * 0.3;
+      const at = (z, a) => ({ transform: `perspective(${P() * 1.6}px) translateZ(${z}px) translateZ(${-half}px) rotateY(${a}deg) translateZ(${half}px)` });
+      const o = { duration: fx.ms, easing: "cubic-bezier(.6,0,.3,1)", fill: "both" };
+      fx.run(fx.prev, [at(0, 0), { ...at(pull, -45 * d), offset: 0.5 }, at(0, -90 * d)], o);
+      fx.run(fx.slide, [at(0, 90 * d), { ...at(pull, 45 * d), offset: 0.5 }, at(0, 0)], o);
+    },
+    flip(fx) { // a card turned over, lifted off the table at the turn
+      const d = fx.dir;
+      const at = (a, s) => ({ transform: `perspective(${P()}px) rotateY(${a}deg) scale(${s})` });
+      const o = { duration: fx.ms, easing: "cubic-bezier(.55,0,.35,1)", fill: "both" };
+      fx.prev.style.backfaceVisibility = fx.slide.style.backfaceVisibility = "hidden";
+      fx.run(fx.prev, [at(0, 1), { ...at(90 * d, 0.8), offset: 0.5 }, at(180 * d, 1)], o);
+      fx.run(fx.slide, [at(-180 * d, 1), { ...at(-90 * d, 0.8), offset: 0.5 }, at(0, 1)], o);
+    },
+    louvres(fx) { // tall slats turn in a wave, the new photo on their backs
+      const cols = 10, step = 75, turn = fx.ms - step * (cols - 1);
+      cutUp(fx, cols, 1, "rotateY(180deg)").forEach((p) => {
+        const k = fx.dir > 0 ? p.c : cols - 1 - p.c;
+        const at = (z, a) => ({ transform: `translateZ(${z}px) rotateY(${a * fx.dir}deg)` });
+        fx.run(p.el, [at(0, 0), { ...at(-160, 90), offset: 0.5 }, at(0, 180)], { duration: turn, delay: k * step, easing: "cubic-bezier(.45,0,.3,1)", fill: "both" });
+      });
+    },
+    mosaic(fx) { // tiles flip over corner to corner in a diagonal wave
+      const cols = 6, rows = 4, spread = 900, turn = fx.ms - spread;
+      cutUp(fx, cols, rows, "rotate3d(1, 1, 0, 180deg)").forEach((p) => {
+        const c = fx.dir > 0 ? p.c : cols - 1 - p.c;
+        const k = (c / (cols - 1) + p.r / (rows - 1)) / 2;
+        const at = (z, a) => ({ transform: `translateZ(${z}px) rotate3d(1, 1, 0, ${a}deg)` });
+        fx.run(p.el, [at(0, 0), { ...at(-220, 90), offset: 0.5 }, at(0, 180)], { duration: turn, delay: k * spread, easing: "ease-in-out", fill: "both" });
+      });
+    },
+    shatter(fx) { // cracks from a point of impact, then the pieces tumble away
+      const W = innerWidth, H = innerHeight, rnd = fx.rnd;
+      const ix = 0.3 + 0.4 * rnd(), iy = 0.3 + 0.4 * rnd();
+      cutUp(fx, 7, 5).forEach((p) => {
+        const dx = p.x - ix, dy = p.y - iy, dist = Math.hypot(dx, dy) || 0.01, ux = dx / dist, uy = dy / dist;
+        const delay = Math.min(450, dist * 600) + 60 * rnd();
+        const fly = 0.25 + 0.45 * rnd();
+        const at = (tx, ty, tz, rx, ry, rz, s) => `translate3d(${tx}px, ${ty}px, ${tz}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})`;
+        fx.run(p.el, [
+          { transform: at(0, 0, 0, 0, 0, 0, 1), opacity: 1 },
+          { transform: at(ux * 14, uy * 14, 30, 0, 0, (rnd() - 0.5) * 6, 0.97), opacity: 1, offset: 0.14, easing: "cubic-bezier(.5,0,.9,.5)" },
+          { transform: at(ux * fly * W, uy * 0.15 * H + (0.6 + 0.5 * rnd()) * H, 200 + 300 * rnd(), (rnd() - 0.5) * 300, (rnd() - 0.5) * 300, (rnd() - 0.5) * 200, 0.6), opacity: 0 },
+        ], { duration: fx.ms - delay - 80, delay, fill: "both" });
+      });
+      fx.run(fx.slide, [{ transform: "scale(1.1)" }, { transform: "scale(1)" }], { duration: fx.ms, easing: "cubic-bezier(.2,.7,.3,1)", fill: "both" });
+    },
+    ripple(fx) { // the old photo melts away in rings from the centre
+      const spread = 750, melt = fx.ms - spread, aspect = innerWidth / innerHeight;
+      cutUp(fx, 9, 5).forEach((p) => {
+        const dist = Math.hypot((p.x - 0.5) * aspect, p.y - 0.5) / Math.hypot(0.5 * aspect, 0.5);
+        fx.run(p.el, [
+          { transform: "scale(1) rotate(0deg)", opacity: 1 },
+          { transform: "scale(1.08) rotate(0deg)", opacity: 1, offset: 0.3 },
+          { transform: "scale(0) rotate(90deg)", opacity: 0 },
+        ], { duration: melt, delay: dist * spread, easing: "ease-in", fill: "both" });
+      });
+      fx.run(fx.slide, [{ transform: "scale(1.12)" }, { transform: "scale(1)" }], { duration: fx.ms, easing: "cubic-bezier(.2,.7,.3,1)", fill: "both" });
+    },
+    doors(fx) { // a crack down the middle, then the halves swing open
+      const gap = innerWidth * 0.012;
+      cutUp(fx, 2, 1).forEach((p) => {
+        const s = p.c === 0 ? -1 : 1; // left door, right door
+        p.el.style.transformOrigin = p.c === 0 ? "0 50%" : "100% 50%";
+        const at = (tx, a) => `translateX(${tx}px) rotateY(${a}deg)`;
+        fx.run(p.el, [
+          { transform: at(0, 0), opacity: 1 },
+          { transform: at(s * gap, 0), opacity: 1, offset: 0.15, easing: "cubic-bezier(.55,0,.35,1)" },
+          { transform: at(s * gap, -s * 82), opacity: 1, offset: 0.8 },
+          { transform: at(s * gap, -s * 90), opacity: 0 },
+        ], { duration: fx.ms, fill: "both" });
+      });
+      fx.run(fx.slide, [{ transform: "scale(1.15)", opacity: 0.5 }, { transform: "scale(1)", opacity: 1 }], { duration: fx.ms, easing: "cubic-bezier(.3,.5,.3,1)", fill: "both" });
+    },
+    vortex(fx) { // the old photo spins down the drain; the new one unwinds out of it
+      const d = fx.dir;
+      const at = (a, s) => `rotate(${a}deg) scale(${s})`;
+      fx.run(fx.prev, [{ transform: at(0, 1), opacity: 1 }, { transform: at(-150 * d, 0.05), opacity: 0 }], { duration: fx.ms * 0.65, easing: "cubic-bezier(.55,0,.8,.4)", fill: "both" });
+      fx.run(fx.slide, [
+        { transform: at(140 * d, 1.9), opacity: 0 },
+        { transform: at(140 * d, 1.9), opacity: 0, offset: 0.2, easing: "cubic-bezier(.15,.75,.3,1)" },
+        { transform: at(0, 1), opacity: 1 },
+      ], { duration: fx.ms, fill: "both" });
+    },
+    glitch(fx) { // horizontal bands jolt sideways, flicker and drop out; the new photo stutters in
+      const W = innerWidth, rnd = fx.rnd;
+      const jolt = () => `translateX(${((rnd() - 0.5) * 0.24 * W).toFixed(0)}px)`;
+      cutUp(fx, 1, 14).forEach((p) => {
+        const at = [0.12, 0.2, 0.33, 0.46, 0.58, 0.7].map((o) => o + (rnd() - 0.5) * 0.06);
+        const frames = [{ transform: "translateX(0px)", opacity: 1, offset: 0, easing: "steps(1, end)" }];
+        at.forEach((offset, k) => frames.push({ transform: jolt(), opacity: k > 2 && rnd() < 0.4 ? 0.3 : 1, offset, easing: "steps(1, end)" }));
+        frames.push({ transform: jolt(), opacity: 0, offset: 0.8, easing: "steps(1, end)" }, { transform: "translateX(0px)", opacity: 0, offset: 1 });
+        fx.run(p.el, frames, { duration: fx.ms, fill: "both" });
+      });
+      const k = (x, o, offset) => ({ transform: `translateX(${x * W}px)`, opacity: o, offset, easing: "steps(1, end)" });
+      fx.run(fx.slide, [k(0, 0, 0), k(0.03, 0.7, 0.35), k(0, 0, 0.42), k(-0.02, 1, 0.55), k(0.008, 1, 0.68), k(0, 1, 0.8), k(0, 1, 1)], { duration: fx.ms, fill: "both" });
+    },
+    snapshot(fx) { // tossed in like a print, lands with a little bounce, then grows to fill the screen
+      const d = fx.dir, s = fx.slide;
+      const edge = document.createElement("div");
+      edge.className = "print-edge";
+      s.appendChild(edge);
+      s.style.boxShadow = "0 4vmin 12vmin rgba(0,0,0,.65)";
+      fx.after(() => { edge.remove(); s.style.boxShadow = ""; });
+      const at = (x, y, a, sc) => `translate(${x}%, ${y}%) rotate(${a}deg) scale(${sc})`;
+      fx.run(s, [
+        { transform: at(-75 * d, 70, -26 * d, 0.36), easing: "cubic-bezier(.2,.75,.3,1)" },
+        { transform: at(0, 0, 6 * d, 0.44), offset: 0.38, easing: "ease-in-out" },
+        { transform: at(0, 0, 3 * d, 0.42), offset: 0.5 },
+        { transform: at(0, 0, 3 * d, 0.42), offset: 0.6, easing: "cubic-bezier(.7,0,.2,1)" },
+        { transform: at(0, 0, 0, 1) },
+      ], { duration: fx.ms, fill: "both" });
+      fx.run(edge, [{ opacity: 1 }, { opacity: 1, offset: 0.66 }, { opacity: 0, offset: 0.9 }, { opacity: 0 }], { duration: fx.ms, fill: "both" });
+      fx.run(fx.prev, [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.94)", opacity: 0.45, offset: 0.5 }, { transform: "scale(.94)", opacity: 0.45 }], { duration: fx.ms, easing: "ease-out", fill: "both" });
+    },
+  };
+
+  // Runs a showpiece transition; false when there is no old photo to work with.
+  function fancyIn(slide, kind, old, ms, dir, done) {
+    const prev = old.filter((o) => o.classList.contains("slide")).pop();
+    if (!prev) return false;
+    const anims = [], added = [], after = [];
+    const fx = {
+      slide, prev, ms, dir, rnd: seeded(hash(`fx${slide.dataset.id}`)),
+      run: (el, frames, opts) => { const a = el.animate(frames, opts); anims.push([el, a]); return a; },
+      add: (el) => { added.push(el); stage.insertBefore(el, slide); },
+      hideOld: () => old.forEach((o) => { if (o.classList.contains("slide")) o.style.visibility = "hidden"; }),
+      after: (fn) => after.push(fn),
+    };
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      done();
+      added.forEach((el) => el.remove());
+      after.forEach((fn) => fn());
+      // the new photo keeps no leftover transform (its own pan and zoom is on its frame)
+      anims.forEach(([el, a]) => { if (el === slide) a.cancel(); });
+      slide.style.backfaceVisibility = "";
+    };
+    try {
+      FANCY[kind](fx);
+      Promise.all(anims.map(([, a]) => a.finished)).then(finish, finish);
+      setTimeout(finish, ms + 1500); // never left half-way, whatever happens
+    } catch (e) {
+      console.error(e);
+      anims.forEach(([, a]) => a.cancel());
+      finish();
+    }
+    return true;
+  }
+
   function transitionIn(slide, kind, back, immediate) {
     const old = [...stage.children];
     stage.appendChild(slide);
@@ -143,6 +365,7 @@
     const done = () => old.forEach((o) => o.remove());
     if (!ms) { done(); return; }
     const dir = back ? -1 : 1;
+    if (FANCY[kind] && fancyIn(slide, kind, old, ms, dir, done)) return;
     let inFrames, outFrames, outOpts = { duration: ms, fill: "forwards" }, inOpts = { duration: ms, fill: "both", easing: "ease-in-out" };
     switch (kind) {
       case "slide":
@@ -268,7 +491,7 @@
     shownId = photo.id;
     shownPhoto = photo;
     shownLoaded = loaded;
-    const kind = transitionFor(st.settings.transition, photo.id);
+    const kind = transitionFor(st.settings, photo.id);
     transitionIn(makeSlide(photo, loaded, st), kind, back, immediate);
     // The words change halfway through the transition, when the new photo is mostly visible.
     clearTimeout(overlayTimer);

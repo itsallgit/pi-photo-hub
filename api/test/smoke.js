@@ -548,6 +548,18 @@ async function main() {
             assert.equal((await api("PATCH", "/api/player/settings", bad)).status, 400, JSON.stringify(bad));
         }
     });
+    await ok("settings: surpriseSkip is checked, keeps at least one, and survives a preset (B42)", async () => {
+        const real = (await api("GET", "/api/presets")).body.catalog.transitions.map((t) => t.name).filter((t) => t !== "random");
+        assert.ok(real.includes("shatter") && real.includes("cube") && real.length >= 18, "the showpiece transitions are in the catalog");
+        for (const bad of [{ surpriseSkip: "glitch" }, { surpriseSkip: ["random"] }, { surpriseSkip: ["wipe"] }, { surpriseSkip: real }]) {
+            assert.equal((await api("PATCH", "/api/player/settings", bad)).status, 400, JSON.stringify(bad));
+        }
+        assert.equal((await api("PATCH", "/api/player/settings", { surpriseSkip: ["glitch", "vortex", "glitch"] })).status, 200);
+        assert.deepEqual((await player()).settings.surpriseSkip, ["vortex", "glitch"], "in catalog order, once each");
+        assert.equal((await api("POST", "/api/player/preset", { name: "ambient" })).status, 200);
+        assert.deepEqual((await player()).settings.surpriseSkip, ["vortex", "glitch"], "a preset keeps the owner's choice");
+        await api("PATCH", "/api/player/settings", { surpriseSkip: [] });
+    });
     await ok("the phone's galleries and covers: rated photos with thumbnails; every cover is a known photo", async () => {
         const counts = (await api("GET", "/api/ratings")).body;
         const fav = (await api("GET", "/api/ratings/photos?kind=favourites")).body;

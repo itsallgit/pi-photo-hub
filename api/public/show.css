@@ -12,9 +12,18 @@ body.kiosk { cursor: none; }
 
 #stage { position: fixed; inset: 0; overflow: hidden; background: #000; }
 .slide { position: absolute; inset: 0; overflow: hidden; will-change: opacity, transform; }
-.slide .fill { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; filter: brightness(0.55) saturate(1.1); }
-.slide .frame { position: absolute; inset: 0; will-change: transform; }
-.slide .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.slide .fill, .ghost .fill { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; filter: brightness(0.55) saturate(1.1); }
+.slide .frame, .ghost .frame { position: absolute; inset: 0; will-change: transform; }
+.slide .photo, .ghost .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+/* The showpiece transitions (B42, show.js): the screen cut into pieces, each a window onto a still
+   copy of a photo (.ghost); two-sided pieces carry the new photo on their backs. */
+.shards { position: absolute; inset: 0; z-index: 2; pointer-events: none; perspective: 1800px; }
+.shard { position: absolute; transform-style: preserve-3d; will-change: transform, opacity; }
+.shard .face { position: absolute; inset: 0; overflow: hidden; }
+.shard.two .face { backface-visibility: hidden; }
+.ghost { position: absolute; overflow: hidden; }
+/* Snapshot: the white border of a print, which fades as the photo grows to fill the screen. */
+.print-edge { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4.2vmin #f3efe6, inset 0 0 0 calc(4.2vmin + 2px) rgba(0,0,0,.18); }
 
 #dim { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 2s ease; }
 body.scrim-soft #dim { opacity: 0.28; }

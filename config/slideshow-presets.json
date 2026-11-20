@@ -1,5 +1,5 @@
 {
-  "_about": "Slideshow layer settings (B32, R4; redesigned in B41): the defaults, the built-in presets, the classic overlay styles, and the catalog: every choice the clock, the captions and the transitions offer (the API checks settings against it and the phone builds its menus from it). A preset is a starting point: applying it sets these values on top of the defaults; the clock and your own caption layout carry over unless the preset has its own. Presets the owner saves live on the Pi in /var/lib/photo-api/presets.json, current values in player.json. Reference: docs/architecture.md, 'Slideshow layer'.",
+  "_about": "Slideshow layer settings (B32, R4; redesigned in B41): the defaults, the built-in presets, the classic overlay styles, and the catalog: every choice the clock, the captions and the transitions offer (the API checks settings against it and the phone builds its menus from it). A preset is a starting point: applying it sets these values on top of the defaults; the clock, your own caption layout and which transitions Surprise me leaves out (surpriseSkip) carry over unless the preset has its own. Presets the owner saves live on the Pi in /var/lib/photo-api/presets.json, current values in player.json. Reference: docs/architecture.md, 'Slideshow layer'.",
   "defaults": {
     "autoplay": true,
     "interval": 20,
@@ -11,6 +11,7 @@
     "upright": "fill",
     "motion": "subtle",
     "transition": "fade",
+    "surpriseSkip": [],
     "overlay": {
       "date": "relative",
       "place": true,
@@ -196,9 +197,59 @@
         "about": "The old photo sinks back as the new one lands on top"
       },
       {
+        "name": "cube",
+        "label": "Cube",
+        "about": "The photos are the sides of a turning cube"
+      },
+      {
+        "name": "flip",
+        "label": "Flip",
+        "about": "The photo turns over like a card, the new one on its back"
+      },
+      {
+        "name": "louvres",
+        "label": "Louvres",
+        "about": "Tall slats turn one after another, the new photo on their backs"
+      },
+      {
+        "name": "mosaic",
+        "label": "Mosaic",
+        "about": "Tiles flip over in a diagonal wave"
+      },
+      {
+        "name": "shatter",
+        "label": "Shatter",
+        "about": "The old photo cracks and its pieces tumble away"
+      },
+      {
+        "name": "ripple",
+        "label": "Ripple",
+        "about": "The old photo melts away in rings from the centre"
+      },
+      {
+        "name": "doors",
+        "label": "Doors",
+        "about": "The old photo opens like a pair of doors"
+      },
+      {
+        "name": "vortex",
+        "label": "Vortex",
+        "about": "The old photo spins away as the new one unwinds into place"
+      },
+      {
+        "name": "glitch",
+        "label": "Glitch",
+        "about": "A burst of digital interference"
+      },
+      {
+        "name": "snapshot",
+        "label": "Snapshot",
+        "about": "The new photo is tossed in like a print, then fills the screen"
+      },
+      {
         "name": "random",
         "label": "Surprise me",
-        "about": "A different transition for each photo"
+        "about": "A different transition for each photo, from the ones you pick"
       }
     ],
     "clockFaces": [
